@@ -5,7 +5,7 @@
  * browser Date to that real arrival for the automatic-arrival scenario only;
  * it restores wall time afterwards. The timetable/API clock is never changed.
  * Timetables, walking routes, station guides and Telstra phones are never mocked.
- * Run: NODE_PATH=/usr/lib/node_modules node tests/browser-mobile-v5.mjs
+ * Run: node tests/browser-mobile-v5.mjs (uses the environment's NODE_PATH).
  * Optional BASE_URL / CHROMIUM_BINARY. CORE_ONLY=1 leaves live-provider checks
  * explicitly UNRUN; it must not be reported as a full integration pass.
  */
