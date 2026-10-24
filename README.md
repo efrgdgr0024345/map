@@ -4,18 +4,19 @@ A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and 
 
 ## What works
 
-- Phone GPS with permission, searchable start/destination addresses with suggestions, or map clicks and draggable pins. GPS keeps watching for better high-accuracy fixes before a journey is selected; stale cached fixes do not freeze the location. The compact accuracy indicator/circle reflects the device's reported uncertainty.
+- Phone GPS with permission, searchable start/destination addresses with suggestions, or map clicks and draggable pins. Selecting a location field opens a clear map picker; confirming a point returns to the form. With both locations selected, the ride search starts automatically. GPS keeps watching for better high-accuracy fixes before a journey is selected; stale cached fixes do not freeze the location. The compact accuracy indicator/circle reflects the device's reported uncertainty.
 - Map-area vehicle and stop updates every 15 seconds.
 - Official rail, CAT and bus route colours, clear vehicle symbols and directional arrows.
 - Focused journey view, walking legs, transfers, boarding countdown and a later service alternative when found. Follow mode fits the remaining journey, selected service, consented GPS position and destination; exploring the map pauses following until you recenter.
 - In-app departure boards and full stop-by-stop service timetables, including service-day and after-midnight times. Tap a stop, vehicle, itinerary action or **View timetable** on your next-service card.
 - A compact phone layout with search initially collapsed, a touch-draggable sheet, and the scheduled-service card directly above the bottom search pill. Pull the handle down to dismiss, drag the pill up to open, or use the accessible buttons. Normal explanatory notes are hidden on phones; errors and source details remain available.
 - Street/footpath walking directions, a top-left **Leave by** time (walking duration plus a two-minute boarding allowance), and a route-coloured pulse on the incoming service's remaining path to your boarding stop. Arrival countdowns use the timetable arrival rather than a later departure after dwell.
-- Public-phone toggle above the zoom controls, using the official Telstra location register cached on your server. The inspected register has **783 Perth-area sites containing 870 payphones**; a marker may represent multiple phones.
+- Public-phone toggle above the zoom controls, using the official Telstra location register cached on your server. Larger street-level phone symbols have a 44-pixel touch target; overview clusters keep the map readable. The inspected register has **783 Perth-area sites containing 870 payphones**; a marker may represent multiple phones.
+- Transfer guidance opens from an itinerary transfer or an accurate GPS approach to that stage of the trip. Nearby stops remain visible, with the required boarding stand/platform highlighted and sequential dots along a verified pedestrian path. See [docs/transfer-guidance.md](docs/transfer-guidance.md).
 - Official static GTFS import into SQLite, with calendar exceptions, after-midnight services and route shapes.
 - Persistent server and browser route caches: geometry redraws locally when panning; public vehicle positions refresh independently.
 - A protected root-level `loader.php` for cPanel setup, timetable refresh and GitHub updates with backups.
-- Black-cat branding using a lightweight portrait derived from the supplied mascot, with lime-eye accents and clear black/white controls.
+- Black-cat branding using a lightweight portrait derived from the supplied mascot, with lime-eye accents and clear black/white controls. A compact cat peeks over the search launcher: its head rises before its paws land. Tap the cat to tuck it away; reduced-motion preferences are respected.
 
 **Honest movement:** the app does not have an actual vehicle GPS feed. After importing GTFS, positions are interpolated between scheduled stops along route shapes. Delays, cancellations, capacity and early/late running are unknown. Before import, the app explicitly shows an illustrative **DEMO** network with invented times; those journeys must not be used for travel. Phone GPS identifies the user, not the buses.
 
@@ -109,6 +110,7 @@ php tests/motion.php
 php tests/approach.php
 php tests/walking.php
 php tests/street_journeys.php
+php tests/transfer.php
 php tests/payphones.php
 php tests/loader_install.php
 PHP_BINARY=php python3 tests/loader_http.py
@@ -119,9 +121,9 @@ php loader.php --check
 
 Tests create isolated temporary data and never replace the installed timetable. `loader.php --check` checks hosting prerequisites; it does not install the app.
 
-The optional `node tests/browser-ui.mjs` suite uses Playwright and a running local app with an imported timetable. It exercises mobile dismissal, in-app timetables, route caching, follow/fit and the mascot. Install Playwright separately in a development environment if it is not already available. Browser map-tile rendering in this cloud can be blocked by proxy certificate trust; do not disable TLS verification to work around it.
+Browser checks use Playwright and a running local app with an imported timetable. Install Playwright separately in a development environment if it is not already available. Browser map-tile rendering in this cloud can be blocked by proxy certificate trust; do not disable TLS verification to work around it.
 
-The latest targeted phone suite is `node tests/browser-mobile-v4.mjs`. It uses actual application/timetable/pedestrian/phone data and synthetic browser GPS only for controlled location-refinement assertions. `CORE_ONLY=1` runs independent controls/GPS checks; `SKIP_PHONES=1` checks other features if the location provider is unavailable. Only the full default run validates the real phone overlay.
+The current suite is `node tests/browser-mobile-v5.mjs`. It covers the peeking mascot, map-first location selection, automatic planning, transfer guidance, continuous location updates, larger phone markers and desktop picker behaviour. It uses actual application/timetable/pedestrian/phone data, synthetic browser GPS, and a controlled browser clock when testing arrival at a real scheduled transfer. These checks do not simulate a completed physical journey. `CORE_ONLY=1` leaves provider-dependent checks explicitly unrun; only the full default run validates those integrations. The historical `browser-ui.mjs` and `browser-mobile-v4.mjs` suites target the preceding search flow and marker sizes.
 
 ## Sources and network access
 

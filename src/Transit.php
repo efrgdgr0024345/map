@@ -11,11 +11,16 @@ final class Transit
     private array $shapes=[];
     private array $routeStyles=[];
     private array $walkDurations=[];
+    private array $stops=[];
+    private array $computedStyles=[];
+    private array $nearbyStops=[];
+    private bool $materializedTrips;
 
     public function __construct(?string $path = null)
     {
         $this->db=new PDO('sqlite:'.($path ?? APP_VAR.'/transit.sqlite'),null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
         $this->db->exec('PRAGMA query_only=ON; PRAGMA busy_timeout=3000;');
+        $this->materializedTrips=version_compare((string)$this->db->query('SELECT sqlite_version()')->fetchColumn(),'3.35.0','>=');
         // Older cPanel databases work immediately; a refresh adds optional feed colours.
         if ($this->db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='route_styles'")->fetchColumn()) {
             $this->routeStyles=$this->db->query('SELECT route_id,color,text_color FROM route_styles')->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
@@ -27,7 +32,7 @@ final class Transit
         $meta=$this->db->query('SELECT key,value FROM meta')->fetchAll(PDO::FETCH_KEY_PAIR);
         $expired=($meta['end_date'] ?? '')<date('Ymd');
         return ['mode'=>'timetable','timezone'=>'Australia/Perth','updatedAt'=>$meta['imported_at'] ?? null,'validUntil'=>$meta['end_date'] ?? null,'expired'=>$expired,'realtime'=>false,
-            'message'=>$expired ? 'Timetable expired. Import a current feed; current services cannot be estimated.' : 'Positions are estimated from the timetable, not live vehicle GPS. Walking paths are approximate straight lines.'];
+            'message'=>$expired ? 'Timetable expired. Import a current feed; current services cannot be estimated.' : 'Vehicle positions are timetable estimates, not live vehicle GPS. Walking directions use verified mapped pedestrian paths when available.'];
     }
 
     /** Service days include yesterday for trips whose GTFS clocks pass 24:00. */
@@ -64,9 +69,10 @@ final class Transit
 
     private function routeStyle(string $id,string $name,int $type): array
     {
+        if (isset($this->computedStyles[$id])) { return $this->computedStyles[$id]; }
         $feed=$this->routeStyles[$id] ?? [];
         $style=NetworkStyle::forRoute($name,$type,$feed['color'] ?? null,$feed['text_color'] ?? null);
-        return ['routeColor'=>$style['color'],'routeTextColor'=>$style['textColor'],
+        return $this->computedStyles[$id]=['routeColor'=>$style['color'],'routeTextColor'=>$style['textColor'],
             'colorSource'=>$style['colorSource'],'lineName'=>$style['lineName']];
     }
 
@@ -82,11 +88,12 @@ final class Transit
 
     private function stop(string $id): array
     {
+        if (isset($this->stops[$id])) { return $this->stops[$id]; }
         $q=$this->db->prepare('SELECT id,name,lat,lon FROM stops WHERE id=?'); $q->execute([$id]);
         $r=$q->fetch();
         if (!$r) { throw new RuntimeException('Timetable refers to an unknown stop. Re-import the feed.'); }
         $r['lat']=(float)$r['lat']; $r['lon']=(float)$r['lon'];
-        return $r;
+        return $this->stops[$id]=$r;
     }
 
     public function vehicles(array $bbox,array $routes=[],string $selected='',bool $includeLines=true): array
@@ -174,14 +181,25 @@ final class Transit
 
     private function nearby(array $point,float $radius=1500,bool $reverse=false): array
     {
-        $q=$this->db->prepare('SELECT id,name,lat,lon FROM stops WHERE lat BETWEEN ? AND ? AND lon BETWEEN ? AND ?');
-        $dlat=$radius/111000; $dlon=$radius/(111000*cos(deg2rad($point['lat'])));
-        $q->execute([$point['lat']-$dlat,$point['lat']+$dlat,$point['lon']-$dlon,$point['lon']+$dlon]);
+        $key=json_encode([$point['lat'],$point['lon'],$radius],JSON_THROW_ON_ERROR);
+        if (!isset($this->nearbyStops[$key])) {
+            $q=$this->db->prepare('SELECT id,name,lat,lon FROM stops WHERE lat BETWEEN ? AND ? AND lon BETWEEN ? AND ?');
+            $dlat=$radius/111000; $dlon=$radius/(111000*cos(deg2rad($point['lat'])));
+            $q->execute([$point['lat']-$dlat,$point['lat']+$dlat,$point['lon']-$dlon,$point['lon']+$dlon]);
+            $this->nearbyStops[$key]=[];
+            foreach ($q as $row) {
+                $row['lat']=(float)$row['lat']; $row['lon']=(float)$row['lon'];
+                if (Geo::distance($point,$row)<=$radius) {
+                    $this->stops[$row['id']]=$row;
+                    $this->nearbyStops[$key][]=$row['id'];
+                }
+            }
+        }
         $out=[];
-        foreach ($q as $row) {
-            $row['lat']=(float)$row['lat']; $row['lon']=(float)$row['lon'];
-            $dist=Geo::distance($point,$row);
-            if ($dist<=$radius) { $row['walk']=$reverse ? $this->walkingSeconds($row,$point) : $this->walkingSeconds($point,$row); $out[]=$row; }
+        foreach ($this->nearbyStops[$key] as $id) {
+            $row=$this->stops[$id];
+            // Only locations are cached: every planning round must use its newly verified walk times.
+            $row['walk']=$reverse ? $this->walkingSeconds($row,$point) : $this->walkingSeconds($point,$row); $out[]=$row;
         }
         usort($out,static fn($a,$b)=>$a['walk']<=>$b['walk']);
         return array_slice($out,0,30);
@@ -335,17 +353,29 @@ final class Transit
     /** Earliest-arrival connection scan, with nearby walking transfers and immutable predecessor paths. */
     private function scan(array $from,array $to,int $now,string $skipTrip=''): ?array
     {
-        $horizon=10800; $end=$now+$horizon; $queries=[]; $args=[];
+        $horizon=10800; $end=$now+$horizon; $queries=[]; $args=[]; $tripQueries=[]; $tripArgs=[];
         foreach ($this->serviceDays($now,$horizon) as $day) {
             $marks=implode(',',array_fill(0,count($day['ids']),'?'));
-            $queries[]="SELECT c.trip_id,c.seq,c.from_id,c.to_id,c.departure+? departure,c.arrival+? arrival,c.pickup,c.dropoff,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type,? || '-' || c.trip_id AS key FROM connections c JOIN trips t ON t.id=c.trip_id JOIN routes r ON r.id=t.route_id WHERE t.service_id IN ($marks) AND c.departure>=? AND c.departure<=? AND c.trip_id<>?";
-            $args=array_merge($args,[$day['base'],$day['base'],$day['date']],$day['ids'],[$now-$day['base'],$end-$day['base'],$skipTrip]);
+            if ($this->materializedTrips) {
+                // Join connections to one small active-trip table instead of repeatedly
+                // reading trip and route metadata from disk for every connection.
+                $name='active_trips_'.count($queries);
+                $tripQueries[]="$name AS MATERIALIZED (SELECT t.id,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type FROM trips t JOIN routes r ON r.id=t.route_id WHERE t.service_id IN ($marks) AND t.start<=? AND t.end>=?)";
+                $tripArgs=array_merge($tripArgs,$day['ids'],[$end-$day['base'],$now-$day['base']]);
+                $queries[]="SELECT c.trip_id,c.seq,c.from_id,c.to_id,c.departure+? departure,c.arrival+? arrival,c.pickup,c.dropoff,t.route_id,t.headsign,t.shape_id,t.route_name,t.type,? || '-' || c.trip_id AS key FROM connections c JOIN $name t ON t.id=c.trip_id WHERE c.departure>=? AND c.departure<=? AND c.trip_id<>?";
+                $args=array_merge($args,[$day['base'],$day['base'],$day['date'],$now-$day['base'],$end-$day['base'],$skipTrip]);
+            } else {
+                // Older cPanel SQLite builds keep the established compatible query.
+                $queries[]="SELECT c.trip_id,c.seq,c.from_id,c.to_id,c.departure+? departure,c.arrival+? arrival,c.pickup,c.dropoff,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type,? || '-' || c.trip_id AS key FROM connections c JOIN trips t ON t.id=c.trip_id JOIN routes r ON r.id=t.route_id WHERE t.service_id IN ($marks) AND c.departure>=? AND c.departure<=? AND c.trip_id<>?";
+                $args=array_merge($args,[$day['base'],$day['base'],$day['date']],$day['ids'],[$now-$day['base'],$end-$day['base'],$skipTrip]);
+            }
         }
         // Let SQLite sort on disk; don't load a metro-wide time window into PHP memory.
         $connections=[];
         if ($queries) {
-            $connections=$this->db->prepare(implode(' UNION ALL ',$queries).' ORDER BY departure,seq');
-            $connections->execute($args);
+            $with=$tripQueries ? 'WITH '.implode(',',$tripQueries).' ' : '';
+            $connections=$this->db->prepare($with.implode(' UNION ALL ',$queries).' ORDER BY departure,seq');
+            $connections->execute(array_merge($tripArgs,$args));
         }
         $labels=[]; $onboard=[]; $nodes=[]; $nearCache=[];
         foreach ($this->nearby($from) as $stop) {

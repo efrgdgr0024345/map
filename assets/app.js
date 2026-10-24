@@ -41,7 +41,11 @@
     zooming: false, fitAfterZoom: false, locationRetryTimer: null, locationRetryCount: 0,
     phonesEnabled: false, phoneLayers: null, phones: [], phoneMetadata: null, phonesController: null, phoneRequest: 0, phonesMoveTimer: null,
     approachLayers: null, approachRenderer: null, approachController: null, approachKey: '', approachData: null,
-    approachRequestedAt: 0, toastTimer: null, suppressSheetClickUntil: 0
+    approachRequestedAt: 0, toastTimer: null, suppressSheetClickUntil: 0,
+    addressEditField: null, autoPlanTimer: null, planController: null, planSignature: '', pickerPreviousFollow: null,
+    mascotTucked: false, transfers: [], guidance: null, guidanceController: null, guidanceLayers: null,
+    guidanceRenderer: null, guidanceTargetMarker: null, guidancePrevious: null, dismissedTransfers: new Set(),
+    originUserChosen: false, awaitingGpsOrigin: false
   };
   const perthTime = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Perth', hour: 'numeric', minute: '2-digit', hour12: true });
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -131,14 +135,14 @@
   function setPanel(open, focus = false) {
     state.panelOpen = Boolean(open);
     document.body.classList.toggle('panel-open', state.panelOpen);
-    const hidden = isMobile() && !state.panelOpen;
+    const hidden = Boolean(state.pickField || state.guidance) || (isMobile() && !state.panelOpen);
     $('journey-panel').inert = hidden;
     $('journey-panel').setAttribute('aria-hidden', String(hidden));
     $('open-panel').setAttribute('aria-expanded', String(!hidden));
     updateLauncher();
     if (focus && !hidden) $('journey-panel').focus({ preventScroll: true });
     if (hidden && $('journey-panel').contains(document.activeElement)) document.activeElement.blur();
-    if (map && state.selected && isMobile() && state.followJourney) requestAnimationFrame(() => fitJourneyBounds(state.selected));
+    if (map && state.selected && isMobile() && state.followJourney && !state.pickField && !state.guidance) requestAnimationFrame(() => fitJourneyBounds(state.selected));
   }
 
   function timetableButton(label, query, className = '') {
@@ -429,6 +433,9 @@
     state.searchNumber++;
     if (state.searchController) state.searchController.abort();
     state[field] = { lat: Number(place.lat), lon: Number(place.lon), name: String(place.name) };
+    if (field === 'origin') { state.originUserChosen = true; state.awaitingGpsOrigin = false; }
+    state.addressEditField = null;
+    ['origin', 'destination'].forEach(name => { $(`${name}-input`).readOnly = true; });
     $(`${field}-input`).value = state[field].name;
     clearJourney(false);
     updatePlaceMarker(field);
@@ -437,13 +444,75 @@
     if (pan) map.panTo([place.lat, place.lon]);
     if (state.origin && state.destination) message('Ready when you are. Find a route to see your next ride.');
     updateLauncher();
+    maybeAutoPlan();
+  }
+
+  function cancelPendingPlan() {
+    clearTimeout(state.autoPlanTimer);
+    state.planNumber++;
+    if (state.planController) state.planController.abort();
+    state.planController = null;
+    $('plan-button').disabled = false;
+    $('plan-button').firstElementChild.textContent = 'Find my next ride';
+  }
+
+  function maybeAutoPlan() {
+    clearTimeout(state.autoPlanTimer);
+    const valid = point => point && Number.isFinite(point.lat) && Number.isFinite(point.lon) && Math.abs(point.lat) <= 90 && Math.abs(point.lon) <= 180;
+    if (!valid(state.origin) || !valid(state.destination) || state.pickField || state.addressEditField) return;
+    state.autoPlanTimer = setTimeout(() => { if (!state.pickField && !state.addressEditField) plan(true); }, 350);
   }
 
   function setMapPick(field) {
     state.pickField = field;
     $('map-hint').hidden = !field;
     $('map').classList.toggle('map-picking', Boolean(field));
+    document.body.classList.toggle('map-pick-active', Boolean(field));
     if (field) $('map-hint-text').textContent = `Tap the map to choose your ${field === 'origin' ? 'starting point' : 'destination'}`;
+    setPanel(state.panelOpen);
+  }
+
+  function beginMapPick(field) {
+    cancelPendingPlan();
+    state.field = field;
+    state.addressEditField = null;
+    ['origin', 'destination'].forEach(name => { $(`${name}-input`).readOnly = true; });
+    state.pickerPreviousFollow = state.followJourney;
+    if (state.selected) setFollow(false);
+    setMapPick(field);
+    setPanel(false);
+    map.getContainer().focus({ preventScroll: true });
+  }
+
+  function finishMapPick(point) {
+    const field = state.pickField;
+    if (!field) return;
+    setPlace(field, { lat: point.lat, lon: point.lng, name: field === 'origin' ? 'Starting point on map' : 'Destination on map' });
+    state.pickerPreviousFollow = null;
+    setPanel(true);
+    const next = field === 'origin' ? 'destination' : 'origin';
+    $(`${next}-input`).focus({ preventScroll: true });
+  }
+
+  function cancelMapPick() {
+    const previousFollow = state.pickerPreviousFollow;
+    setMapPick(null);
+    state.pickerPreviousFollow = null;
+    setPanel(true, true);
+    if (state.selected && previousFollow) setFollow(true);
+  }
+
+  function editAddress(field) {
+    if (state.pickField) setMapPick(null);
+    cancelPendingPlan();
+    state.field = field;
+    state.addressEditField = field;
+    ['origin', 'destination'].forEach(name => { $(`${name}-input`).readOnly = name !== field; });
+    setPanel(true);
+    const input = $(`${field}-input`);
+    input.focus({ preventScroll: true });
+    input.select();
+    input.setAttribute('enterkeyhint', 'search');
   }
 
   function updateUserLocation(position) {
@@ -469,11 +538,19 @@
     if (state.accuracyCircle) map.removeLayer(state.accuracyCircle);
     if (point.accuracy !== null && point.accuracy < 2000) state.accuracyCircle = L.circle(latlng, { radius: point.accuracy, color: '#4689d0', weight: 1, opacity: .2, fillOpacity: .05, interactive: false }).addTo(map);
     state.gpsMarker.setPopupContent(make('div', 'gps-popup', point.accuracy === null ? 'Your phone location' : `GPS accuracy about ${Math.round(point.accuracy)} m`));
-    if (!state.selected && state.origin && state.origin.name === 'Your location') {
-      state.origin = { ...state.origin, lat: point.lat, lon: point.lon };
-      if (state.placeMarkers.origin) state.placeMarkers.origin.setLatLng(latlng);
+    if (!state.selected && state.origin && (state.origin.name === 'Your location' || (state.awaitingGpsOrigin && !state.originUserChosen))) {
+      const oldPoint = state.origin;
+      const nameChanged = oldPoint.name !== 'Your location';
+      state.origin = { lat: point.lat, lon: point.lon, name: 'Your location' };
+      state.awaitingGpsOrigin = false;
+      $('origin-input').value = 'Your location';
+      if (nameChanged) updatePlaceMarker('origin');
+      else if (state.placeMarkers.origin) state.placeMarkers.origin.setLatLng(latlng);
+      if (state.planController && map.distance([oldPoint.lat, oldPoint.lon], latlng) > 25) { cancelPendingPlan(); maybeAutoPlan(); }
     }
-    if (state.selected && state.followJourney) fitJourneyBounds(state.selected, false);
+    if (state.guidance) fitStationGuidance(false);
+    else if (state.selected && state.followJourney && !state.pickField) fitJourneyBounds(state.selected, false);
+    maybeAutoGuidance();
     return true;
   }
 
@@ -516,6 +593,11 @@
     if (state.followJourney && state.selected) { state.lastFollowFit = null; fitJourneyBounds(state.selected); }
   }
 
+  function pauseMapFollowing() {
+    if (state.guidance) { state.guidance.following = false; state.guidance.fitPending = false; }
+    if (state.selected) setFollow(false);
+  }
+
   async function locate() {
     if (!navigator.geolocation) {
       message('This browser does not support location. Search for a starting address or choose it on the map.', true);
@@ -534,7 +616,8 @@
       updateUserLocation(position);
       if (!state.userLocation) { handleLocationError({ code: 2 }); return; }
       const { lat, lon } = state.userLocation;
-      if (state.selected) setFollow(true);
+      if (state.guidance) { state.guidance.following = true; fitStationGuidance(); }
+      else if (state.selected) setFollow(true);
       else {
         setPlace('origin', { lat, lon, name: 'Your location' }, true);
         map.setZoom(15);
@@ -589,7 +672,7 @@
       svg.append(path); symbol.append(svg);
       if (clustered) symbol.append(make('span', 'phone-cluster-count', String(siteCount)));
       const marker = L.marker(center, {
-        icon: L.divIcon({ html: symbol, className: clustered ? 'phone-cluster' : 'phone-marker', iconSize: clustered ? [36, 30] : [24, 24], iconAnchor: clustered ? [18, 15] : [12, 12] }),
+        icon: L.divIcon({ html: symbol, className: clustered ? 'phone-cluster' : 'phone-marker', iconSize: [44, 44], iconAnchor: [22, 22] }),
         zIndexOffset: 100, bubblingMouseEvents: false,
         title: clustered ? `${siteCount} phone locations · zoom to view` : items[0].name || 'Public phone'
       }).addTo(state.phoneLayers);
@@ -809,6 +892,168 @@
     element.addEventListener('pointercancel', event => finish(event, true));
   }
 
+  function collectTransfers(journey) {
+    const legs = journey.legs || [];
+    const rides = legs.map((leg, index) => ({ leg, index })).filter(item => item.leg.mode !== 'walk');
+    return rides.slice(1).map((ride, index) => {
+      const previous = rides[index];
+      const from = previous.leg.to, to = ride.leg.from;
+      if (!from || !to || !from.id || !to.id) return null;
+      return { key: `${previous.leg.tripId}:${ride.leg.tripId}:${ride.leg.serviceDate || ''}:${from.id}:${to.id}`, from, to,
+        previous: previous.leg, next: ride.leg, previousIndex: previous.index, nextIndex: ride.index,
+        walkingIndexes: legs.map((leg, position) => position > previous.index && position < ride.index && leg.mode === 'walk' ? position : -1).filter(position => position >= 0) };
+    }).filter(Boolean);
+  }
+
+  function transferTimeEligible(transfer) {
+    const now = Date.now();
+    return now >= timeValue(transfer.previous.arrival) - 180000 && now <= timeValue(transfer.next.departure) + 90000;
+  }
+
+  function maybeAutoGuidance() {
+    if (!state.selected || state.guidance || state.pickField || state.addressEditField || !state.userLocation || !state.locationConsent || document.hidden) return;
+    const point = state.userLocation;
+    const age = Date.now() - point.timestamp;
+    if (!Number.isFinite(point.accuracy) || point.accuracy > 80 || age < 0 || age > 60000) return;
+    const transfer = state.transfers.find(item => !state.dismissedTransfers.has(item.key) && transferTimeEligible(item) && map.distance([point.lat, point.lon], [item.from.lat, item.from.lon]) <= 100);
+    if (transfer) openStationGuidance(transfer, 'auto');
+  }
+
+  function guidanceDots(geometry) {
+    const lengths = [0];
+    for (let index = 1; index < geometry.length; index++) lengths.push(lengths[index - 1] + map.distance(geometry[index - 1], geometry[index]));
+    const total = lengths[lengths.length - 1];
+    if (!total) return geometry.slice(0, 1);
+    const result = [], spacing = Math.max(8, total / 90);
+    let segment = 1;
+    for (let distance = 0; distance < total; distance += spacing) {
+      while (segment < geometry.length - 1 && lengths[segment] < distance) segment++;
+      const fraction = (distance - lengths[segment - 1]) / (lengths[segment] - lengths[segment - 1] || 1);
+      const a = geometry[segment - 1], b = geometry[segment];
+      result.push([a[0] + (b[0] - a[0]) * fraction, a[1] + (b[1] - a[1]) * fraction]);
+    }
+    result.push(geometry[geometry.length - 1]);
+    return result;
+  }
+
+  function fitStationGuidance(force = true) {
+    const guidance = state.guidance;
+    if (!guidance || !guidance.data || !guidance.following || state.pickField) return;
+    if (state.zooming) { guidance.fitPending = true; return; }
+    const data = guidance.data;
+    const bounds = L.latLngBounds([[data.from.lat, data.from.lon], [data.to.lat, data.to.lon]]);
+    (data.geometry || []).forEach(point => bounds.extend(point));
+    const user = state.userLocation;
+    if (user && map.distance([user.lat, user.lon], [data.from.lat, data.from.lon]) <= 500) bounds.extend([user.lat, user.lon]);
+    if (!force && guidance.lastFit && Date.now() - guidance.lastFit < 5000) return;
+    guidance.lastFit = Date.now();
+    state.programmaticView = true;
+    clearTimeout(state.viewTimer);
+    const card = $('station-guidance').getBoundingClientRect();
+    map.fitBounds(bounds.pad(.12), { paddingTopLeft: isMobile() ? [35, card.bottom + 25] : [card.right + 25, 105], paddingBottomRight: isMobile() ? [65, 80] : [80, 110], maxZoom: 19, animate: false });
+    if (state.guidanceTargetMarker && state.guidanceTargetMarker.getElement()) state.guidanceTargetMarker.getElement().classList.toggle('label-left', map.latLngToContainerPoint(state.guidanceTargetMarker.getLatLng()).x > map.getSize().x / 2);
+    state.viewTimer = setTimeout(() => { state.programmaticView = false; }, 500);
+  }
+
+  function renderStationGuidance(data, loading = false) {
+    if (!state.guidance) return;
+    state.guidance.data = data;
+    state.guidanceLayers.clearLayers();
+    $('station-guidance-title').textContent = data.station && data.station.name || 'Your transfer';
+    $('guidance-target-name').textContent = `Board at ${data.to.name}`;
+    $('guidance-detail').textContent = loading ? 'Loading station…' : data.routing === 'street' ? `${Math.round(data.distance)} m · ${minutes(data.duration)} min walk · follow platform signs` : data.routing === 'stationary' ? 'Use the signed boarding stop or platform.' : 'Walking path unavailable. Follow the station signs.';
+    const stops = new Map((data.stops || []).map(stop => [String(stop.id), stop]));
+    stops.set(String(data.to.id), { ...data.to, target: true });
+    stops.forEach(stop => {
+      const target = String(stop.id) === String(data.to.id);
+      let marker;
+      if (target) {
+        const body = make('div', 'guidance-target-pin');
+        const shortName = String(data.to.name).match(/\b(?:platform|stand|bay)\s+[^,]+$/i);
+        body.append(make('span', 'guidance-target-ring'), make('span', 'guidance-target-label', shortName ? shortName[0] : data.to.name));
+        marker = L.marker([stop.lat, stop.lon], { icon: L.divIcon({ html: body, className: 'guidance-stop-target', iconSize: [22, 22], iconAnchor: [11, 11] }), zIndexOffset: 6000, bubblingMouseEvents: false, title: `Board at ${data.to.name}` });
+        const popup = make('div', 'service-popup');
+        popup.append(make('strong', '', `Board at ${data.to.name}`), timetableButton('View next service', tripQuery(state.guidance.transfer.next)));
+        marker.bindPopup(popup);
+        state.guidanceTargetMarker = marker;
+      } else marker = L.marker([stop.lat, stop.lon], { icon: L.divIcon({ className: 'guidance-stop-context', iconSize: [8, 8], iconAnchor: [4, 4] }), zIndexOffset: 200, bubblingMouseEvents: false, keyboard: false, title: stop.name }).bindTooltip(make('span', '', stop.name));
+      marker.addTo(state.guidanceLayers);
+    });
+    if (data.routing === 'street' && Array.isArray(data.geometry) && data.geometry.length > 1) {
+      L.polyline(data.geometry, { renderer: state.guidanceRenderer, color: '#647c55', weight: 3, opacity: .45, interactive: false }).addTo(state.guidanceLayers);
+      const dots = guidanceDots(data.geometry);
+      dots.forEach((point, index) => {
+        const dot = L.circleMarker(point, { renderer: state.guidanceRenderer, radius: 3.5, color: '#476438', weight: 1, fillColor: '#c2f65b', fillOpacity: 1, interactive: false, className: 'guidance-trail-dot' }).addTo(state.guidanceLayers);
+        const element = dot.getElement();
+        if (element) element.style.animationDelay = `${index * Math.min(.08, 3 / dots.length)}s`;
+      });
+    }
+    updateGuidanceTarget();
+    fitStationGuidance();
+  }
+
+  async function loadStationGuidance() {
+    if (!state.guidance) return;
+    const guidance = state.guidance;
+    if (state.guidanceController) state.guidanceController.abort();
+    const controller = new AbortController();
+    state.guidanceController = controller;
+    try {
+      const transfer = guidance.transfer;
+      const data = await api('transfer', { from: transfer.from.id, to: transfer.to.id, ...tripQuery(transfer.next) }, controller.signal);
+      if (!controller.signal.aborted && state.guidance === guidance) renderStationGuidance(data);
+    } catch (error) {
+      if (error.name === 'AbortError' || state.guidance !== guidance) return;
+      const retry = make('button', 'guidance-retry', 'Retry');
+      retry.type = 'button'; retry.addEventListener('click', loadStationGuidance);
+      $('guidance-detail').replaceChildren(document.createTextNode('Station guidance couldn’t load. '), retry);
+    } finally { if (state.guidanceController === controller) state.guidanceController = null; }
+  }
+
+  function openStationGuidance(transfer, activation = 'manual') {
+    if (!state.selected || !transfer) return;
+    if (state.guidance) exitStationGuidance(false);
+    state.guidancePrevious = { follow: state.followJourney, center: map.getCenter(), zoom: map.getZoom() };
+    state.guidance = { transfer, activation, following: true, confirmed: false, data: null };
+    setFollow(false);
+    document.body.classList.add('station-guidance-active');
+    $('station-guidance').hidden = false;
+    $('confirm-guidance').disabled = false;
+    $('confirm-guidance').textContent = 'I can see this stop';
+    [journeyLayers, networkLayers, state.approachLayers].forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
+    setPanel(false);
+    renderStationGuidance({ from: transfer.from, to: transfer.to, stops: [transfer.from, transfer.to], geometry: [], station: { name: transfer.to.name }, routing: 'unavailable' }, true);
+    $('station-guidance').focus({ preventScroll: true });
+    loadStationGuidance();
+  }
+
+  function updateGuidanceTarget() {
+    if (!state.guidance || !state.guidanceTargetMarker) return;
+    const element = state.guidanceTargetMarker.getElement();
+    if (element) element.classList.toggle('is-confirmed', state.guidance.confirmed);
+  }
+
+  function exitStationGuidance(restore = true) {
+    if (!state.guidance) return;
+    if (state.guidance.activation === 'auto' || transferTimeEligible(state.guidance.transfer)) state.dismissedTransfers.add(state.guidance.transfer.key);
+    if (state.guidanceController) state.guidanceController.abort();
+    state.guidanceController = null;
+    state.guidance = null;
+    state.guidanceTargetMarker = null;
+    state.guidanceLayers.clearLayers();
+    document.body.classList.remove('station-guidance-active');
+    $('station-guidance').hidden = true;
+    [networkLayers, journeyLayers, state.approachLayers].forEach(layer => { if (!map.hasLayer(layer)) layer.addTo(map); });
+    setPanel(false);
+    const previous = state.guidancePrevious;
+    state.guidancePrevious = null;
+    if (restore && state.selected) {
+      if (previous && previous.follow) setFollow(true);
+      else if (previous) map.setView(previous.center, previous.zoom, { animate: false });
+    }
+    if (restore && isMobile()) $('open-panel').focus({ preventScroll: true });
+  }
+
   async function search(field, automatic = false) {
     clearTimeout(state.searchTimer);
     const query = $(`${field}-input`).value.trim();
@@ -841,7 +1086,7 @@
         button.append(text);
         button.addEventListener('click', () => {
           setPlace(field, place, true);
-          message(field === 'destination' ? 'Destination set. Find your next ride below.' : 'Starting point updated.');
+          message(field === 'destination' ? 'Destination set.' : 'Starting point updated.');
         });
         results.append(button);
       });
@@ -853,7 +1098,8 @@
     }
   }
 
-  async function plan() {
+  async function plan(automatic = false) {
+    clearTimeout(state.autoPlanTimer);
     if (state.origin && state.origin.name === 'Your location' && state.userLocation) {
       state.origin = { ...state.origin, lat: state.userLocation.lat, lon: state.userLocation.lon };
       if (state.placeMarkers.origin) state.placeMarkers.origin.setLatLng([state.origin.lat, state.origin.lon]);
@@ -861,16 +1107,22 @@
     if (!state.origin) { await search('origin'); return; }
     if (!state.destination) {
       if ($('destination-input').value.trim()) await search('destination');
-      else { setMapPick('destination'); message('Search for a destination above, or tap the map.'); }
+      else beginMapPick('destination');
       return;
     }
+    const signature = `${state.origin.lat.toFixed(6)},${state.origin.lon.toFixed(6)}:${state.destination.lat.toFixed(6)},${state.destination.lon.toFixed(6)}`;
+    if (signature === state.planSignature && (state.planController || (automatic && state.selected))) return;
+    if (state.planController) state.planController.abort();
+    const controller = new AbortController();
+    state.planController = controller;
+    state.planSignature = signature;
     const request = ++state.planNumber;
     $('plan-button').disabled = true;
     $('plan-button').firstElementChild.textContent = 'Finding your route…';
     message('Comparing departures, walking time, and connections…');
     $('search-results').hidden = true;
     try {
-      const data = await api('plan', { from: `${state.origin.lat},${state.origin.lon}`, to: `${state.destination.lat},${state.destination.lon}` });
+      const data = await api('plan', { from: `${state.origin.lat},${state.origin.lon}`, to: `${state.destination.lat},${state.destination.lon}` }, controller.signal);
       if (request !== state.planNumber) return;
       if (!data.journeys || data.journeys.length === 0) {
         clearJourney(false);
@@ -885,9 +1137,10 @@
       message(data.mode === 'demo' ? 'Illustrative demo route. Import Perth timetables before using this for travel.' : (data.message || 'Your route is ready. All times and positions are timetable estimates.'));
       if (isMobile()) { document.querySelector('.journey-panel').scrollTop = 0; setPanel(false); }
     } catch (error) {
-      if (request === state.planNumber) message(error.message, true);
+      if (error.name !== 'AbortError' && request === state.planNumber) message(error.message, true);
     } finally {
       if (request === state.planNumber) {
+        if (state.planController === controller) state.planController = null;
         $('plan-button').disabled = false;
         $('plan-button').firstElementChild.textContent = 'Find my next ride';
       }
@@ -915,8 +1168,11 @@
   }
 
   function selectJourney(journey) {
+    if (state.guidance) exitStationGuidance(false);
     clearApproach();
     state.selected = journey;
+    state.transfers = collectTransfers(journey);
+    state.dismissedTransfers = new Set();
     document.body.classList.add('has-active-journey');
     state.followJourney = true;
     state.lastFollowFit = null;
@@ -949,6 +1205,7 @@
     startLocationWatch();
     fetchVehicles();
     fetchApproach();
+    maybeAutoGuidance();
   }
 
   function remainingGeometry(geometry, point) {
@@ -967,7 +1224,7 @@
   }
 
   function fitJourneyBounds(journey, force = true) {
-    if (!state.followJourney || !journey || !map) return;
+    if (!state.followJourney || !journey || !map || state.pickField || state.guidance) return;
     if (state.zooming) { state.fitAfterZoom = true; return; }
     const bounds = L.latLngBounds([]);
     const vehicle = state.vehicles.find(item => state.nextTrip && String(item.tripId) === state.nextTrip);
@@ -1019,18 +1276,39 @@
   function renderItinerary() {
     const container = $('itinerary');
     container.replaceChildren();
-    (state.selected.legs || []).forEach(leg => {
+    const stationLabel = (stop, transfer) => {
+      if (!stop) return document.createTextNode('Stop');
+      if (!transfer) return make('span', '', stop.name);
+      const button = make('button', 'transfer-station-button', stop.name);
+      button.type = 'button'; button.addEventListener('click', () => openStationGuidance(transfer));
+      return button;
+    };
+    (state.selected.legs || []).forEach((leg, index) => {
+      const virtualTransfer = state.transfers.find(item => item.nextIndex === index && !item.walkingIndexes.length);
+      if (virtualTransfer) {
+        const button = make('button', 'transfer-guidance-button transfer-only-row', `Station guidance · ${virtualTransfer.to.name}`);
+        button.type = 'button'; button.addEventListener('click', () => openStationGuidance(virtualTransfer));
+        container.append(button);
+      }
       const row = make('div', 'itinerary-leg');
       const walk = leg.mode === 'walk';
+      const transfer = state.transfers.find(item => item.walkingIndexes.includes(index));
       const modeIcon = make('span', `leg-icon${walk ? '' : ' transit'}`);
       modeIcon.append(icon(leg.mode));
       if (!walk) styleRoute(modeIcon, leg);
       modeIcon.setAttribute('aria-hidden', 'true');
-      const info = make('div', 'leg-text');
+      const info = make(transfer ? 'button' : 'div', `leg-text${transfer ? ' transfer-guidance-button' : ''}`);
+      if (transfer) { info.type = 'button'; info.addEventListener('click', () => openStationGuidance(transfer)); }
       const duration = (timeValue(leg.arrival) - timeValue(leg.departure)) / 1000;
       const unavailable = walk && state.selected.walkRouting === 'unavailable';
       info.append(make('strong', '', unavailable ? 'Walking route unavailable' : walk ? `Walk to ${leg.to ? leg.to.name : 'your stop'}` : `${leg.mode === 'train' ? 'Train' : leg.mode === 'ferry' ? 'Ferry' : 'Bus'} ${leg.routeName || ''} · ${leg.headsign || (leg.to ? leg.to.name : '')}`));
-      info.append(make('span', '', unavailable ? 'Choose another starting point' : walk ? `${minutes(duration)} min walk${state.selected.walkRouting === 'street' ? '' : ' · approximate'}` : `${leg.from ? leg.from.name : 'Board'} → ${leg.to ? leg.to.name : 'Alight'}`));
+      if (walk) info.append(make('span', '', unavailable ? 'Choose another starting point' : `${minutes(duration)} min walk${state.selected.walkRouting === 'street' ? '' : ' · approximate'}`));
+      else {
+        const stops = make('span', 'leg-stops');
+        stops.append(stationLabel(leg.from, state.transfers.find(item => item.nextIndex === index)), document.createTextNode(' → '), stationLabel(leg.to, state.transfers.find(item => item.previousIndex === index)));
+        info.append(stops);
+      }
+      if (transfer) info.append(make('span', 'transfer-action-copy', 'Station guidance →'));
       if (!walk && leg.tripId) info.append(timetableButton('View service timetable', tripQuery(leg), 'itinerary-timetable'));
       row.append(modeIcon, info, make('span', 'leg-time', clock(leg.departure)));
       container.append(row);
@@ -1074,8 +1352,11 @@
   }
 
   function clearJourney(showMessage = true) {
-    state.planNumber++;
+    cancelPendingPlan();
+    if (state.guidance) exitStationGuidance(false);
     state.selected = null;
+    state.transfers = [];
+    state.dismissedTransfers = new Set();
     document.body.classList.remove('has-active-journey');
     clearApproach();
     updateLeaveWidget();
@@ -1291,8 +1572,15 @@
     map.getPane('approachPane').style.pointerEvents = 'none';
     state.approachRenderer = L.svg({ pane: 'approachPane', padding: .5 });
     state.approachLayers = L.layerGroup().addTo(map);
+    map.createPane('guidancePane');
+    map.getPane('guidancePane').style.zIndex = '470';
+    map.getPane('guidancePane').style.pointerEvents = 'none';
+    state.guidanceRenderer = L.svg({ pane: 'guidancePane', padding: .5 });
+    state.guidanceLayers = L.layerGroup().addTo(map);
     updatePlaceMarker('origin');
     map.on('click', event => {
+      if (state.pickField) { finishMapPick(event.latlng); return; }
+      if (state.guidance) return;
       if (isMobile() && !state.pickField) { setPanel(false); return; }
       const field = state.pickField || 'destination';
       setPlace(field, { lat: event.latlng.lat, lon: event.latlng.lng, name: field === 'origin' ? 'Starting point on map' : 'Destination on map' });
@@ -1303,8 +1591,8 @@
       drawNetworkLines(); clearTimeout(moveTimer); moveTimer = setTimeout(fetchVehicles, 350);
       if (state.phonesEnabled) { clearTimeout(state.phonesMoveTimer); state.phonesMoveTimer = setTimeout(() => fetchPhones(false), 450); }
     });
-    map.on('dragstart', () => { if (state.selected) setFollow(false); });
-    map.on('zoomstart', () => { state.zooming = true; if (state.selected && !state.programmaticView) setFollow(false); });
+    map.on('dragstart', pauseMapFollowing);
+    map.on('zoomstart', () => { state.zooming = true; if (!state.programmaticView) pauseMapFollowing(); });
     map.on('zoomend', () => {
       state.zooming = false;
       if (state.phonesEnabled) renderPhones();
@@ -1313,14 +1601,19 @@
       if (pendingFit && state.selected && state.followJourney) {
         requestAnimationFrame(() => { if (state.selected && state.followJourney) fitJourneyBounds(state.selected); });
       }
+      if (state.guidance && state.guidance.fitPending) { state.guidance.fitPending = false; requestAnimationFrame(() => fitStationGuidance()); }
     });
-    map.getContainer().addEventListener('wheel', () => { if (state.selected) setFollow(false); }, { passive: true });
-    map.getContainer().addEventListener('touchstart', event => { if (state.selected && event.touches.length > 1) setFollow(false); }, { passive: true });
-    map.getContainer().addEventListener('keydown', event => { if (state.selected && ['+', '-', '='].includes(event.key)) setFollow(false); });
+    map.getContainer().addEventListener('wheel', pauseMapFollowing, { passive: true });
+    map.getContainer().addEventListener('touchstart', event => { if (event.touches.length > 1) pauseMapFollowing(); }, { passive: true });
+    map.getContainer().addEventListener('keydown', event => {
+      if (state.pickField && event.key === 'Enter') { event.preventDefault(); finishMapPick(map.getCenter()); }
+      else if (state.pickField && event.key === 'Escape') { event.preventDefault(); cancelMapPick(); }
+      else if (['+', '-', '='].includes(event.key)) pauseMapFollowing();
+    });
     let resizeTimer;
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => { map.invalidateSize({ pan: false }); setPanel(state.panelOpen); if (state.selected) fitJourneyBounds(state.selected); }, 150);
+      resizeTimer = setTimeout(() => { map.invalidateSize({ pan: false }); setPanel(state.panelOpen); if (state.guidance) fitStationGuidance(); else if (state.selected) fitJourneyBounds(state.selected); }, 150);
     });
 
     $('open-panel').addEventListener('click', event => { if (event.detail === 0 || Date.now() >= state.suppressSheetClickUntil) setPanel(true, true); });
@@ -1328,6 +1621,26 @@
     $('sheet-handle').addEventListener('click', event => { if (event.detail === 0 || Date.now() >= state.suppressSheetClickUntil) { setPanel(false); $('open-panel').focus({ preventScroll: true }); } });
     bindSheetGesture($('sheet-handle'), false);
     bindSheetGesture($('open-panel'), true);
+    document.body.classList.add('mascot-visible');
+    $('mascot-peek').classList.add('is-arriving');
+    setTimeout(() => $('mascot-peek').classList.remove('is-arriving'), 1200);
+    ['pointerdown', 'pointerup', 'dblclick'].forEach(name => $('mascot-peek').addEventListener(name, event => event.stopPropagation()));
+    $('mascot-peek').addEventListener('click', event => {
+      event.preventDefault(); event.stopPropagation();
+      state.mascotTucked = true;
+      $('mascot-peek').classList.add('is-tucked');
+      document.body.classList.remove('mascot-visible');
+      setTimeout(() => { $('mascot-peek').hidden = true; if (state.selected && state.followJourney) fitJourneyBounds(state.selected); }, 250);
+    });
+    $('exit-guidance').addEventListener('click', () => exitStationGuidance());
+    $('guidance-target-name').addEventListener('click', () => { if (state.guidance) { state.guidance.following = true; fitStationGuidance(); } });
+    $('confirm-guidance').addEventListener('click', () => {
+      if (!state.guidance) return;
+      state.guidance.confirmed = true;
+      $('confirm-guidance').textContent = 'Stop confirmed'; $('confirm-guidance').disabled = true;
+      updateGuidanceTarget();
+    });
+    $('guidance-timetable').addEventListener('click', () => { if (state.guidance) openTimetable(tripQuery(state.guidance.transfer.next)); });
     $('timetable-close').addEventListener('click', () => $('timetable-dialog').close());
     $('timetable-back').addEventListener('click', () => {
       if (state.timetableHistory.length < 2) return;
@@ -1346,8 +1659,11 @@
     ['origin', 'destination'].forEach(field => {
       const input = $(`${field}-input`);
       input.addEventListener('focus', () => { state.field = field; });
+      input.addEventListener('click', () => { if (input.readOnly) beginMapPick(field); });
       input.addEventListener('input', () => {
+        cancelPendingPlan();
         state[field] = null;
+        if (field === 'origin') { state.originUserChosen = true; state.awaitingGpsOrigin = false; }
         clearTimeout(state.searchTimer);
         if (state.searchController) state.searchController.abort();
         state.searchNumber++;
@@ -1358,22 +1674,25 @@
         if (input.value.trim().length >= 3) state.searchTimer = setTimeout(() => search(field, true), 500);
       });
       input.addEventListener('keydown', event => {
-        if (event.key === 'Enter') { event.preventDefault(); search(field); }
+        if (input.readOnly && ['Enter', ' '].includes(event.key)) { event.preventDefault(); beginMapPick(field); }
+        else if (event.key === 'Enter') { event.preventDefault(); search(field); }
         if (event.key === 'Escape') $('search-results').hidden = true;
       });
     });
-    document.querySelectorAll('[data-search]').forEach(button => button.addEventListener('click', () => search(button.dataset.search)));
+    document.querySelectorAll('[data-search]').forEach(button => button.addEventListener('click', () => {
+      const field = button.dataset.search;
+      if (state.addressEditField === field) search(field); else editAddress(field);
+    }));
     $('use-location').addEventListener('click', locate);
     $('map-locate').addEventListener('click', locate);
     $('map-phones').addEventListener('click', togglePhones);
     $('choose-on-map').addEventListener('click', () => {
       const field = state.field || 'destination';
-      setMapPick(field);
+      beginMapPick(field);
       $('search-results').hidden = true;
-      message(field === 'origin' ? 'Tap a starting point on the map. Select the destination field to choose your destination instead.' : 'Tap your destination on the map.');
-      if (isMobile()) setPanel(false);
     });
-    $('cancel-map-pick').addEventListener('click', () => { setMapPick(null); message('Map selection cancelled.'); });
+    $('cancel-map-pick').addEventListener('click', cancelMapPick);
+    $('use-map-center').addEventListener('click', () => finishMapPick(map.getCenter()));
     $('clear-journey').addEventListener('click', () => clearJourney());
     $('network-toggle').addEventListener('click', () => {
       state.wholeNetwork = !state.wholeNetwork;
@@ -1382,8 +1701,8 @@
       fetchVehicles();
     });
     $('follow-journey').addEventListener('click', () => setFollow(true));
-    $('map-zoom-in').addEventListener('click', () => { if (state.selected) setFollow(false); map.zoomIn(); });
-    $('map-zoom-out').addEventListener('click', () => { if (state.selected) setFollow(false); map.zoomOut(); });
+    $('map-zoom-in').addEventListener('click', () => { pauseMapFollowing(); map.zoomIn(); });
+    $('map-zoom-out').addEventListener('click', () => { pauseMapFollowing(); map.zoomOut(); });
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
         fetchVehicles(); loadStatus(); startLocationWatch(); fetchApproach();
@@ -1398,9 +1717,21 @@
     loadStatus();
     loadRouteCatalog();
     fetchVehicles();
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then(permission => {
+        const apply = () => {
+          if (permission.state === 'granted') { state.locationConsent = true; state.awaitingGpsOrigin = !state.originUserChosen; startLocationWatch(); }
+          else if (permission.state === 'denied') { state.locationConsent = false; stopLocationWatch(); }
+        };
+        apply();
+        if (permission.addEventListener) permission.addEventListener('change', apply);
+      }).catch(() => {});
+    }
     setInterval(() => { updateClock(); updateNextService(); updateLauncher(); if (!document.hidden) { fetchVehicles(); fetchApproach(); } }, 15000);
     setInterval(() => {
       updateLeaveWidget(); updateBoardingCountdown();
+      updateGuidanceTarget();
+      if (!document.hidden) maybeAutoGuidance();
       if (state.approachData) {
         const leg = nextLeg();
         if (!leg || String(leg.tripId) !== String(state.approachData.tripId)) { clearApproach(); if (!document.hidden) fetchApproach(); }

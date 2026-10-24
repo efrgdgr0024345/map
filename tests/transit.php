@@ -162,6 +162,23 @@ try {
     check(count($night) >= 1 && rideIds($night[0]) === ['night'] && strtotime($night[0]['arrival']) === $midnight + 80 * 60, 'previous service day routes correctly after midnight');
     check($transit->plan($a, ['lat' => -32.4, 'lon' => 116.4], $noon)['journeys'] === [], 'infeasible distant destination produces no invented journey');
 
+    // Repeated scans share stop locations, but corrected street durations must be applied each round.
+    $approach=['lat'=>-31.9501,'lon'=>115.85];
+    $beforeWalkCorrection=$transit->plan($approach,$c,$noon)['journeys'];
+    $timetableHash=hash_file('sha256',APP_VAR.'/transit.sqlite');
+    $corrected=$transit->plan($approach,$c,$noon,[Geo::walkingKey($approach,$a)=>400])['journeys'];
+    check(rideIds($beforeWalkCorrection[0])===['fast','second'] && rideIds($corrected[0])===['later'], 'cached nearby locations still apply a newly verified longer walk and reject missed boardings');
+    $resetWalkCorrection=$transit->plan($approach,$c,$noon)['journeys'];
+    check(rideIds($resetWalkCorrection[0])===['fast','second'], 'walk-duration overrides do not persist into a later independent plan');
+    $reverseWalkCorrection=$transit->plan($approach,$c,$noon,[Geo::walkingKey($a,$approach)=>400])['journeys'];
+    check(rideIds($reverseWalkCorrection[0])===['fast','second'], 'cached stop clusters preserve pedestrian direction when applying verified durations');
+    check(hash_file('sha256',APP_VAR.'/transit.sqlite')===$timetableHash, 'planner optimizations read existing databases without adding indexes or migrating data');
+    $olderSqlite=new Transit();
+    (new ReflectionProperty(Transit::class,'materializedTrips'))->setValue($olderSqlite,false);
+    check($olderSqlite->plan($a,$c,$noon)['journeys']===$transfer, 'older SQLite fallback preserves the same complete transfer journeys');
+    check($olderSqlite->plan($a,$b,$midnight+50*60)['journeys']===$night, 'older SQLite fallback preserves overnight service-day planning');
+    unset($olderSqlite);
+
     $bbox = [115.7, -32.1, 116.1, -31.8];
     $network = $transit->vehicles($bbox, ['NETWORK'], 'current');
     $current = array_values(array_filter($network['vehicles'], static fn($v) => $v['tripId'] === 'current'));

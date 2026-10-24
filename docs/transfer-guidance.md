@@ -1,0 +1,17 @@
+# Transfer guidance
+
+`App\TransferGuide::guide($fromStopId, $boardingStopId, $nextTripId = null, $serviceDate = null)` reads the imported SQLite timetable without changing it. The API accepts public GTFS stop IDs, not coordinates or a user-supplied routing URL. A supplied trip must run on the selected `YYYYMMDD` service date and allow boarding at the target stop. Transfers longer than 2 km in a straight line are rejected.
+
+The response contains the exact GTFS `from` and `to` names, public stops within 350 metres of either endpoint, and `station.bounds` in `[west,south,east,north]` order. Stops carry `target` and `origin` flags; both endpoints survive the 250-stop limit. Names such as “Platform 2” or “Stand 9” remain visible so the interface can flash the correct sign while drawing neighbouring stops quietly. A station here is a stop area, not a verified building outline: `station.kind` is `stop-area` and `indoorMap` is `false`.
+
+For distinct endpoints, `WalkingRouter` supplies an OpenStreetMap pedestrian path. The response preserves its `[latitude,longitude]` geometry, duration in seconds, distance in metres and `routingSource`. Short gaps between the mapped path and a public stop remain separate `accessConnectors` with `routing: unrouted_access` and `approximate: true`; these gaps are not verified indoor directions. Public stop-to-stop paths may use the existing protected server cache. This endpoint takes no phone GPS location and does not store one.
+
+The frontend reveals dots in order along `geometry`, fits the stop area, and flashes the `target` stop. Clicking a transfer and approaching it with an already consented GPS watch can both open the same guidance. Automatic opening requires a fresh fix, reported accuracy of 80 metres or better, proximity within 100 metres of the alighting stop, and a time close to that transfer. Choosing a location on the map pauses this behaviour. Dismissing the current transfer prevents repeated automatic opening.
+
+The GPS marker continues updating in the station view. Proximity alone does not confirm a platform: several platforms have GTFS coordinates only metres apart. The boarding marker remains highlighted until the user confirms it or guidance is closed. A manual preview of a distant transfer fits that station rather than including a phone location across the city. Panning pauses station following; recentering resumes it.
+
+Train station levels, gates, stairs, lifts, barriers, platform access and accessible entrances are only as complete as the mapped pedestrian data. The service does not invent indoor routes or claim step-free access.
+
+When both GTFS locations are within half a metre, `routing` is `stationary`, `geometry` contains one anchored point, and duration and distance are zero. No pedestrian request is made. When no verified pedestrian path is available, `routing` is `unavailable`, `pathAvailable` is `false`, geometry is empty and duration/distance are `null`. Station bounds and the target remain available with a short retry message; the interface should show the actual stop without drawing a straight walking shortcut.
+
+Tests may supply a local SQLite path and callable as the fifth and sixth method arguments. They are dependency injection for isolated tests and must never be populated from browser request parameters. Run `php tests/transfer.php` to verify stop selection, calendar exceptions, repeated platform visits, bounds, failed routing and read-only behaviour with synthetic data and no network calls.

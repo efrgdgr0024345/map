@@ -22,7 +22,7 @@ function assetUrl(string $path): string
   <script src="assets/vendor/leaflet/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" defer></script>
   <script src="<?= assetUrl('assets/app.js') ?>" defer></script>
 </head>
-<body>
+<body class="mascot-visible">
   <div id="map" aria-label="Interactive Perth public transport map"></div>
 
   <header class="topbar">
@@ -31,6 +31,7 @@ function assetUrl(string $path): string
   </header>
 
   <button type="button" id="open-panel" class="panel-launcher" aria-controls="journey-panel" aria-expanded="false"><span class="launcher-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></span><span class="launcher-copy"><strong id="launcher-title">Where are you heading?</strong><span id="launcher-detail">Search, choose a stop, or plan a journey</span></span><svg class="launcher-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
+  <button type="button" id="mascot-peek" class="mascot-peek is-arriving" aria-label="Tuck away the cat mascot"><img class="mascot-peek-head" src="<?= assetUrl('assets/mascot-head.webp') ?>" alt="" width="56" height="56"><span class="mascot-paw mascot-paw-left" style="background-image: url('<?= assetUrl('assets/mascot-paws.webp') ?>')" aria-hidden="true"></span><span class="mascot-paw mascot-paw-right" style="background-image: url('<?= assetUrl('assets/mascot-paws.webp') ?>')" aria-hidden="true"></span></button>
 
   <main class="journey-panel" id="journey-panel" aria-label="Plan your journey" tabindex="-1">
     <button type="button" id="sheet-handle" class="panel-handle" aria-label="Drag down or tap to hide journey panel" aria-controls="journey-panel"><span aria-hidden="true"></span></button>
@@ -49,12 +50,12 @@ function assetUrl(string $path): string
         <div class="location-inputs">
           <div class="location-row">
             <label class="sr-only" for="origin-input">Starting point</label>
-            <input id="origin-input" name="origin" type="text" value="Perth Busport" placeholder="Starting point" spellcheck="false" aria-controls="search-results">
+            <input id="origin-input" name="origin" type="text" value="Perth Busport" placeholder="Starting point" spellcheck="false" aria-controls="search-results" readonly aria-description="Choose a point on the map, or use Search starting address.">
             <button class="icon-button location-search" type="button" data-search="origin" aria-label="Search starting address" title="Search starting address">⌕</button>
           </div>
           <div class="location-row">
             <label class="sr-only" for="destination-input">Destination</label>
-            <input id="destination-input" name="destination" type="text" placeholder="Where are you going?" spellcheck="false" aria-controls="search-results">
+            <input id="destination-input" name="destination" type="text" placeholder="Where are you going?" spellcheck="false" aria-controls="search-results" readonly aria-description="Choose a point on the map, or use Search destination address.">
             <button class="icon-button location-search" type="button" data-search="destination" aria-label="Search destination address" title="Search destination address">⌕</button>
           </div>
         </div>
@@ -79,10 +80,11 @@ function assetUrl(string $path): string
     <div class="panel-footer"><details class="about-details"><summary>About &amp; data sources</summary><p class="timetable-attribution"><span class="data-source-label">Data source</span>Timetable data available free of charge from <a href="https://www.transperth.wa.gov.au/About/Spatial-Data-Access" target="_blank" rel="noopener" aria-label="Transperth timetable data source website">www.transperth.wa.gov.au</a></p><p class="about-note">Vehicle positions follow the timetable, rather than live GPS.</p><p id="phone-source-note" class="about-note">Mapped phone locations show their published source. Coverage and current availability can vary.</p></details></div>
   </main>
 
-  <div class="map-hint" id="map-hint" hidden><span id="map-hint-text">Tap the map to choose your destination</span><button type="button" id="cancel-map-pick" aria-label="Cancel map selection">×</button></div>
+  <div class="map-hint" id="map-hint" hidden><span id="map-hint-text">Tap the map to choose your destination</span><button type="button" id="use-map-center" class="map-center-button">Use map centre</button><button type="button" id="cancel-map-pick" aria-label="Cancel map selection">×</button></div>
   <div class="map-warning" id="map-warning" role="status" hidden>Map tiles couldn’t load. Check your connection; you can still search and plan a route.</div>
   <aside id="leave-widget" class="leave-widget" aria-label="When to leave" hidden><span class="leave-label">SCHEDULED</span><strong id="leave-title">Leave by —</strong><span id="leave-countdown" aria-live="off"></span><span id="boarding-eta" class="boarding-eta" hidden></span></aside>
   <div id="map-toast" class="map-toast" role="status" hidden></div>
+  <aside id="station-guidance" class="station-guidance" aria-labelledby="station-guidance-title" tabindex="-1" hidden><div class="guidance-card-heading"><span>STATION GUIDANCE</span><button type="button" id="exit-guidance" aria-label="Back to journey">×</button></div><h2 id="station-guidance-title">Your transfer</h2><button type="button" id="guidance-target-name" title="Show this boarding stop"></button><p id="guidance-detail" role="status"></p><div class="guidance-actions"><button type="button" id="confirm-guidance">I can see this stop</button><button type="button" id="guidance-timetable" class="text-button">Timetable</button></div></aside>
 
   <aside class="network-card" aria-label="Network activity">
     <div class="network-pulse" aria-hidden="true"><span></span></div>

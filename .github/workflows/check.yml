@@ -29,6 +29,7 @@ jobs:
       - run: php tests/approach.php
       - run: php tests/walking.php
       - run: php tests/street_journeys.php
+      - run: php tests/transfer.php
       - run: php tests/payphones.php
       - run: php tests/loader_install.php
       - run: PHP_BINARY=php python3 tests/loader_http.py
