@@ -190,7 +190,7 @@ final class GtfsImporter
         $ok = curl_exec($curl);
         $status = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
         $error = curl_error($curl);
-        curl_close($curl);
+        $curl = null;
         fclose($out);
         if ($ok === false || $status !== 200) {
             throw new RuntimeException('Official Transperth download failed (HTTP ' . $status . '). Check hosting outbound HTTPS access; alternatively import an official local ZIP. ' . $error);

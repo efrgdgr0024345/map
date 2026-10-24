@@ -18,7 +18,7 @@ final class Geocoder
         $url='https://photon.komoot.io/api/?'.http_build_query(['q'=>$query,'lat'=>-31.9523,'lon'=>115.8613,'limit'=>8,'bbox'=>'114.5,-33.5,117.5,-30.5','lang'=>'en']);
         $curl=curl_init($url);
         curl_setopt_array($curl,[CURLOPT_RETURNTRANSFER=>true,CURLOPT_CONNECTTIMEOUT=>5,CURLOPT_TIMEOUT=>12,CURLOPT_USERAGENT=>'PerthMove/0.1 (Perth address lookup)',CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS]);
-        $body=curl_exec($curl); $status=(int)curl_getinfo($curl,CURLINFO_HTTP_CODE); curl_close($curl);
+        $body=curl_exec($curl); $status=(int)curl_getinfo($curl,CURLINFO_HTTP_CODE); $curl=null;
         if ($body===false || $status!==200) { throw new RuntimeException('Address search is temporarily unavailable. Tap your destination on the map instead.'); }
         $data=json_decode($body,true);
         if (!is_array($data) || !isset($data['features'])) { throw new RuntimeException('Address search returned an unexpected response. Tap the map instead.'); }

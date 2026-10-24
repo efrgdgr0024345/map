@@ -203,7 +203,7 @@ function pm_download_archive(string $target): void
     $ok = curl_exec($curl);
     $status = curl_getinfo($curl, CURLINFO_RESPONSE_CODE);
     $error = curl_error($curl);
-    curl_close($curl);
+    $curl = null;
     fclose($stream);
     if ($ok === false || $status !== 200) {
         throw new RuntimeException('GitHub download failed (HTTP ' . $status . '). ' . ($error !== '' ? $error : 'Confirm the project has been published to the configured GitHub repository.'));
