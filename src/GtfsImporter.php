@@ -55,6 +55,7 @@ final class GtfsImporter
             $db->exec('CREATE TABLE meta (key TEXT PRIMARY KEY,value TEXT);
                 CREATE TABLE stops (id TEXT PRIMARY KEY,name TEXT,lat REAL,lon REAL);
                 CREATE TABLE routes (id TEXT PRIMARY KEY,name TEXT,type INTEGER);
+                CREATE TABLE route_styles (route_id TEXT PRIMARY KEY,color TEXT,text_color TEXT);
                 CREATE TABLE trips (id TEXT PRIMARY KEY,route_id TEXT,service_id TEXT,headsign TEXT,shape_id TEXT,start INTEGER,end INTEGER);
                 CREATE TABLE stop_times (trip_id TEXT,stop_id TEXT,seq INTEGER,arrival INTEGER,departure INTEGER,pickup INTEGER,dropoff INTEGER,PRIMARY KEY(trip_id,seq));
                 CREATE TABLE connections (trip_id TEXT,seq INTEGER,from_id TEXT,to_id TEXT,departure INTEGER,arrival INTEGER,pickup INTEGER,dropoff INTEGER);
@@ -66,6 +67,8 @@ final class GtfsImporter
                 'INSERT INTO stops VALUES (?,?,?,?)', static fn($r) => [$r['stop_id'], $r['stop_name'], (float)$r['stop_lat'], (float)$r['stop_lon']]);
             $counts['routes'] = $this->rows($zip, 'routes.txt', true, $db,
                 'INSERT INTO routes VALUES (?,?,?)', static fn($r) => [$r['route_id'], ($r['route_short_name'] ?? '') ?: ($r['route_long_name'] ?? $r['route_id']), (int)$r['route_type']]);
+            $this->rows($zip, 'routes.txt', true, $db, 'INSERT INTO route_styles VALUES (?,?,?)',
+                static fn($r) => [$r['route_id'], $r['route_color'] ?? '', $r['route_text_color'] ?? '']);
             $counts['trips'] = $this->rows($zip, 'trips.txt', true, $db,
                 'INSERT INTO trips VALUES (?,?,?,?,?,NULL,NULL)', static fn($r) => [$r['trip_id'], $r['route_id'], $r['service_id'], $r['trip_headsign'] ?? '', $r['shape_id'] ?? '']);
             $counts['stop_times'] = $this->rows($zip, 'stop_times.txt', true, $db,
@@ -111,7 +114,15 @@ final class GtfsImporter
             if (!rename($staging, APP_VAR . '/transit.sqlite')) {
                 throw new RuntimeException('Could not publish the imported database.');
             }
-            return ['counts' => $counts, 'validFrom' => $bounds[0], 'validUntil' => $bounds[1], 'importedAt' => date(DATE_ATOM)];
+            $result=['counts' => $counts, 'validFrom' => $bounds[0], 'validUntil' => $bounds[1], 'importedAt' => date(DATE_ATOM)];
+            // Geometry is persistent; positions and personal journeys are never cached here.
+            // A cache failure must not discard an already validated, published timetable.
+            try {
+                $result['routeCache']=RouteCache::build();
+            } catch (\Throwable $cacheError) {
+                $result['cacheWarning']='Timetable imported; route cache will retry on its next request. '.$cacheError->getMessage();
+            }
+            return $result;
         } finally {
             $db = null;
             if ($opened) { $zip->close(); }

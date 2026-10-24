@@ -1,3 +1,13 @@
+<?php
+declare(strict_types=1);
+header('Cache-Control: no-cache, must-revalidate');
+function assetUrl(string $path): string
+{
+    $file = __DIR__ . '/' . $path;
+    $revision = is_file($file) ? substr(hash_file('sha256', $file), 0, 12) : 'pending';
+    return htmlspecialchars($path . '?v=' . $revision, ENT_QUOTES, 'UTF-8');
+}
+?>
 <!doctype html>
 <html lang="en">
 <head>
@@ -6,21 +16,25 @@
   <meta name="theme-color" content="#f6f7f3">
   <meta name="description" content="Find your next Perth bus or train, follow your journey, and see the network in motion on an open map.">
   <title>Nextstop — Perth in motion</title>
+  <link rel="icon" type="image/svg+xml" href="<?= assetUrl('assets/black-cat.svg') ?>">
   <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=">
-  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="<?= assetUrl('assets/style.css') ?>">
   <script src="assets/vendor/leaflet/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" defer></script>
-  <script src="assets/app.js" defer></script>
+  <script src="<?= assetUrl('assets/app.js') ?>" defer></script>
 </head>
 <body>
   <div id="map" aria-label="Interactive Perth public transport map"></div>
 
   <header class="topbar">
-    <a class="brand" href="./" aria-label="Nextstop home"><span class="brand-mark" aria-hidden="true">n<span><svg viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></svg></span></span><span>nextstop<span class="brand-dot">.</span></span></a>
+    <a class="brand" href="./" aria-label="Nextstop home"><img class="brand-cat" src="<?= assetUrl(is_file(__DIR__ . '/assets/mascot-head.webp') ? 'assets/mascot-head.webp' : 'assets/black-cat.svg') ?>" alt="" width="46" height="46"><span>nextstop<span class="brand-dot">.</span></span></a>
     <div class="topbar-right"><span class="city-label"><span class="city-dot"></span>PERTH, WA</span><span class="clock" id="perth-clock">--:--</span></div>
   </header>
 
-  <main class="journey-panel" aria-label="Plan your journey">
+  <button type="button" id="open-panel" class="panel-launcher" aria-controls="journey-panel" aria-expanded="false"><span class="launcher-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></span><span class="launcher-copy"><strong id="launcher-title">Where are you heading?</strong><span id="launcher-detail">Search, choose a stop, or plan a journey</span></span><svg class="launcher-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
+
+  <main class="journey-panel" id="journey-panel" aria-label="Plan your journey" tabindex="-1">
     <div class="panel-handle" aria-hidden="true"></div>
+    <button type="button" id="close-panel" class="panel-close" aria-label="Hide journey panel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
     <div class="panel-intro">
       <div class="eyebrow">A BETTER WAY TO GET THERE</div>
       <h1>Your city.<br><span>In motion.</span></h1>
@@ -62,7 +76,7 @@
       <button type="button" id="network-toggle" class="network-toggle" aria-pressed="false"><span class="toggle-track"><span></span></span><span>Show the whole network</span></button>
     </div>
 
-    <div class="panel-footer"><span class="small-map-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></svg></span><span>Open maps. A clearer way forward.</span><p class="timetable-attribution">Timetable data available free of charge from <a href="https://www.transperth.wa.gov.au/About/Spatial-Data-Access" target="_blank" rel="noopener">www.transperth.wa.gov.au</a></p></div>
+    <div class="panel-footer"><span class="small-map-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></svg></span><span>Open maps. A clearer way forward.</span><p class="timetable-attribution"><span class="data-source-label">Data source</span>Timetable data available free of charge from <a href="https://www.transperth.wa.gov.au/About/Spatial-Data-Access" target="_blank" rel="noopener" aria-label="Transperth timetable data source website">www.transperth.wa.gov.au</a></p></div>
   </main>
 
   <div class="map-hint" id="map-hint" hidden><span id="map-hint-text">Tap the map to choose your destination</span><button type="button" id="cancel-map-pick" aria-label="Cancel map selection">×</button></div>
@@ -74,7 +88,15 @@
     <span class="estimate-label" id="estimate-label">TIMETABLE</span>
   </aside>
   <div class="map-controls"><button type="button" id="map-locate" title="Show my location" aria-label="Show my location"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button><button type="button" id="map-zoom-in" aria-label="Zoom in">+</button><button type="button" id="map-zoom-out" aria-label="Zoom out">−</button></div>
-  <div class="map-legend"><span><i class="legend-next"></i>Your next ride</span><span><i class="legend-other"></i>Other services</span><span class="legend-note" id="legend-note">Positions estimated from timetable</span></div>
+  <button type="button" id="follow-journey" class="follow-control" aria-pressed="true" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 11 16-7-7 16-2-7-7-2Z"/></svg><span>Following journey</span></button>
+  <div class="map-legend"><span><i class="legend-next"></i>Your next ride</span><span><i class="legend-other"></i>Other services</span><span class="legend-note" id="legend-note">Positions estimated from timetable</span><span class="route-cache-status" id="route-cache-status" role="status">Loading network lines…</span></div>
+  <dialog id="timetable-dialog" class="timetable-dialog" aria-labelledby="timetable-title">
+    <div class="timetable-header"><div><div class="eyebrow">YOUR NETWORK, ALL HERE</div><h2 id="timetable-title">Timetable</h2></div><button type="button" id="timetable-close" class="dialog-close" aria-label="Close timetable"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+    <button type="button" id="timetable-back" class="timetable-back" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6M8 12h12"/></svg>Back</button>
+    <p id="timetable-description" class="timetable-description">Scheduled times in Perth, Western Australia.</p>
+    <div id="timetable-content" class="timetable-content" aria-live="polite"></div>
+    <p class="timetable-disclaimer">Timetable estimates, not live vehicle tracking. All times are shown in Perth time.</p>
+  </dialog>
   <noscript><div class="noscript">Enable JavaScript to use the map and plan a journey.</div></noscript>
 </body>
 </html>

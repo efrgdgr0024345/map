@@ -14,19 +14,42 @@ final class Geo
 
     public static function point(array $line, float $progress): array
     {
-        if (count($line) < 2) { return $line[0] ?? [0, 0]; }
+        $position = self::position($line, $progress);
+        return [$position['lat'], $position['lon']];
+    }
+
+    /** Compass bearing: north=0, east=90. Coincident points have no direction. */
+    public static function bearing(array $from, array $to): ?float
+    {
+        if (self::distance($from, $to) < 0.01) { return null; }
+        $a = deg2rad($from['lat']); $b = deg2rad($to['lat']);
+        $delta = deg2rad($to['lon'] - $from['lon']);
+        $y = sin($delta) * cos($b);
+        $x = cos($a) * sin($b) - sin($a) * cos($b) * cos($delta);
+        return fmod(rad2deg(atan2($y, $x)) + 360, 360);
+    }
+
+    /** Position and local forward tangent along a scheduled path, never live GPS. */
+    public static function position(array $line, float $progress): array
+    {
+        if (count($line) < 2) {
+            return ['lat'=>$line[0][0] ?? 0, 'lon'=>$line[0][1] ?? 0, 'bearing'=>null];
+        }
         $lengths = [0.0];
         for ($i = 1; $i < count($line); $i++) {
             $lengths[] = end($lengths) + self::distance(['lat'=>$line[$i-1][0], 'lon'=>$line[$i-1][1]], ['lat'=>$line[$i][0], 'lon'=>$line[$i][1]]);
         }
         $target = max(0, min(1, $progress)) * end($lengths);
         for ($i = 1; $i < count($line); $i++) {
-            if ($lengths[$i] >= $target) {
+            if ($lengths[$i] >= $target && $lengths[$i] - $lengths[$i-1] > 0.01) {
                 $f = ($target - $lengths[$i-1]) / max(0.01, $lengths[$i] - $lengths[$i-1]);
-                return [$line[$i-1][0] + ($line[$i][0]-$line[$i-1][0])*$f, $line[$i-1][1] + ($line[$i][1]-$line[$i-1][1])*$f];
+                return ['lat'=>$line[$i-1][0] + ($line[$i][0]-$line[$i-1][0])*$f,
+                    'lon'=>$line[$i-1][1] + ($line[$i][1]-$line[$i-1][1])*$f,
+                    'bearing'=>self::bearing(['lat'=>$line[$i-1][0],'lon'=>$line[$i-1][1]], ['lat'=>$line[$i][0],'lon'=>$line[$i][1]])];
             }
         }
-        return end($line);
+        $end = end($line);
+        return ['lat'=>$end[0], 'lon'=>$end[1], 'bearing'=>null];
     }
 
     /** Slice a directional GTFS shape between two stops, preserving travel direction. */

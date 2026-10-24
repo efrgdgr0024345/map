@@ -9,11 +9,16 @@ final class Transit
 {
     private PDO $db;
     private array $shapes=[];
+    private array $routeStyles=[];
 
     public function __construct(?string $path = null)
     {
         $this->db=new PDO('sqlite:'.($path ?? APP_VAR.'/transit.sqlite'),null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
         $this->db->exec('PRAGMA query_only=ON; PRAGMA busy_timeout=3000;');
+        // Older cPanel databases work immediately; a refresh adds optional feed colours.
+        if ($this->db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='route_styles'")->fetchColumn()) {
+            $this->routeStyles=$this->db->query('SELECT route_id,color,text_color FROM route_styles')->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
+        }
     }
 
     public function status(): array
@@ -41,7 +46,7 @@ final class Transit
             foreach ($q as $row) {
                 if ((int)$row['type']===1) { $ids[$row['service_id']]=true; } else { unset($ids[$row['service_id']]); }
             }
-            if ($ids) { $days[]=['base'=>$base,'date'=>$date,'ids'=>array_keys($ids)]; }
+            if ($ids) { $days[]=['base'=>$base,'date'=>$date,'ids'=>array_map('strval',array_keys($ids))]; }
         }
         return $days;
     }
@@ -54,6 +59,14 @@ final class Transit
     private static function mode(int $type): string
     {
         return in_array($type,[0,1,2,100,109],true) || ($type>=100 && $type<200) ? 'train' : ($type===4 || ($type>=1000 && $type<1100) ? 'ferry' : 'bus');
+    }
+
+    private function routeStyle(string $id,string $name,int $type): array
+    {
+        $feed=$this->routeStyles[$id] ?? [];
+        $style=NetworkStyle::forRoute($name,$type,$feed['color'] ?? null,$feed['text_color'] ?? null);
+        return ['routeColor'=>$style['color'],'routeTextColor'=>$style['textColor'],
+            'colorSource'=>$style['colorSource'],'lineName'=>$style['lineName']];
     }
 
     private function shape(string $id): array
@@ -75,7 +88,7 @@ final class Transit
         return $r;
     }
 
-    public function vehicles(array $bbox,array $routes=[],string $selected=''): array
+    public function vehicles(array $bbox,array $routes=[],string $selected='',bool $includeLines=true): array
     {
         $this->activeGuard();
         $now=time(); $vehicles=[]; $lines=[]; $truncated=false;
@@ -102,21 +115,38 @@ final class Transit
                 $a->execute([$trip['id'],$before['seq']]); $after=$a->fetch() ?: $before;
                 $f=max(0,min(1,($seconds-(int)$before['departure'])/max(1,(int)$after['arrival']-(int)$before['departure'])));
                 $shape=$this->shape($trip['shape_id']);
-                [$lat,$lon]=Geo::point(Geo::slice($shape,$before,$after),$f);
+                $segment=Geo::slice($shape,$before,$after);
+                $position=Geo::position($segment,$f);
+                $lat=$position['lat']; $lon=$position['lon'];
                 if (!Geo::inside(['lat'=>$lat,'lon'=>$lon],$bbox) && $trip['id']!==$selected) { continue; }
-                $vehicles[]=['id'=>$day['date'].'-'.$trip['id'],'tripId'=>$trip['id'],'routeId'=>$trip['route_id'],'routeName'=>$trip['route_name'],'mode'=>self::mode((int)$trip['type']),'lat'=>$lat,'lon'=>$lon,'bearing'=>0,'headsign'=>$trip['headsign'],'estimated'=>true,'nextStop'=>$after['name'],'progress'=>max(0,min(1,($seconds-$trip['start'])/max(1,$trip['end']-$trip['start']))),'upcoming'=>$seconds<$trip['start']];
+                $style=$this->routeStyle($trip['route_id'],$trip['route_name'],(int)$trip['type']);
+                $vehicles[]=array_merge(['id'=>$day['date'].'-'.$trip['id'],'tripId'=>$trip['id'],'serviceDate'=>$day['date'],'routeId'=>$trip['route_id'],'routeName'=>$trip['route_name'],'mode'=>self::mode((int)$trip['type']),'lat'=>$lat,'lon'=>$lon,'bearing'=>$position['bearing'],'headsign'=>$trip['headsign'],'estimated'=>true,'nextStop'=>$after['name'],'nextStopId'=>$after['id'],'progress'=>max(0,min(1,($seconds-$trip['start'])/max(1,$trip['end']-$trip['start']))),'upcoming'=>$seconds<$trip['start'],
+                    'motion'=>VehicleMotion::predict($this->db,$trip,$before,$after,$shape,$seconds,$position,$segment)],$style);
                 $key=$trip['route_id'].'-'.$trip['shape_id'];
-                if (count($lines)<100 && !isset($lines[$key]) && $shape) {
+                if ($includeLines && count($lines)<100 && !isset($lines[$key]) && $shape) {
                     $step=max(1,(int)ceil(count($shape)/600));
                     $display=[];
                     for ($i=0;$i<count($shape);$i+=$step) { $display[]=$shape[$i]; }
                     $display[]=end($shape);
-                    $lines[$key]=['routeId'=>$trip['route_id'],'routeName'=>$trip['route_name'],'mode'=>self::mode((int)$trip['type']),'geometry'=>$display];
+                    $lines[$key]=array_merge(['routeId'=>$trip['route_id'],'routeName'=>$trip['route_name'],'mode'=>self::mode((int)$trip['type']),'geometry'=>$display],$style);
                 }
             }
         }
-        $q=$this->db->prepare('SELECT id,name,lat,lon FROM stops WHERE lon BETWEEN ? AND ? AND lat BETWEEN ? AND ? LIMIT 400');
-        $q->execute([$bbox[0],$bbox[2],$bbox[1],$bbox[3]]);
+        $stopArgs=[$bbox[0],$bbox[2],$bbox[1],$bbox[3]];
+        $stopSql='SELECT id,name,lat,lon FROM stops WHERE lon BETWEEN ? AND ? AND lat BETWEEN ? AND ? LIMIT 400';
+        if ($routes) {
+            $tripIds=array_values(array_unique(array_filter(array_merge(array_column($vehicles,'tripId'),[$selected]))));
+            if ($tripIds) {
+                $marks=implode(',',array_fill(0,count($tripIds),'?'));
+                $stopSql="SELECT DISTINCT s.id,s.name,s.lat,s.lon FROM stop_times st JOIN stops s ON s.id=st.stop_id
+                    WHERE st.trip_id IN ($marks) AND s.lon BETWEEN ? AND ? AND s.lat BETWEEN ? AND ? LIMIT 400";
+                $stopArgs=array_merge($tripIds,$stopArgs);
+            } else {
+                $stopSql='SELECT id,name,lat,lon FROM stops WHERE 0'; $stopArgs=[];
+            }
+        }
+        $q=$this->db->prepare($stopSql);
+        $q->execute($stopArgs);
         $stops=$q->fetchAll();
         foreach ($stops as &$s) { $s['lat']=(float)$s['lat']; $s['lon']=(float)$s['lon']; } unset($s);
         return ['vehicles'=>$vehicles,'stops'=>$stops,'lines'=>array_values($lines),'generatedAt'=>date(DATE_ATOM),'estimated'=>true,'truncated'=>$truncated,'mode'=>'timetable','message'=>$this->status()['message']];
@@ -135,6 +165,76 @@ final class Transit
         }
         usort($out,static fn($a,$b)=>$a['walk']<=>$b['walk']);
         return array_slice($out,0,30);
+    }
+
+    /** In-app scheduled departures or the full stop-by-stop timetable of a trip. */
+    public function timetable(string $stopId='', string $tripId='', ?int $now=null, ?string $serviceDate=null): array
+    {
+        $this->activeGuard();
+        if (($stopId==='') === ($tripId==='')) {
+            throw new \InvalidArgumentException('Choose one stop or one service to view its timetable.');
+        }
+        $now ??= time();
+        $result=['mode'=>'timetable','timezone'=>'Australia/Perth','generatedAt'=>date(DATE_ATOM,$now),
+            'estimated'=>true,'departures'=>[], 'message'=>'Scheduled times in Perth time. Live delays and cancellations are not included.'];
+        if ($tripId!=='') {
+            $q=$this->db->prepare('SELECT t.*,r.name route_name,r.type FROM trips t JOIN routes r ON r.id=t.route_id WHERE t.id=?');
+            $q->execute([$tripId]); $trip=$q->fetch();
+            if (!$trip) { throw new \InvalidArgumentException('This service was not found in the imported timetable.'); }
+            $reference=$now; $horizon=86400;
+            if ($serviceDate!==null) {
+                $date=\DateTimeImmutable::createFromFormat('!Ymd',$serviceDate,new \DateTimeZone('Australia/Perth'));
+                if (!$date || $date->format('Ymd')!==$serviceDate) { throw new \InvalidArgumentException('Choose a valid service date (YYYYMMDD).'); }
+                $reference=$date->setTime(12,0)->getTimestamp(); $horizon=0;
+            }
+            $chosen=null; $best=PHP_INT_MAX;
+            foreach ($this->serviceDays($reference,$horizon) as $day) {
+                if ($serviceDate!==null && $serviceDate!==$day['date']) { continue; }
+                if (!in_array($trip['service_id'],$day['ids'],true)) { continue; }
+                $start=$day['base']+(int)$trip['start']; $end=$day['base']+(int)$trip['end'];
+                $distance=$now<=$end ? max(0,$start-$now) : 172800+$now-$end;
+                if ($distance<$best) { $best=$distance; $chosen=$day; }
+            }
+            if (!$chosen) { throw new \InvalidArgumentException('This service does not run on the selected day.'); }
+            $result['serviceDate']=$chosen['date'];
+            $result['trip']=array_merge(['id'=>$trip['id'],'routeId'=>$trip['route_id'],'routeName'=>$trip['route_name'],
+                'mode'=>self::mode((int)$trip['type']),'headsign'=>$trip['headsign'],'serviceDate'=>$chosen['date']],
+                $this->routeStyle($trip['route_id'],$trip['route_name'],(int)$trip['type']));
+            $q=$this->db->prepare('SELECT s.*,st.arrival,st.departure,st.seq,st.pickup,st.dropoff FROM stop_times st JOIN stops s ON s.id=st.stop_id WHERE st.trip_id=? ORDER BY st.seq');
+            $q->execute([$tripId]); $result['stops']=[];
+            foreach ($q as $row) {
+                $result['stops'][]=['id'=>$row['id'],'name'=>$row['name'],'lat'=>(float)$row['lat'],'lon'=>(float)$row['lon'],
+                    'arrival'=>date(DATE_ATOM,$chosen['base']+(int)$row['arrival']),
+                    'departure'=>date(DATE_ATOM,$chosen['base']+(int)$row['departure']),
+                    'pickupType'=>(int)$row['pickup'],'dropoffType'=>(int)$row['dropoff']];
+            }
+            return $result;
+        }
+        $q=$this->db->prepare('SELECT id,name,lat,lon FROM stops WHERE id=?'); $q->execute([$stopId]);
+        $stop=$q->fetch();
+        if (!$stop) { throw new \InvalidArgumentException('This stop was not found in the imported timetable.'); }
+        $stop['lat']=(float)$stop['lat']; $stop['lon']=(float)$stop['lon']; $result['stop']=$stop;
+        $horizon=21600;
+        foreach ($this->serviceDays($now,$horizon) as $day) {
+            $marks=implode(',',array_fill(0,count($day['ids']),'?'));
+            $q=$this->db->prepare("SELECT st.arrival,st.departure,st.pickup,t.id trip_id,t.route_id,t.headsign,r.name route_name,r.type
+                FROM stop_times st JOIN trips t ON t.id=st.trip_id JOIN routes r ON r.id=t.route_id
+                WHERE st.stop_id=? AND st.pickup<>1 AND t.service_id IN ($marks) AND st.departure>=? AND st.departure<=?
+                ORDER BY st.departure,st.trip_id LIMIT 20");
+            $q->execute(array_merge([$stopId],$day['ids'],[$now-$day['base'],$now+$horizon-$day['base']]));
+            foreach ($q as $row) {
+                $result['departures'][]=array_merge(['tripId'=>$row['trip_id'],'serviceDate'=>$day['date'],'routeId'=>$row['route_id'],
+                    'routeName'=>$row['route_name'],'mode'=>self::mode((int)$row['type']),'headsign'=>$row['headsign'],
+                    'departure'=>date(DATE_ATOM,$day['base']+(int)$row['departure']),
+                    'arrival'=>date(DATE_ATOM,$day['base']+(int)$row['arrival']),
+                    'stopId'=>$stop['id'],'stopName'=>$stop['name'],'pickupType'=>(int)$row['pickup']],
+                    $this->routeStyle($row['route_id'],$row['route_name'],(int)$row['type']));
+            }
+        }
+        usort($result['departures'],static fn($a,$b)=>strtotime($a['departure'])<=>strtotime($b['departure']));
+        $result['departures']=array_slice($result['departures'],0,20);
+        if (!$result['departures']) { $result['message']='No scheduled departures at this stop in the next six hours. Try a nearby platform or stop.'; }
+        return $result;
     }
 
     public function plan(array $from,array $to,int $now): array
@@ -196,7 +296,7 @@ final class Transit
             $a=$this->stop($c['from_id']); $b=$this->stop($c['to_id']);
             $idx=count($nodes);
             $nodes[]=['time'=>$c['arrival'],'prev'=>$prev,'initial'=>false,'boardings'=>$nodes[$prev]['boardings']+($boarding?1:0),
-                'leg'=>['mode'=>self::mode((int)$c['type']),'routeId'=>$c['route_id'],'routeName'=>$c['route_name'],'tripId'=>$c['trip_id'],'headsign'=>$c['headsign'],'shapeId'=>$c['shape_id'],'from'=>$a,'to'=>$b,'departure'=>date(DATE_ATOM,$c['departure']),'arrival'=>date(DATE_ATOM,$c['arrival'])]];
+                'leg'=>array_merge(['mode'=>self::mode((int)$c['type']),'routeId'=>$c['route_id'],'routeName'=>$c['route_name'],'tripId'=>$c['trip_id'],'serviceDate'=>substr($c['key'],0,8),'headsign'=>$c['headsign'],'shapeId'=>$c['shape_id'],'from'=>$a,'to'=>$b,'departure'=>date(DATE_ATOM,$c['departure']),'arrival'=>date(DATE_ATOM,$c['arrival'])],$this->routeStyle($c['route_id'],$c['route_name'],(int)$c['type']))];
             $onboard[$c['key']]=$idx;
             if ((int)$c['dropoff']!==0) { continue; }
             if (isset($dest[$b['id']]) && $c['arrival']+$dest[$b['id']]<$bestArrival) { $bestArrival=$c['arrival']+$dest[$b['id']]; $bestIdx=$idx; $bestStop=$b; }

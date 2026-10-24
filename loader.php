@@ -214,8 +214,8 @@ function pm_application_manifest(): array
 {
     return ['loader.php', 'index.php', 'bootstrap.php', 'api.php', '.htaccess',
         'src/.htaccess', 'scripts/.htaccess',
-        'src/GtfsImporter.php', 'src/Transit.php', 'src/Demo.php', 'src/Geo.php', 'src/Geocoder.php', 'scripts/import-gtfs.php',
-        'assets/app.js', 'assets/style.css',
+        'src/GtfsImporter.php', 'src/Transit.php', 'src/Demo.php', 'src/Geo.php', 'src/Geocoder.php', 'src/NetworkStyle.php', 'src/RouteCache.php', 'src/VehicleMotion.php', 'scripts/import-gtfs.php', 'scripts/build-route-cache.php',
+        'assets/app.js', 'assets/style.css', 'assets/black-cat.svg', 'assets/mascot-head.webp',
         'assets/vendor/leaflet/leaflet.js', 'assets/vendor/leaflet/leaflet.css', 'assets/vendor/leaflet/LICENSE'];
 }
 

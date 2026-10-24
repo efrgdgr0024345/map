@@ -6,11 +6,30 @@ A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and 
 
 - Phone GPS with permission, searchable start/destination addresses with suggestions, or map clicks and draggable pins.
 - Map-area vehicle and stop updates every 15 seconds.
-- Focused journey view, walking legs, transfers, boarding countdown and a later service alternative when found.
+- Official rail, CAT and bus route colours, clear vehicle symbols and directional arrows.
+- Focused journey view, walking legs, transfers, boarding countdown and a later service alternative when found. Follow mode fits the remaining journey, selected service, consented GPS position and destination; exploring the map pauses following until you recenter.
+- In-app departure boards and full stop-by-stop service timetables, including service-day and after-midnight times. Tap a stop, vehicle, itinerary action or **View timetable** on your next-service card.
+- A phone layout that starts with search collapsed. Open the search pill to plan; ordinary map taps dismiss it while keeping the journey. **Choose on map** deliberately picks a location.
 - Official static GTFS import into SQLite, with calendar exceptions, after-midnight services and route shapes.
+- Persistent server and browser route caches: geometry redraws locally when panning; public vehicle positions refresh independently.
 - A protected root-level `loader.php` for cPanel setup, timetable refresh and GitHub updates with backups.
+- Black-cat branding using a lightweight portrait derived from the supplied mascot, with lime-eye accents and clear black/white controls.
 
 **Honest movement:** the app does not have an actual vehicle GPS feed. After importing GTFS, positions are interpolated between scheduled stops along route shapes. Delays, cancellations, capacity and early/late running are unknown. Before import, the app explicitly shows an illustrative **DEMO** network with invented times; those journeys must not be used for travel. Phone GPS identifies the user, not the buses.
+
+Marker animation follows bounded 15-second timetable predictions along the road/rail geometry, including turns and station dwell. It stops at the end of its prediction window rather than inventing movement while disconnected. Direction arrows rotate independently of upright route labels; reduced-motion settings are respected. Consented GPS updates remain separate from the planned starting point so tracking does not clear the journey.
+
+## Map speed and route storage
+
+All imported stops, trips, raw route shapes and timetables live on your server in `var/transit.sqlite`; the app does not fetch route geometry from Transperth while someone moves the map. Each successful import also prebuilds `var/routes.json` and a compressed sibling. The browsing layer preserves every used route/shape pair and simplifies it to about 20-metre accuracy; selected journey geometry still uses the detailed original shapes.
+
+The verified feed produces 2,520 route variants, approximately **504 KB compressed** (3.9 MB uncompressed). These include 421 routes with trips; two regional route declarations have no trips and cannot supply geometry. The cache builds in about three seconds on this cloud machine. Timing varies by hosting.
+
+The browser keeps public geometry in memory and IndexedDB, draws the visible area locally, and revalidates the catalog in the background using HTTP ETags. Moving around a cached region does not require another route-geometry download. A new import changes the revision; the browser refreshes automatically. Vehicle positions and personal journeys are not stored in the route cache. Overview routes include imported service variants, not a promise that every line is currently operating.
+
+The first visit still downloads the catalog. Street-map tiles come from the configured OpenStreetMap tile service and have their own loading/cache behaviour; this is not an offline basemap. If a cache build fails, the valid timetable and previous route cache are retained, and the route endpoint can retry building it. You can optionally rebuild it in Terminal with `php scripts/build-route-cache.php`.
+
+Official colour values, fallback behaviour and sources are documented in [docs/network-colours.md](docs/network-colours.md). Existing databases remain readable without a schema migration: named network colours apply immediately, and the next import adds optional feed colour metadata.
 
 ## cPanel installation
 
@@ -72,6 +91,10 @@ Run the checks:
 
 ```sh
 php tests/transit.php
+php tests/geo.php
+php tests/timetable.php
+php tests/route_cache.php
+php tests/motion.php
 php tests/loader_install.php
 PHP_BINARY=php python3 tests/loader_http.py
 PHP_BINARY=php python3 tests/loader_cli.py
@@ -80,6 +103,8 @@ php loader.php --check
 ```
 
 Tests create isolated temporary data and never replace the installed timetable. `loader.php --check` checks hosting prerequisites; it does not install the app.
+
+The optional `node tests/browser-ui.mjs` suite uses Playwright and a running local app with an imported timetable. It exercises mobile dismissal, in-app timetables, route caching, follow/fit and the mascot. Install Playwright separately in a development environment if it is not already available. Browser map-tile rendering in this cloud can be blocked by proxy certificate trust; do not disable TLS verification to work around it.
 
 ## Sources and network access
 

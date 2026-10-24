@@ -22,6 +22,10 @@ jobs:
           coverage: none
       - run: find . -name '*.php' -not -path './var/*' -print0 | xargs -0 -n1 php -l
       - run: php tests/transit.php
+      - run: php tests/geo.php
+      - run: php tests/timetable.php
+      - run: php tests/route_cache.php
+      - run: php tests/motion.php
       - run: php tests/loader_install.php
       - run: PHP_BINARY=php python3 tests/loader_http.py
       - run: PHP_BINARY=php python3 tests/loader_cli.py

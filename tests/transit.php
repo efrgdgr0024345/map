@@ -168,6 +168,9 @@ try {
     check($network['mode'] === 'timetable' && count($current) >= 1 && $current[0]['estimated'] && $current[0]['routeId'] === 'NETWORK', 'current vehicle matches its imported trip and route');
     check(count(array_filter($network['vehicles'], static fn($v) => $v['tripId'] === 'other-current')) >= 1, 'other currently operating vehicles remain visible on the chosen line');
     check(count(array_filter($network['vehicles'], static fn($v) => $v['routeId'] !== 'NETWORK')) === 0, 'focused route filter excludes unrelated routes and trains');
+    $focusedStops=array_column($network['stops'],'id');
+    sort($focusedStops);
+    check($focusedStops===['D','E'], 'focused journeys hide stops unrelated to their selected services');
     $expectedFraction = max(0, min(1, (time() - $midnight - $liveStart) / ($liveEnd - $liveStart)));
     $expected = Geo::point([[-31.95, 116.00], [-31.96, 116.025], [-31.95, 116.05]], $expectedFraction);
     check(abs($current[0]['lat'] - $expected[0]) < 0.0001 && abs($current[0]['lon'] - $expected[1]) < 0.0001, 'vehicle interpolates along its bent GTFS shape instead of a straight chord');

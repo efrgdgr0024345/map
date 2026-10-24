@@ -12,17 +12,26 @@ final class Demo
         ['routeId'=>'demo-fremantle','routeName'=>'Fremantle','mode'=>'train','headsign'=>'Fremantle','geometry'=>[[-31.9513,115.8604],[-31.9487,115.8545],[-31.9442,115.8425],[-31.9405,115.8317],[-31.9350,115.8188],[-31.9324,115.8077],[-31.9367,115.7905],[-31.9538,115.7627]]],
     ];
 
+    public function __construct()
+    {
+        foreach ($this->lines as &$line) {
+            $style=NetworkStyle::forRoute($line['routeName'],$line['mode']==='train' ? 2 : 3);
+            $line+=['routeColor'=>$style['color'],'routeTextColor'=>$style['textColor'],'lineName'=>$style['lineName'],'colorSource'=>$style['colorSource']];
+        }
+        unset($line);
+    }
+
     public function status(): array
     {
         return ['mode'=>'demo','timezone'=>'Australia/Perth','updatedAt'=>null,'realtime'=>false,'message'=>self::MESSAGE];
     }
 
-    public function vehicles(array $bbox, array $routes = [], string $journey = ''): array
+    public function vehicles(array $bbox, array $routes = [], string $journey = '',bool $includeLines=true): array
     {
         $vehicles=[]; $stops=[]; $lines=[];
         foreach ($this->lines as $line) {
             if ($routes && !in_array($line['routeId'], $routes, true)) { continue; }
-            $lines[]=$line;
+            if ($includeLines) { $lines[]=$line; }
             for ($i=0; $i<5; $i++) {
                 $progress=fmod(time()/2400+$i/5,1);
                 $chosen=false;
@@ -30,20 +39,32 @@ final class Demo
                     $chosen=true;
                     $position=max(0,min(count($line['geometry'])-1,(int)$match[2]+(time()-(int)$match[4])/150));
                     $segment=min(count($line['geometry'])-2,(int)floor($position));
-                    [$lat,$lon]=Geo::point(array_slice($line['geometry'],$segment,2),$position-$segment);
+                    $heading=Geo::position(array_slice($line['geometry'],$segment,2),$position-$segment);
                     $progress=$position/(count($line['geometry'])-1);
                 } else {
-                    [$lat,$lon]=Geo::point($line['geometry'],$progress);
+                    $heading=Geo::position($line['geometry'],$progress);
                 }
+                $lat=$heading['lat']; $lon=$heading['lon'];
                 if (!$chosen && !Geo::inside(['lat'=>$lat,'lon'=>$lon],$bbox)) { continue; }
-                $vehicles[]=['id'=>$line['routeId'].'-'.$i,'tripId'=>$chosen ? $journey : $line['routeId'].'-trip-'.$i,
-                    'routeId'=>$line['routeId'],'routeName'=>$line['routeName'],'mode'=>$line['mode'],'lat'=>$lat,'lon'=>$lon,'bearing'=>0,'headsign'=>$line['headsign'],'estimated'=>true,'nextStop'=>'Illustrative stop','progress'=>$progress];
+                $vehicles[]=['id'=>$line['routeId'].'-'.$i,'tripId'=>$chosen ? $journey : $line['routeId'].'-trip-'.$i,'serviceDate'=>date('Ymd'),
+                    'routeId'=>$line['routeId'],'routeName'=>$line['routeName'],'routeColor'=>$line['routeColor'],'routeTextColor'=>$line['routeTextColor'],'lineName'=>$line['lineName'],'mode'=>$line['mode'],'lat'=>$lat,'lon'=>$lon,'bearing'=>$heading['bearing'],'headsign'=>$line['headsign'],'estimated'=>true,'nextStop'=>'Illustrative stop','progress'=>$progress];
             }
             foreach ($line['geometry'] as $i=>$p) {
                 if (Geo::inside(['lat'=>$p[0],'lon'=>$p[1]],$bbox)) { $stops[]=['id'=>$line['routeId'].'-stop-'.$i,'name'=>'Demo stop '.$i,'lat'=>$p[0],'lon'=>$p[1]]; }
             }
         }
         return ['vehicles'=>$vehicles,'stops'=>$stops,'lines'=>$lines,'generatedAt'=>date(DATE_ATOM),'estimated'=>true,'mode'=>'demo','message'=>self::MESSAGE];
+    }
+
+    public function routes(): array
+    {
+        $lines=$this->lines;
+        foreach ($lines as &$line) {
+            $lats=array_column($line['geometry'],0); $lons=array_column($line['geometry'],1);
+            $line['bbox']=[min($lons),min($lats),max($lons),max($lats)];
+        }
+        unset($line);
+        return ['revision'=>'demo-network-2','generatedAt'=>null,'mode'=>'demo','lines'=>$lines,'approximate'=>true,'message'=>self::MESSAGE];
     }
 
     public function plan(array $from, array $to, int $now): array
@@ -54,8 +75,8 @@ final class Demo
             foreach ($line['geometry'] as $i=>$p) {
                 foreach ($line['geometry'] as $j=>$q) {
                     if ($j <= $i) { continue; }
-                    $a=['name'=>'Demo boarding stop','lat'=>$p[0],'lon'=>$p[1]];
-                    $b=['name'=>'Demo arrival stop','lat'=>$q[0],'lon'=>$q[1]];
+                    $a=['id'=>$line['routeId'].'-stop-'.$i,'name'=>'Demo boarding stop','lat'=>$p[0],'lon'=>$p[1]];
+                    $b=['id'=>$line['routeId'].'-stop-'.$j,'name'=>'Demo arrival stop','lat'=>$q[0],'lon'=>$q[1]];
                     $walkA=(int)ceil(Geo::distance($from,$a)*1.3/1.25);
                     $walkB=(int)ceil(Geo::distance($b,$to)*1.3/1.25);
                     $ride=($j-$i)*150;
@@ -74,11 +95,52 @@ final class Demo
             $trip='demo-trip-'.$index.'-'.$best['i'].'-'.$best['j'].'-'.$dep;
             $legs=[];
             if ($best['walkA']>0) { $legs[]=self::walk($from,$best['a'],$now,$now+$best['walkA']); }
-            $legs[]=['mode'=>$line['mode'],'routeId'=>$line['routeId'],'routeName'=>$line['routeName'],'tripId'=>$trip,'headsign'=>$line['headsign'],'from'=>$best['a'],'to'=>$best['b'],'departure'=>date(DATE_ATOM,$dep),'arrival'=>date(DATE_ATOM,$dep+$best['ride']), 'geometry'=>array_slice($line['geometry'],$best['i'],$best['j']-$best['i']+1)];
+            $legs[]=['mode'=>$line['mode'],'routeId'=>$line['routeId'],'routeName'=>$line['routeName'],'routeColor'=>$line['routeColor'],'routeTextColor'=>$line['routeTextColor'],'lineName'=>$line['lineName'],'tripId'=>$trip,'serviceDate'=>date('Ymd',$dep-$best['i']*150),'headsign'=>$line['headsign'],'from'=>$best['a'],'to'=>$best['b'],'departure'=>date(DATE_ATOM,$dep),'arrival'=>date(DATE_ATOM,$dep+$best['ride']), 'geometry'=>array_slice($line['geometry'],$best['i'],$best['j']-$best['i']+1)];
             if ($best['walkB']>0) { $legs[]=self::walk($best['b'],$to,$dep+$best['ride'],$arrival); }
             $journeys[]=['id'=>$trip,'departure'=>date(DATE_ATOM,$now),'arrival'=>date(DATE_ATOM,$arrival),'duration'=>$arrival-$now,'walkMinutes'=>(int)ceil(($best['walkA']+$best['walkB'])/60),'transfers'=>0,'legs'=>$legs];
         }
         return ['journeys'=>$journeys,'mode'=>'demo','message'=>self::MESSAGE];
+    }
+
+    public function timetable(string $stopId='',string $tripId='',?int $now=null,?string $serviceDate=null): array
+    {
+        if (($stopId==='') === ($tripId==='')) { throw new \InvalidArgumentException('Choose one demo stop or service.'); }
+        $now ??= time(); $line=null; $stopIndex=null; $start=$now+120;
+        foreach ($this->lines as $candidate) {
+            if ($stopId!=='' && str_starts_with($stopId,$candidate['routeId'].'-stop-')) {
+                $suffix=substr($stopId,strlen($candidate['routeId'].'-stop-'));
+                if (preg_match('/^\d+$/D',$suffix) && isset($candidate['geometry'][(int)$suffix])) { $line=$candidate; $stopIndex=(int)$suffix; }
+            }
+            if ($tripId!=='' && preg_match('/^'.preg_quote($candidate['routeId'],'/').'-trip-[0-4]$/',$tripId)) { $line=$candidate; }
+        }
+        if ($tripId!=='' && preg_match('/^demo-trip-(\d+)-(\d+)-(\d+)-(\d+)$/',$tripId,$parts) && isset($this->lines[(int)$parts[1]])) {
+            $line=$this->lines[(int)$parts[1]]; $start=(int)$parts[4]-(int)$parts[2]*150;
+        }
+        if (!$line) { throw new \InvalidArgumentException('This illustrative demo stop or service was not found.'); }
+        $result=['mode'=>'demo','timezone'=>'Australia/Perth','generatedAt'=>date(DATE_ATOM,$now),'estimated'=>true,
+            'message'=>self::MESSAGE,'departures'=>[]];
+        $style=['routeId'=>$line['routeId'],'routeName'=>$line['routeName'],'routeColor'=>$line['routeColor'],
+            'routeTextColor'=>$line['routeTextColor'],'lineName'=>$line['lineName'],'mode'=>$line['mode'],'headsign'=>$line['headsign']];
+        if ($stopIndex!==null) {
+            $p=$line['geometry'][$stopIndex];
+            $stop=['id'=>$stopId,'name'=>'Demo stop '.$stopIndex,'lat'=>$p[0],'lon'=>$p[1]];
+            $result['stop']=$stop;
+            for ($i=0;$i<5;$i++) {
+                $departure=$now+120+$i*600;
+                $index=array_search($line['routeId'],array_column($this->lines,'routeId'),true);
+                $id='demo-trip-'.$index.'-'.$stopIndex.'-'.(count($line['geometry'])-1).'-'.$departure;
+                $result['departures'][]=$style+['tripId'=>$id,'serviceDate'=>date('Ymd',$departure-$stopIndex*150),
+                    'departure'=>date(DATE_ATOM,$departure),'arrival'=>date(DATE_ATOM,$departure),'stopId'=>$stopId,'stopName'=>$stop['name'],'pickupType'=>0];
+            }
+        } else {
+            $result['serviceDate']=date('Ymd',$start);
+            $result['trip']=$style+['id'=>$tripId,'serviceDate'=>$result['serviceDate']]; $result['stops']=[];
+            foreach ($line['geometry'] as $i=>$p) {
+                $result['stops'][]=['id'=>$line['routeId'].'-stop-'.$i,'name'=>'Demo stop '.$i,'lat'=>$p[0],'lon'=>$p[1],
+                    'arrival'=>date(DATE_ATOM,$start+$i*150),'departure'=>date(DATE_ATOM,$start+$i*150),'pickupType'=>0,'dropoffType'=>0];
+            }
+        }
+        return $result;
     }
 
     public static function walk(array $a,array $b,int $dep,int $arr): array
