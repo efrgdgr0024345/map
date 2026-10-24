@@ -4,12 +4,14 @@ A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and 
 
 ## What works
 
-- Phone GPS with permission, searchable start/destination addresses with suggestions, or map clicks and draggable pins.
+- Phone GPS with permission, searchable start/destination addresses with suggestions, or map clicks and draggable pins. GPS keeps watching for better high-accuracy fixes before a journey is selected; stale cached fixes do not freeze the location. The compact accuracy indicator/circle reflects the device's reported uncertainty.
 - Map-area vehicle and stop updates every 15 seconds.
 - Official rail, CAT and bus route colours, clear vehicle symbols and directional arrows.
 - Focused journey view, walking legs, transfers, boarding countdown and a later service alternative when found. Follow mode fits the remaining journey, selected service, consented GPS position and destination; exploring the map pauses following until you recenter.
 - In-app departure boards and full stop-by-stop service timetables, including service-day and after-midnight times. Tap a stop, vehicle, itinerary action or **View timetable** on your next-service card.
-- A phone layout that starts with search collapsed. Open the search pill to plan; ordinary map taps dismiss it while keeping the journey. **Choose on map** deliberately picks a location.
+- A compact phone layout with search initially collapsed, a touch-draggable sheet, and the scheduled-service card directly above the bottom search pill. Pull the handle down to dismiss, drag the pill up to open, or use the accessible buttons. Normal explanatory notes are hidden on phones; errors and source details remain available.
+- Street/footpath walking directions, a top-left **Leave by** time (walking duration plus a two-minute boarding allowance), and a route-coloured pulse on the incoming service's remaining path to your boarding stop. Arrival countdowns use the timetable arrival rather than a later departure after dwell.
+- Public-phone toggle above the zoom controls, using the official Telstra location register cached on your server. The inspected register has **783 Perth-area sites containing 870 payphones**; a marker may represent multiple phones.
 - Official static GTFS import into SQLite, with calendar exceptions, after-midnight services and route shapes.
 - Persistent server and browser route caches: geometry redraws locally when panning; public vehicle positions refresh independently.
 - A protected root-level `loader.php` for cPanel setup, timetable refresh and GitHub updates with backups.
@@ -18,6 +20,12 @@ A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and 
 **Honest movement:** the app does not have an actual vehicle GPS feed. After importing GTFS, positions are interpolated between scheduled stops along route shapes. Delays, cancellations, capacity and early/late running are unknown. Before import, the app explicitly shows an illustrative **DEMO** network with invented times; those journeys must not be used for travel. Phone GPS identifies the user, not the buses.
 
 Marker animation follows bounded 15-second timetable predictions along the road/rail geometry, including turns and station dwell. It stops at the end of its prediction window rather than inventing movement while disconnected. Direction arrows rotate independently of upright route labels; reduced-motion settings are respected. Consented GPS updates remain separate from the planned starting point so tracking does not clear the journey.
+
+The phone may initially supply a coarse Wi-Fi/network location, then refine it from GPS. The app now keeps listening with high accuracy and zero cached-fix age even before planning, without resetting an active journey. Device accuracy still depends on permission, signal and hardware. A new explicit search uses the latest accepted phone position.
+
+Walking geometry comes from a dedicated pedestrian routing service, not straight-line displacements. Actual walking durations are fed back into planning: a bus or transfer that cannot be reached is removed or replanned. Unchecked pedestrian links never receive a made-up leave deadline. Small unmapped endpoint access connections (up to 50 m) remain separately identified, and accessible routing is not guaranteed. Personal GPS/address walking paths stay request-local; only public stop-to-stop links may be cached persistently. See [docs/walking.md](docs/walking.md).
+
+The public-phone overlay uses Telstra's published register coordinates and addresses, not bulk geocoding or guessed markers. It shows registered locations rather than live working/availability status and does not claim to include other operators. Source date, unit count, address and attribution are available from the markers/About. See [docs/payphones.md](docs/payphones.md).
 
 ## Map speed and route storage
 
@@ -70,9 +78,12 @@ php loader.php --check
 php -d memory_limit=512M loader.php --install
 php -d memory_limit=512M loader.php --update
 php -d memory_limit=512M loader.php --refresh
+php -d memory_limit=512M loader.php --refresh-phones
 ```
 
 `--install` and `--update` download the application and loader, prepare storage, import timetables and validate readiness. `--refresh` retries only the timetable. Commands print structured results and exit nonzero when setup is incomplete. `--help` lists the commands.
+
+Setup also warms the optional public-phone cache. Its failure does not discard a valid timetable or prevent using the map; use `--refresh-phones` or the authenticated loader button to retry the download independently.
 
 To obtain the initial key for the browser console from your own terminal, use `php loader.php --show-setup-token`. This command never serves the key over HTTP and refuses to reveal a key after maintenance has been initialized. If you are already inside the generated `var` folder, `cat setup-token.php` lets you read the initial `setup_token` value directly. This guarded file stores data; do not try to execute it or visit its URL. Keep your key private.
 
@@ -95,6 +106,10 @@ php tests/geo.php
 php tests/timetable.php
 php tests/route_cache.php
 php tests/motion.php
+php tests/approach.php
+php tests/walking.php
+php tests/street_journeys.php
+php tests/payphones.php
 php tests/loader_install.php
 PHP_BINARY=php python3 tests/loader_http.py
 PHP_BINARY=php python3 tests/loader_cli.py
@@ -106,6 +121,8 @@ Tests create isolated temporary data and never replace the installed timetable. 
 
 The optional `node tests/browser-ui.mjs` suite uses Playwright and a running local app with an imported timetable. It exercises mobile dismissal, in-app timetables, route caching, follow/fit and the mascot. Install Playwright separately in a development environment if it is not already available. Browser map-tile rendering in this cloud can be blocked by proxy certificate trust; do not disable TLS verification to work around it.
 
+The latest targeted phone suite is `node tests/browser-mobile-v4.mjs`. It uses actual application/timetable/pedestrian/phone data and synthetic browser GPS only for controlled location-refinement assertions. `CORE_ONLY=1` runs independent controls/GPS checks; `SKIP_PHONES=1` checks other features if the location provider is unavailable. Only the full default run validates the real phone overlay.
+
 ## Sources and network access
 
 - Official schedule: <https://www.transperth.wa.gov.au/TimetablePDFs/GoogleTransit/Production/google_transit.zip>
@@ -113,12 +130,14 @@ The optional `node tests/browser-ui.mjs` suite uses Playwright and a running loc
 - Map tiles and attribution: OpenStreetMap contributors, <https://tile.openstreetmap.org>. Follow the OSM tile usage policy; use a suitable tile provider for substantial traffic. There is no bulk downloading or offline prefetch.
 - Address suggestions: Photon / OpenStreetMap, <https://photon.komoot.io>. Results are limited to the Perth region, cached on the server and debounced in the browser. The public service has no SLA; for production traffic, configure a supported hosted/self-hosted provider in `src/Geocoder.php`. Typed searches go to Photon; GPS/map-click coordinates go to this app's server for planning.
 - Leaflet 1.9.4 is vendored locally under `assets/vendor/leaflet`, with upstream licence and verified upstream SRI checksums. No runtime CDN is required for the map library.
+- Pedestrian routing: <https://routing.openstreetmap.de>, the dedicated FOSSGIS `routed-foot` backend. The `/driving/` URL token is OSRM's standard token; it does not turn this dedicated pedestrian backend into car routing. Requests use the selected coordinates; no API key is required. Public infrastructure has no uptime guarantee.
+- Payphones: <https://www.telstra.com.au/content/dam/tcom/personal/consumer-advice/payphones/payphone_register.xlsx>, explicitly linked from Telstra's public payphone advice page. The inspected workbook is dated 11 October 2026. Fetches are bounded, cached for seven days and use no API key or additional PHP XML extension.
 - Updates: <https://codeload.github.com/efrgdgr0024345/map/zip/refs/heads/main>.
 
-Backend outbound HTTPS requires `www.transperth.wa.gov.au`, `photon.komoot.io` and `codeload.github.com`. Browsers need `tile.openstreetmap.org`. No Transperth account, ticket purchasing, user accounts, location history or actual realtime feed is implemented.
+Backend outbound HTTPS requires `www.transperth.wa.gov.au`, `photon.komoot.io`, `routing.openstreetmap.de`, `www.telstra.com.au` and `codeload.github.com`. Browsers need `tile.openstreetmap.org`. No Transperth account, ticket purchasing, user accounts, location history or actual realtime feed is implemented. Historical Overpass experiments are not the production phone-data source.
 
 ## First-version boundaries
 
-The planner searches departures in the next three hours with up to four vehicle boardings, 1.5 km endpoint walks and 250 m walking transfers, allowing two minutes for changes. It compares earliest arrival, including waits and walking, and can try an alternative that skips the first selected vehicle. It is not a complete production transit routing engine: walking links use straight lines with an estimated distance factor and do not know footpaths, accessibility, station entrances or barriers. Journeys should be checked against official information before travel.
+The planner searches departures in the next three hours with up to four vehicle boardings, stops within a 1.5 km endpoint radius and transfers within a 250 m radius. It verifies chosen pedestrian paths and replans with their actual estimated durations, allowing two minutes before boarding after a walk. It can try an alternative that skips the first selected vehicle. Verification is bounded to three planning rounds, eight distinct walking lookups and a 15-second budget; only verified feasible candidates are offered. This is not a complete production routing engine or an accessibility guarantee. Journeys should be checked against official information before travel.
 
 Vehicle positions and active service days use `Australia/Perth`, including GTFS times beyond `24:00:00`. An expired feed is refused for current routing/movement. Untimed GTFS stops currently require interpolation before import; unsupported files fail clearly instead of silently generating bad positions. Display responses are capped for map performance. Actual vehicle GPS, delay-aware rerouting, accessible routing and stop alerts are useful next additions once suitable data is available.

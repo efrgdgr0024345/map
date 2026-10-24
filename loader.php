@@ -214,7 +214,7 @@ function pm_application_manifest(): array
 {
     return ['loader.php', 'index.php', 'bootstrap.php', 'api.php', '.htaccess',
         'src/.htaccess', 'scripts/.htaccess',
-        'src/GtfsImporter.php', 'src/Transit.php', 'src/Demo.php', 'src/Geo.php', 'src/Geocoder.php', 'src/NetworkStyle.php', 'src/RouteCache.php', 'src/VehicleMotion.php', 'scripts/import-gtfs.php', 'scripts/build-route-cache.php',
+        'src/GtfsImporter.php', 'src/Transit.php', 'src/Demo.php', 'src/Geo.php', 'src/Geocoder.php', 'src/NetworkStyle.php', 'src/RouteCache.php', 'src/VehicleMotion.php', 'src/WalkingRouter.php', 'src/StreetJourneys.php', 'src/Payphones.php', 'scripts/import-gtfs.php', 'scripts/build-route-cache.php',
         'assets/app.js', 'assets/style.css', 'assets/black-cat.svg', 'assets/mascot-head.webp',
         'assets/vendor/leaflet/leaflet.js', 'assets/vendor/leaflet/leaflet.css', 'assets/vendor/leaflet/LICENSE'];
 }
@@ -489,6 +489,14 @@ function pm_run_setup(bool $downloadApplication = true): array
             throw new RuntimeException($result['readiness']['message']);
         }
         $result['steps'][] = ['step' => 'Verify application readiness', 'status' => 'passed', 'message' => $result['readiness']['message']];
+        try {
+            $phones=pm_phone_cache(false);
+            $result['steps'][]=['step'=>'Cache public telephone locations (optional)','status'=>'passed','optional'=>true,
+                'message'=>$phones['locations'].' mapped locations saved from '.$phones['source'].'.'];
+        } catch (Throwable $phoneError) {
+            $result['steps'][]=['step'=>'Cache public telephone locations (optional)','status'=>'unavailable','optional'=>true,
+                'message'=>'The map and timetable are ready. Public telephone locations can be retried with --refresh-phones.'];
+        }
         $result['complete'] = true;
         $result['finishedAt'] = gmdate(DATE_ATOM);
         $save();
@@ -512,6 +520,17 @@ function pm_run_setup(bool $downloadApplication = true): array
     return $result;
 }
 
+function pm_phone_cache(bool $force=true): array
+{
+    if (!is_file(PM_LOADER_ROOT.'/bootstrap.php') || !is_file(PM_LOADER_ROOT.'/src/Payphones.php')) {
+        throw new RuntimeException('Install or update the application before refreshing public telephone locations.');
+    }
+    require_once PM_LOADER_ROOT.'/bootstrap.php';
+    $data=$force ? \App\Payphones::refresh() : \App\Payphones::inBounds(\App\Payphones::COVERAGE);
+    if (empty($data['updatedAt'])) { throw new RuntimeException('Public telephone locations could not be downloaded; retry later.'); }
+    return ['complete'=>true,'locations'=>count($data['phones'] ?? []),'source'=>$data['source'] ?? 'Published telephone data','updatedAt'=>$data['updatedAt']];
+}
+
 function pm_cli_usage(): string
 {
     return <<<'USAGE'
@@ -526,6 +545,7 @@ Usage: php loader.php <command>
   --install           Download the app and loader, then import and verify the timetable.
   --update            Back up and update the app and loader, then refresh the timetable.
   --refresh           Import and verify the timetable without downloading application files.
+  --refresh-phones    Download and cache published public telephone locations.
 
 Install, update and refresh print a JSON result. Exit status is 0 only when
 setup completes, 1 on a failed check/setup, or 2 for an invalid command.
@@ -542,7 +562,7 @@ function pm_cli(array $arguments): int
         fwrite(STDOUT, pm_cli_usage() . PHP_EOL);
         return 0;
     }
-    if (count($arguments) !== 1 || !in_array($arguments[0], ['--check', '--show-setup-token', '--install', '--update', '--refresh'], true)) {
+    if (count($arguments) !== 1 || !in_array($arguments[0], ['--check', '--show-setup-token', '--install', '--update', '--refresh', '--refresh-phones'], true)) {
         fwrite(STDERR, "Unknown or combined commands. Choose exactly one command.\n\n" . pm_cli_usage() . PHP_EOL);
         return 2;
     }
@@ -587,7 +607,7 @@ function pm_cli(array $arguments): int
         pm_prepare_private();
         $lock = pm_lock();
         try {
-            $result = pm_run_setup($command !== '--refresh');
+            $result = $command==='--refresh-phones' ? pm_phone_cache(true) : pm_run_setup($command !== '--refresh');
         } finally {
             flock($lock, LOCK_UN);
             fclose($lock);
@@ -694,6 +714,14 @@ try {
                     flock($lock, LOCK_UN);
                     fclose($lock);
                 }
+            } elseif ($action === 'phones') {
+                $lock=pm_lock();
+                try {
+                    $phones=pm_phone_cache(true);
+                    $notice='Public telephone locations refreshed: '.$phones['locations'].' locations from '.$phones['source'].'.';
+                } finally {
+                    flock($lock,LOCK_UN); fclose($lock);
+                }
             } elseif ($action === 'prepare') {
                 pm_prepare_private();
                 $notice = 'Private storage is prepared. Choose Install & set up to download the application and prepare its timetable automatically.';
@@ -783,6 +811,7 @@ $csrf = pm_escape($_SESSION['csrf']);
 php loader.php --refresh</pre><p class="note">Return here afterwards; readiness is checked against the actual database, not the presence of application files.</p></details>
 </section>
 <?php endif; ?>
+<?php if ($installed): ?><section class="card"><h2>Public telephone locations</h2><p class="note">The optional phone layer uses a published location register. Refresh its server cache here if the map reports unavailable data.</p><form method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="phones"><button type="submit">Refresh public phone locations</button></form></section><?php endif; ?>
 <section class="card"><details><summary>Maintenance key & storage</summary><p class="note">Keep <code>var</code> private and writable by your PHP user. Do not grant world-write permissions. Download a backup through cPanel File Manager before clearing old backups. Authenticated access expires after one hour of inactivity.</p>
 <?php if (!$environmentKey): ?><form method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="rotate"><label for="new-key">New maintenance key · at least 20 characters</label><input id="new-key" type="password" name="new_key" required minlength="20" maxlength="512" autocomplete="new-password"><div class="row"><button class="quiet" type="submit">Change key</button></div></form><?php else: ?><p class="note">Change your key through the <code>PERTH_MAP_SETUP_TOKEN</code> hosting setting.</p><?php endif; ?>
 </details><div class="divider"></div><form method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="logout"><button type="submit" class="quiet">Lock maintenance</button></form></section>

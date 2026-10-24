@@ -143,6 +143,28 @@ final class Demo
         return $result;
     }
 
+    public function approach(string $tripId,string $stopId,?int $now=null,?string $serviceDate=null,?string $boardingAt=null): array
+    {
+        $now ??= time(); $table=$this->timetable('',$tripId,$now,$serviceDate); $stops=$table['stops'];
+        $target=array_search($stopId,array_column($stops,'id'),true);
+        if ($target===false) { throw new \InvalidArgumentException('Choose a boarding stop on this demo service.'); }
+        $line=null;
+        foreach ($this->lines as $candidate) { if ($candidate['routeId']===$table['trip']['routeId']) { $line=$candidate; break; } }
+        $arrival=strtotime($stops[$target]['arrival']); $departure=strtotime($stops[$target]['departure']);
+        $start=strtotime($stops[0]['departure']); $at=max(0,min(count($stops)-1,($now-$start)/150));
+        $index=min(count($stops)-2,(int)floor($at));
+        $segment=array_slice($line['geometry'],$index,2); $fraction=$at-$index;
+        $position=Geo::position($segment,$fraction);
+        $phase=$now>$departure ? 'departed' : ($now>=$arrival ? 'at-stop' : ($now<$start ? 'not-started' : 'approaching'));
+        $geometry=[];
+        if ($index<$target && in_array($phase,['approaching','not-started'],true)) {
+            $geometry=array_merge(Geo::tail($segment,$fraction),array_slice($line['geometry'],$index+2,max(0,$target-$index-1)));
+        } elseif ($phase==='at-stop') { $geometry=[[$stops[$target]['lat'],$stops[$target]['lon']]]; }
+        return $table['trip']+['tripId'=>$tripId,'stop'=>$stops[$target],'geometry'=>$geometry,'position'=>$position,
+            'arrival'=>$stops[$target]['arrival'],'departure'=>$stops[$target]['departure'],'secondsToStop'=>max(0,$arrival-$now),
+            'phase'=>$phase,'upcoming'=>$now<$start,'estimated'=>true,'generatedAt'=>date(DATE_ATOM,$now),'message'=>self::MESSAGE];
+    }
+
     public static function walk(array $a,array $b,int $dep,int $arr): array
     {
         return ['mode'=>'walk','from'=>$a,'to'=>$b,'departure'=>date(DATE_ATOM,$dep),'arrival'=>date(DATE_ATOM,$arr),'geometry'=>[[$a['lat'],$a['lon']],[$b['lat'],$b['lon']]],'estimated'=>true];

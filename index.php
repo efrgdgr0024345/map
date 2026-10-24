@@ -33,7 +33,7 @@ function assetUrl(string $path): string
   <button type="button" id="open-panel" class="panel-launcher" aria-controls="journey-panel" aria-expanded="false"><span class="launcher-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5"/></svg></span><span class="launcher-copy"><strong id="launcher-title">Where are you heading?</strong><span id="launcher-detail">Search, choose a stop, or plan a journey</span></span><svg class="launcher-chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 15 6-6 6 6"/></svg></button>
 
   <main class="journey-panel" id="journey-panel" aria-label="Plan your journey" tabindex="-1">
-    <div class="panel-handle" aria-hidden="true"></div>
+    <button type="button" id="sheet-handle" class="panel-handle" aria-label="Drag down or tap to hide journey panel" aria-controls="journey-panel"><span aria-hidden="true"></span></button>
     <button type="button" id="close-panel" class="panel-close" aria-label="Hide journey panel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button>
     <div class="panel-intro">
       <div class="eyebrow">A BETTER WAY TO GET THERE</div>
@@ -41,7 +41,7 @@ function assetUrl(string $path): string
       <p>Find your next ride. See what’s coming.</p>
     </div>
 
-    <div class="data-banner" id="data-banner" role="status"><span class="status-dot"></span><span id="data-banner-text">Connecting to the network…</span></div>
+    <div class="data-banner" id="data-banner" role="status"><span class="status-dot"></span><span id="data-banner-text">Connecting to the network…</span><span id="compact-schedule-status" class="compact-schedule-status">Scheduled</span></div>
 
     <form id="journey-form" autocomplete="off">
       <div class="location-fields">
@@ -76,18 +76,20 @@ function assetUrl(string $path): string
       <button type="button" id="network-toggle" class="network-toggle" aria-pressed="false"><span class="toggle-track"><span></span></span><span>Show the whole network</span></button>
     </div>
 
-    <div class="panel-footer"><span class="small-map-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></svg></span><span>Open maps. A clearer way forward.</span><p class="timetable-attribution"><span class="data-source-label">Data source</span>Timetable data available free of charge from <a href="https://www.transperth.wa.gov.au/About/Spatial-Data-Access" target="_blank" rel="noopener" aria-label="Transperth timetable data source website">www.transperth.wa.gov.au</a></p></div>
+    <div class="panel-footer"><details class="about-details"><summary>About &amp; data sources</summary><p class="timetable-attribution"><span class="data-source-label">Data source</span>Timetable data available free of charge from <a href="https://www.transperth.wa.gov.au/About/Spatial-Data-Access" target="_blank" rel="noopener" aria-label="Transperth timetable data source website">www.transperth.wa.gov.au</a></p><p class="about-note">Vehicle positions follow the timetable, rather than live GPS.</p><p id="phone-source-note" class="about-note">Mapped phone locations show their published source. Coverage and current availability can vary.</p></details></div>
   </main>
 
   <div class="map-hint" id="map-hint" hidden><span id="map-hint-text">Tap the map to choose your destination</span><button type="button" id="cancel-map-pick" aria-label="Cancel map selection">×</button></div>
   <div class="map-warning" id="map-warning" role="status" hidden>Map tiles couldn’t load. Check your connection; you can still search and plan a route.</div>
+  <aside id="leave-widget" class="leave-widget" aria-label="When to leave" hidden><span class="leave-label">SCHEDULED</span><strong id="leave-title">Leave by —</strong><span id="leave-countdown" aria-live="off"></span><span id="boarding-eta" class="boarding-eta" hidden></span></aside>
+  <div id="map-toast" class="map-toast" role="status" hidden></div>
 
   <aside class="network-card" aria-label="Network activity">
     <div class="network-pulse" aria-hidden="true"><span></span></div>
     <div><strong id="network-count">Finding services…</strong><span id="network-detail">In this map area</span></div>
     <span class="estimate-label" id="estimate-label">TIMETABLE</span>
   </aside>
-  <div class="map-controls"><button type="button" id="map-locate" title="Show my location" aria-label="Show my location"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button><button type="button" id="map-zoom-in" aria-label="Zoom in">+</button><button type="button" id="map-zoom-out" aria-label="Zoom out">−</button></div>
+  <div class="map-controls"><button type="button" id="map-locate" title="Show my location" aria-label="Show my location"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button><button type="button" id="map-phones" aria-label="Show public phones" title="Mapped payphone locations" aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 3 3 5-3 3c1 3 2 4 5 5l3-3 5 3-2 5C10 22 2 14 3 5l5-2Z"/></svg><span id="phone-count" class="phone-count" hidden></span></button><button type="button" id="map-zoom-in" aria-label="Zoom in">+</button><button type="button" id="map-zoom-out" aria-label="Zoom out">−</button><span id="gps-status" class="gps-status" role="status" hidden></span></div>
   <button type="button" id="follow-journey" class="follow-control" aria-pressed="true" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 11 16-7-7 16-2-7-7-2Z"/></svg><span>Following journey</span></button>
   <div class="map-legend"><span><i class="legend-next"></i>Your next ride</span><span><i class="legend-other"></i>Other services</span><span class="legend-note" id="legend-note">Positions estimated from timetable</span><span class="route-cache-status" id="route-cache-status" role="status">Loading network lines…</span></div>
   <dialog id="timetable-dialog" class="timetable-dialog" aria-labelledby="timetable-title">

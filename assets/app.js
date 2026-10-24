@@ -38,7 +38,10 @@
     renderedNetworkKey: '', fallbackLines: [], routesEpoch: 0, routeStored: false, routeRetryTimer: null, routeRetryCount: 0,
     followJourney: true, programmaticView: false, lastFollowFit: null, viewTimer: null,
     userLocation: null, locationConsent: false, locationWatch: null, gpsMarker: null, accuracyCircle: null,
-    zooming: false, fitAfterZoom: false
+    zooming: false, fitAfterZoom: false, locationRetryTimer: null, locationRetryCount: 0,
+    phonesEnabled: false, phoneLayers: null, phones: [], phoneMetadata: null, phonesController: null, phoneRequest: 0, phonesMoveTimer: null,
+    approachLayers: null, approachRenderer: null, approachController: null, approachKey: '', approachData: null,
+    approachRequestedAt: 0, toastTimer: null, suppressSheetClickUntil: 0
   };
   const perthTime = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Perth', hour: 'numeric', minute: '2-digit', hour12: true });
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -48,6 +51,27 @@
     $('message').textContent = text || '';
     $('message').classList.toggle('is-error', error);
     $('message').hidden = !text;
+    if (text && error && isMobile() && !state.panelOpen) mapToast(text, true);
+  }
+
+  function mapToast(text, error = false, action) {
+    clearTimeout(state.toastTimer);
+    const toast = $('map-toast');
+    toast.replaceChildren(make('span', '', text));
+    toast.classList.toggle('is-error', error);
+    if (action) {
+      const button = make('button', 'toast-action', action.label || 'Retry');
+      button.type = 'button';
+      button.addEventListener('click', action.run);
+      toast.append(button);
+    }
+    const close = make('button', 'toast-close', '×');
+    close.type = 'button';
+    close.setAttribute('aria-label', 'Dismiss message');
+    close.addEventListener('click', () => { toast.hidden = true; });
+    toast.append(close);
+    toast.hidden = false;
+    if (!error) state.toastTimer = setTimeout(() => { toast.hidden = true; }, 3500);
   }
 
   function timeValue(value) {
@@ -97,10 +121,10 @@
       const next = nextLeg();
       const duration = Number(state.selected.duration) || (timeValue(state.selected.arrival) - timeValue(state.selected.departure)) / 1000;
       $('launcher-title').textContent = next ? `${next.routeName} · your next ${next.mode}` : 'Your walking journey';
-      $('launcher-detail').textContent = `${minutes(duration)} min · view route and timetable`;
+      $('launcher-detail').textContent = `${minutes(duration)} min · Route & timetable`;
     } else {
       $('launcher-title').textContent = state.destination ? state.destination.name : 'Where are you heading?';
-      $('launcher-detail').textContent = state.destination ? 'Destination set · tap to find your next ride' : 'Search, choose a stop, or plan a journey';
+      $('launcher-detail').textContent = state.destination ? 'Find a ride' : '';
     }
   }
 
@@ -367,7 +391,8 @@
       const demo = status.mode === 'demo';
       $('data-banner').classList.toggle('is-demo', demo);
       $('data-banner-text').textContent = demo ? 'Demo network · illustrative journeys and vehicles' : 'Timetable estimates · vehicle locations are not live GPS';
-      $('estimate-label').textContent = demo ? 'DEMO' : 'TIMETABLE';
+      $('compact-schedule-status').textContent = demo ? 'Demo · illustrative' : 'Scheduled';
+      $('estimate-label').textContent = demo ? 'DEMO' : 'SCHEDULED';
       $('legend-note').textContent = demo ? 'Illustrative demo positions' : 'Positions estimated from timetable';
       $('data-banner').title = status.message || '';
       if (status.routeRevision && state.routeCatalog && String(status.routeRevision) !== state.routeRevision) refreshRouteCatalog();
@@ -422,30 +447,65 @@
   }
 
   function updateUserLocation(position) {
-    const point = { lat: position.coords.latitude, lon: position.coords.longitude, accuracy: position.coords.accuracy, timestamp: position.timestamp };
+    const accuracy = Number(position.coords.accuracy);
+    const point = { lat: Number(position.coords.latitude), lon: Number(position.coords.longitude), accuracy: Number.isFinite(accuracy) && accuracy > 0 ? accuracy : null, timestamp: Number(position.timestamp) || Date.now() };
+    if (!Number.isFinite(point.lat) || !Number.isFinite(point.lon)) return false;
+    const previous = state.userLocation;
+    if (previous && point.timestamp < previous.timestamp) return false;
+    if (previous && point.timestamp === previous.timestamp && point.accuracy !== null && previous.accuracy !== null && point.accuracy >= previous.accuracy && map.distance([previous.lat, previous.lon], [point.lat, point.lon]) < point.accuracy) return false;
     state.userLocation = point;
+    clearTimeout(state.locationRetryTimer);
+    state.locationRetryTimer = null;
+    state.locationRetryCount = 0;
+    $('gps-status').hidden = false;
+    $('gps-status').textContent = point.accuracy === null ? 'GPS' : `±${Math.round(point.accuracy)} m`;
+    $('gps-status').classList.toggle('is-coarse', point.accuracy !== null && point.accuracy > 100);
+    $('map-locate').title = point.accuracy === null ? 'Phone GPS location' : `Phone GPS · accuracy about ${Math.round(point.accuracy)} metres`;
     const latlng = [point.lat, point.lon];
     if (!state.gpsMarker) {
-      state.gpsMarker = L.marker(latlng, { icon: L.divIcon({ className: 'gps-marker', iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 1500, bubblingMouseEvents: false, title: 'Your phone location' }).addTo(map);
+      state.gpsMarker = L.marker(latlng, { icon: L.divIcon({ className: 'gps-marker', iconSize: [18, 18], iconAnchor: [9, 9] }), zIndexOffset: 5000, bubblingMouseEvents: false, title: 'Your phone location' }).addTo(map);
       state.gpsMarker.bindPopup(make('div', 'gps-popup', 'Your phone location'));
     } else state.gpsMarker.setLatLng(latlng);
     if (state.accuracyCircle) map.removeLayer(state.accuracyCircle);
-    if (Number.isFinite(point.accuracy) && point.accuracy < 2000) state.accuracyCircle = L.circle(latlng, { radius: point.accuracy, color: '#4689d0', weight: 1, opacity: .2, fillOpacity: .05, interactive: false }).addTo(map);
-    state.gpsMarker.setPopupContent(make('div', 'gps-popup', `Your phone location · accuracy about ${Math.round(point.accuracy)} m`));
+    if (point.accuracy !== null && point.accuracy < 2000) state.accuracyCircle = L.circle(latlng, { radius: point.accuracy, color: '#4689d0', weight: 1, opacity: .2, fillOpacity: .05, interactive: false }).addTo(map);
+    state.gpsMarker.setPopupContent(make('div', 'gps-popup', point.accuracy === null ? 'Your phone location' : `GPS accuracy about ${Math.round(point.accuracy)} m`));
+    if (!state.selected && state.origin && state.origin.name === 'Your location') {
+      state.origin = { ...state.origin, lat: point.lat, lon: point.lon };
+      if (state.placeMarkers.origin) state.placeMarkers.origin.setLatLng(latlng);
+    }
     if (state.selected && state.followJourney) fitJourneyBounds(state.selected, false);
+    return true;
   }
 
   function stopLocationWatch() {
     if (state.locationWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(state.locationWatch);
     state.locationWatch = null;
+    clearTimeout(state.locationRetryTimer);
+    state.locationRetryTimer = null;
+  }
+
+  function handleLocationError(error) {
+    $('gps-status').hidden = false;
+    if (error.code === 1) {
+      state.locationConsent = false;
+      stopLocationWatch();
+      $('gps-status').textContent = 'GPS blocked';
+      mapToast('Location is blocked. Enable it in your browser.', true, { label: 'Retry', run: locate });
+      return;
+    }
+    $('gps-status').textContent = 'Finding GPS…';
+    if (state.locationConsent && !document.hidden && !state.locationRetryTimer) {
+      const delay = Math.min(30000, 3000 * (2 ** state.locationRetryCount++));
+      state.locationRetryTimer = setTimeout(() => {
+        state.locationRetryTimer = null;
+        if (state.locationConsent && !document.hidden) navigator.geolocation.getCurrentPosition(updateUserLocation, handleLocationError, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+      }, delay);
+    }
   }
 
   function startLocationWatch() {
-    if (!state.locationConsent || !state.selected || document.hidden || state.locationWatch !== null || !navigator.geolocation) return;
-    state.locationWatch = navigator.geolocation.watchPosition(updateUserLocation, error => {
-      if (error.code === 1) { state.locationConsent = false; stopLocationWatch(); }
-      // A watch remains useful after a temporary timeout or unavailable GPS fix.
-    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 5000 });
+    if (!state.locationConsent || document.hidden || state.locationWatch !== null || !navigator.geolocation) return;
+    state.locationWatch = navigator.geolocation.watchPosition(updateUserLocation, handleLocationError, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
   }
 
   function setFollow(enabled) {
@@ -466,26 +526,287 @@
       return;
     }
     $('use-location').disabled = true;
-    message('Finding your location…');
+    $('gps-status').hidden = false;
+    $('gps-status').textContent = 'Finding GPS…';
     navigator.geolocation.getCurrentPosition(position => {
       $('use-location').disabled = false;
-      const { latitude: lat, longitude: lon } = position.coords;
-      if (lat < -33.6 || lat > -30.6 || lon < 114.8 || lon > 117.2) {
-        message('Your location is outside the Perth service area. Choose a Perth starting point to plan a journey.', true);
-        return;
-      }
       state.locationConsent = true;
       updateUserLocation(position);
-      if (state.selected) { startLocationWatch(); setFollow(true); }
+      if (!state.userLocation) { handleLocationError({ code: 2 }); return; }
+      const { lat, lon } = state.userLocation;
+      if (state.selected) setFollow(true);
       else {
         setPlace('origin', { lat, lon, name: 'Your location' }, true);
         map.setZoom(15);
-        message(state.destination ? 'Starting from your location. Find your next ride below.' : 'Starting from your location. Where would you like to go?');
       }
+      startLocationWatch();
     }, error => {
       $('use-location').disabled = false;
-      message(error.code === 1 ? 'Location permission was declined. Search for an address or choose your starting point on the map.' : 'Could not get your location. Search for an address or choose your starting point on the map.', true);
-    }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 30000 });
+      if (error.code !== 1) { state.locationConsent = true; startLocationWatch(); }
+      handleLocationError(error);
+    }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+  }
+
+  function phoneSourceLine(data) {
+    const attribution = String(data.attribution || data.source || 'Published payphone locations');
+    const line = make('small', 'phone-source', `${attribution}${data.stale ? ' · cached locations' : ''}`);
+    try {
+      const url = new URL(data.sourceUrl);
+      if (url.protocol === 'https:' && !url.username && !url.password) {
+        const link = make('a', '', 'Source register');
+        link.href = url.href;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        line.append(document.createTextNode(' · '), link);
+      }
+    } catch { /* Source text remains available when no valid HTTPS source link is supplied. */ }
+    return line;
+  }
+
+  function renderPhones() {
+    if (!state.phoneLayers) return;
+    state.phoneLayers.clearLayers();
+    if (!state.phonesEnabled || !state.phoneMetadata) return;
+    const zoom = map.getZoom();
+    const groups = new Map();
+    state.phones.forEach(phone => {
+      const point = map.project([phone.lat, phone.lon], zoom);
+      const key = zoom < 16 ? `${Math.floor(point.x / 60)}:${Math.floor(point.y / 60)}` : String(phone.id);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push({ phone, point });
+    });
+    groups.forEach(group => {
+      const clustered = zoom < 16 && group.length > 1;
+      const items = group.map(item => item.phone);
+      const siteCount = items.length;
+      const physicalCount = items.reduce((count, phone) => count + (Number.isInteger(Number(phone.phoneCount)) && Number(phone.phoneCount) > 0 ? Number(phone.phoneCount) : 0), 0);
+      const center = clustered ? map.unproject(L.point(group.reduce((sum, item) => sum + item.point.x, 0) / siteCount, group.reduce((sum, item) => sum + item.point.y, 0) / siteCount), zoom) : [items[0].lat, items[0].lon];
+      const symbol = make('div', `phone-marker-body${clustered ? ' phone-cluster-body' : ' phone-individual-body'}`);
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+      path.setAttribute('d', 'm8 3 3 5-3 3c1 3 2 4 5 5l3-3 5 3-2 5C10 22 2 14 3 5l5-2Z');
+      svg.append(path); symbol.append(svg);
+      if (clustered) symbol.append(make('span', 'phone-cluster-count', String(siteCount)));
+      const marker = L.marker(center, {
+        icon: L.divIcon({ html: symbol, className: clustered ? 'phone-cluster' : 'phone-marker', iconSize: clustered ? [36, 30] : [24, 24], iconAnchor: clustered ? [18, 15] : [12, 12] }),
+        zIndexOffset: 100, bubblingMouseEvents: false,
+        title: clustered ? `${siteCount} phone locations · zoom to view` : items[0].name || 'Public phone'
+      }).addTo(state.phoneLayers);
+      const element = marker.getElement();
+      if (element) {
+        element.dataset.locationCount = String(siteCount);
+        if (physicalCount) element.dataset.phoneCount = String(physicalCount);
+        if (clustered) element.setAttribute('aria-label', `${siteCount} phone locations${physicalCount ? `, ${physicalCount} phones` : ''}. Zoom to view.`);
+      }
+      if (clustered) {
+        marker.bindTooltip(make('span', '', `${siteCount} phone locations${physicalCount ? ` · ${physicalCount} phones` : ''}`));
+        marker.on('click', () => {
+          if (state.selected) setFollow(false);
+          if (isMobile()) setPanel(false);
+          const bounds = L.latLngBounds(items.map(phone => [phone.lat, phone.lon]));
+          map.fitBounds(bounds.pad(.15), { padding: [55, 155], maxZoom: 18, animate: !reducedMotion });
+        });
+      } else {
+        const phone = items[0];
+        const popup = make('div', 'phone-popup');
+        popup.append(make('strong', '', phone.name || 'Public phone'));
+        if (phone.operator) popup.append(make('span', '', phone.operator));
+        if (phone.address) popup.append(make('span', '', phone.address));
+        const quantity = Number(phone.phoneCount);
+        if (Number.isInteger(quantity) && quantity > 0) popup.append(make('span', 'phone-quantity', `${quantity} ${quantity === 1 ? 'phone' : 'phones'} at this location`));
+        popup.append(phoneSourceLine(state.phoneMetadata), make('small', '', 'Current availability not confirmed'));
+        marker.bindPopup(popup);
+      }
+    });
+  }
+
+  async function fetchPhones(announce = false) {
+    if (!state.phonesEnabled || !map) return;
+    if (state.phonesController) state.phonesController.abort();
+    state.phonesController = new AbortController();
+    const request = ++state.phoneRequest;
+    const bounds = map.getBounds();
+    try {
+      const data = await api('phones', { bbox: [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()].join(',') }, state.phonesController.signal);
+      if (!state.phonesEnabled || request !== state.phoneRequest) return;
+      if (data.updatedAt === null) {
+        state.phones = [];
+        state.phoneMetadata = null;
+        state.phoneLayers.clearLayers();
+        $('phone-count').hidden = true;
+        throw new Error('No confirmed public phone data is available.');
+      }
+      const phones = Array.isArray(data.phones) ? data.phones.filter(phone => Number.isFinite(Number(phone.lat)) && Number.isFinite(Number(phone.lon))) : [];
+      const source = String(data.source || 'Published payphone locations');
+      $('phone-source-note').replaceChildren(phoneSourceLine(data), make('span', '', ' Coverage and current availability can vary.'));
+      state.phones = phones;
+      state.phoneMetadata = data;
+      renderPhones();
+      $('phone-count').hidden = false;
+      $('phone-count').textContent = phones.length > 99 ? '99+' : String(phones.length);
+      $('map-phones').setAttribute('aria-label', `Hide public phones · ${phones.length} phone locations in this area`);
+      $('map-phones').title = `${phones.length} phone locations · ${data.stale ? 'cached ' : ''}${source}`;
+      const physicalPhones = Number(data.totalPhones);
+      const total = Number.isInteger(physicalPhones) && physicalPhones > 0 ? ` · ${physicalPhones} ${physicalPhones === 1 ? 'phone' : 'phones'}` : '';
+      if (announce) mapToast(phones.length ? `${phones.length} phone ${phones.length === 1 ? 'location' : 'locations'}${total}${data.stale ? ' · cached' : ''}` : data.stale ? 'No locations in the saved phone data for this area.' : 'No mapped phone locations in this area.');
+    } catch (error) {
+      if (error.name !== 'AbortError' && state.phonesEnabled) mapToast('Public phones couldn’t load.', true, { label: 'Retry', run: () => fetchPhones(true) });
+    }
+  }
+
+  function togglePhones() {
+    state.phonesEnabled = !state.phonesEnabled;
+    $('map-phones').setAttribute('aria-pressed', String(state.phonesEnabled));
+    if (state.phonesEnabled) fetchPhones(true);
+    else {
+      state.phoneRequest++;
+      if (state.phonesController) state.phonesController.abort();
+      state.phones = [];
+      state.phoneMetadata = null;
+      state.phoneLayers.clearLayers();
+      $('phone-count').hidden = true;
+      $('map-phones').setAttribute('aria-label', 'Show public phones');
+      $('map-toast').hidden = true;
+    }
+  }
+
+  function clearApproach() {
+    if (state.approachController) state.approachController.abort();
+    state.approachController = null;
+    state.approachKey = '';
+    state.approachData = null;
+    if (state.approachLayers) state.approachLayers.clearLayers();
+  }
+
+  function drawApproach(data, leg) {
+    state.approachLayers.clearLayers();
+    if (!Array.isArray(data.geometry) || data.geometry.length < 2 || timeValue(data.arrival) <= Date.now() || Number(data.secondsToStop) <= 0 || ['at-stop', 'departed'].includes(data.phase)) return;
+    const options = { renderer: state.approachRenderer, interactive: false, lineCap: 'round', lineJoin: 'round' };
+    L.polyline(data.geometry, { ...options, color: '#ffffff', weight: 9, opacity: .95 }).addTo(state.approachLayers);
+    L.polyline(data.geometry, { ...options, color: routeColor(data.routeColor ? data : leg), weight: 5, opacity: .28 }).addTo(state.approachLayers);
+    const waiting = data.phase ? data.phase === 'not-started' : Boolean(data.upcoming);
+    L.polyline(data.geometry, { ...options, color: routeColor(data.routeColor ? data : leg), weight: 5, opacity: waiting ? .6 : 1, dashArray: '5 13', className: waiting ? 'incoming-route-waiting' : 'incoming-route-pulse' }).addTo(state.approachLayers);
+  }
+
+  async function fetchApproach() {
+    const leg = nextLeg();
+    if (!leg || !leg.from || !leg.from.id || timeValue(leg.departure) <= Date.now()) { clearApproach(); return; }
+    const key = `${leg.tripId}:${leg.serviceDate || ''}:${leg.from.id}:${leg.departure || ''}`;
+    if (state.approachKey && state.approachKey !== key) clearApproach();
+    if (state.approachController || (state.approachKey === key && Date.now() - state.approachRequestedAt < 12000)) return;
+    state.approachKey = key;
+    state.approachRequestedAt = Date.now();
+    const controller = new AbortController();
+    state.approachController = controller;
+    try {
+      const data = await api('approach', { ...tripQuery(leg), stop: leg.from.id, boarding: leg.departure }, controller.signal);
+      if (controller.signal.aborted || state.approachKey !== key || !nextLeg() || String(nextLeg().tripId) !== String(leg.tripId)) return;
+      state.approachData = data;
+      drawApproach(data, leg);
+      updateBoardingCountdown();
+      if (state.followJourney && state.selected) fitJourneyBounds(state.selected, false);
+    } catch (error) {
+      if (error.name !== 'AbortError' && state.approachKey === key) { state.approachData = null; state.approachLayers.clearLayers(); }
+    } finally { if (state.approachController === controller) state.approachController = null; }
+  }
+
+  function boardingCountdown(leg) {
+    const arrival = state.approachData && String(state.approachData.tripId) === String(leg.tripId) ? timeValue(state.approachData.arrival) : timeValue(leg.departure);
+    const until = Math.ceil((arrival - Date.now()) / 60000);
+    if (!Number.isFinite(arrival)) return { value: '—', label: 'Scheduled' };
+    if (until > 0) return { value: String(until), label: 'min to board' };
+    return Date.now() < timeValue(leg.departure) ? { value: 'At stop', label: 'Scheduled' } : { value: 'On route', label: 'Scheduled' };
+  }
+
+  function updateBoardingCountdown() {
+    const leg = nextLeg();
+    const eta = $('boarding-eta');
+    eta.hidden = !leg;
+    if (leg) {
+      const counter = boardingCountdown(leg);
+      eta.textContent = counter.label === 'min to board' ? `${leg.mode === 'train' ? 'Train' : leg.mode === 'ferry' ? 'Ferry' : 'Bus'} arrives in ${counter.value} min` : counter.value;
+    }
+    const node = $('next-service').querySelector('.next-countdown');
+    if (!leg || !node) return;
+    const value = boardingCountdown(leg);
+    if (node.dataset.value === `${value.value}:${value.label}`) return;
+    node.replaceChildren(document.createTextNode(value.value), make('small', '', value.label));
+    node.dataset.value = `${value.value}:${value.label}`;
+  }
+
+  function updateLeaveWidget() {
+    const widget = $('leave-widget');
+    widget.hidden = !state.selected;
+    if (!state.selected) return;
+    const journey = state.selected;
+    const board = timeValue(journey.boardingAt || (transitLegs()[0] && transitLegs()[0].departure));
+    const departure = timeValue(journey.leaveAt);
+    const title = $('leave-title'), countdown = $('leave-countdown');
+    if (!transitLegs().length && journey.walkRouting === 'street') {
+      title.textContent = 'Walk to your destination';
+      countdown.textContent = `${minutes(journey.duration)} min walk`;
+      return;
+    }
+    if (journey.walkRouting === 'unavailable' || !Number.isFinite(departure)) {
+      title.textContent = journey.walkRouting === 'unavailable' ? 'Walking route unavailable' : 'Leave time unavailable';
+      countdown.textContent = 'Check your starting point';
+      return;
+    }
+    if (Number.isFinite(board) && Date.now() >= board) {
+      title.textContent = 'Scheduled departure passed';
+      countdown.textContent = 'Check your next service';
+      return;
+    }
+    const seconds = Math.ceil((departure - Date.now()) / 1000);
+    title.textContent = seconds > 0 ? `Leave by ${clock(journey.leaveAt)}` : 'Leave now';
+    countdown.textContent = seconds > 0 ? `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, '0')}s` : `Boards ${clock(journey.boardingAt || (transitLegs()[0] && transitLegs()[0].departure))}`;
+  }
+
+  function bindSheetGesture(element, opening) {
+    let gesture = null;
+    const reset = () => {
+      $('journey-panel').style.transform = '';
+      $('open-panel').style.opacity = '';
+      document.body.classList.remove('sheet-preview', 'sheet-dragging');
+    };
+    element.addEventListener('pointerdown', event => {
+      if (!isMobile() || (event.button !== undefined && event.button !== 0) || event.isPrimary === false) return;
+      // A fresh press is intentional; only the compatibility click from the drag is suppressed.
+      state.suppressSheetClickUntil = 0;
+      gesture = { id: event.pointerId, y: event.clientY, x: event.clientX, at: performance.now(), active: false };
+      if (element.setPointerCapture) element.setPointerCapture(event.pointerId);
+    });
+    element.addEventListener('pointermove', event => {
+      if (!gesture || event.pointerId !== gesture.id) return;
+      const dy = event.clientY - gesture.y, dx = event.clientX - gesture.x;
+      if (!gesture.active && Math.abs(dy) > 7 && Math.abs(dy) > Math.abs(dx) * 1.2 && (opening ? dy < 0 : dy > 0)) {
+        gesture.active = true;
+        document.body.classList.add('sheet-dragging');
+        if (opening) document.body.classList.add('sheet-preview');
+      }
+      if (!gesture.active) return;
+      if (event.cancelable) event.preventDefault();
+      if (opening) {
+        const height = $('journey-panel').getBoundingClientRect().height;
+        $('journey-panel').style.transform = `translateY(${Math.max(0, height + Math.min(0, dy) - (window.innerHeight - gesture.y))}px)`;
+        $('open-panel').style.opacity = String(Math.max(.1, 1 + dy / 160));
+      } else $('journey-panel').style.transform = `translateY(${Math.max(0, dy)}px)`;
+    });
+    const finish = (event, cancelled = false) => {
+      if (!gesture || event.pointerId !== gesture.id) return;
+      const dy = event.clientY - gesture.y;
+      const distance = opening ? -dy : dy;
+      const speed = distance / Math.max(1, performance.now() - gesture.at);
+      const commit = !cancelled && gesture.active && (distance >= 48 || (distance >= 22 && speed >= .5));
+      if (gesture.active) state.suppressSheetClickUntil = Date.now() + 350;
+      gesture = null;
+      reset();
+      if (commit) setPanel(opening, opening);
+      if (element.hasPointerCapture && element.hasPointerCapture(event.pointerId)) element.releasePointerCapture(event.pointerId);
+    };
+    element.addEventListener('pointerup', event => finish(event));
+    element.addEventListener('pointercancel', event => finish(event, true));
   }
 
   async function search(field, automatic = false) {
@@ -524,7 +845,7 @@
         });
         results.append(button);
       });
-      results.append(make('div', 'search-note', 'Address search by Photon · © OpenStreetMap contributors.'));
+      results.append(make('div', 'search-note search-attribution', 'Address search by Photon · © OpenStreetMap contributors.'));
     } catch (error) {
       if (error.name === 'AbortError') return;
       if (request !== state.searchNumber) return;
@@ -533,6 +854,10 @@
   }
 
   async function plan() {
+    if (state.origin && state.origin.name === 'Your location' && state.userLocation) {
+      state.origin = { ...state.origin, lat: state.userLocation.lat, lon: state.userLocation.lon };
+      if (state.placeMarkers.origin) state.placeMarkers.origin.setLatLng([state.origin.lat, state.origin.lon]);
+    }
     if (!state.origin) { await search('origin'); return; }
     if (!state.destination) {
       if ($('destination-input').value.trim()) await search('destination');
@@ -590,7 +915,9 @@
   }
 
   function selectJourney(journey) {
+    clearApproach();
     state.selected = journey;
+    document.body.classList.add('has-active-journey');
     state.followJourney = true;
     state.lastFollowFit = null;
     $('follow-journey').hidden = false;
@@ -604,6 +931,7 @@
     state.renderedNetworkKey = 'focused';
     $('map').dataset.networkLines = '0';
     (journey.legs || []).forEach(leg => {
+      if (leg.mode === 'walk' && journey.walkRouting === 'unavailable') return;
       const fallback = leg.from && leg.to ? [[leg.from.lat, leg.from.lon], [leg.to.lat, leg.to.lon]] : [];
       const geometry = Array.isArray(leg.geometry) && leg.geometry.length ? leg.geometry : fallback;
       if (geometry.length >= 2) {
@@ -615,10 +943,12 @@
     renderItinerary();
     updateNextService();
     updateLauncher();
+    updateLeaveWidget();
     state.needsJourneyFit = true;
     fitJourneyBounds(journey);
     startLocationWatch();
     fetchVehicles();
+    fetchApproach();
   }
 
   function remainingGeometry(geometry, point) {
@@ -651,6 +981,7 @@
       }
       geometry.forEach(point => bounds.extend(point));
     });
+    if (state.approachData && timeValue(state.approachData.arrival) > now && Array.isArray(state.approachData.geometry)) state.approachData.geometry.forEach(point => bounds.extend(point));
     if (vehicle) bounds.extend([vehicle.lat, vehicle.lon]);
     if (state.userLocation) bounds.extend([state.userLocation.lat, state.userLocation.lon]);
     if (state.destination) bounds.extend([state.destination.lat, state.destination.lon]);
@@ -658,9 +989,11 @@
       const mobile = isMobile();
       const panel = $('journey-panel').getBoundingClientRect();
       const launcher = $('open-panel').getBoundingClientRect();
+      const activity = document.querySelector('.network-card').getBoundingClientRect();
+      const leave = $('leave-widget').getBoundingClientRect();
       const size = map.getSize();
-      const topLeft = L.point(mobile ? 35 : panel.right + 24, mobile ? state.panelOpen ? 150 : 225 : 105);
-      const bottomRight = L.point(mobile ? 70 : 95, mobile ? state.panelOpen ? size.y - panel.top + 16 : size.y - launcher.top + 20 : 145);
+      const topLeft = L.point(mobile ? 35 : panel.right + 24, mobile ? state.panelOpen ? 150 : Math.max(150, leave.bottom + 70) : 105);
+      const bottomRight = L.point(mobile ? 70 : 95, mobile ? state.panelOpen ? size.y - panel.top + 16 : size.y - Math.min(launcher.top, activity.top || launcher.top) + 20 : 145);
       if (size.x - topLeft.x - bottomRight.x < 50 || size.y - topLeft.y - bottomRight.y < 35) return;
       const desiredZoom = Math.max(map.getMinZoom(), Math.min(16, map.getBoundsZoom(bounds, false, topLeft.add(bottomRight))));
       const previous = state.lastFollowFit;
@@ -695,8 +1028,9 @@
       modeIcon.setAttribute('aria-hidden', 'true');
       const info = make('div', 'leg-text');
       const duration = (timeValue(leg.arrival) - timeValue(leg.departure)) / 1000;
-      info.append(make('strong', '', walk ? `Walk to ${leg.to ? leg.to.name : 'your stop'}` : `${leg.mode === 'train' ? 'Train' : leg.mode === 'ferry' ? 'Ferry' : 'Bus'} ${leg.routeName || ''} · ${leg.headsign || (leg.to ? leg.to.name : '')}`));
-      info.append(make('span', '', walk ? `${minutes(duration)} min walk · approximate walking path` : `${leg.from ? leg.from.name : 'Board'} → ${leg.to ? leg.to.name : 'Alight'}`));
+      const unavailable = walk && state.selected.walkRouting === 'unavailable';
+      info.append(make('strong', '', unavailable ? 'Walking route unavailable' : walk ? `Walk to ${leg.to ? leg.to.name : 'your stop'}` : `${leg.mode === 'train' ? 'Train' : leg.mode === 'ferry' ? 'Ferry' : 'Bus'} ${leg.routeName || ''} · ${leg.headsign || (leg.to ? leg.to.name : '')}`));
+      info.append(make('span', '', unavailable ? 'Choose another starting point' : walk ? `${minutes(duration)} min walk${state.selected.walkRouting === 'street' ? '' : ' · approximate'}` : `${leg.from ? leg.from.name : 'Board'} → ${leg.to ? leg.to.name : 'Alight'}`));
       if (!walk && leg.tripId) info.append(timetableButton('View service timetable', tripQuery(leg), 'itinerary-timetable'));
       row.append(modeIcon, info, make('span', 'leg-time', clock(leg.departure)));
       container.append(row);
@@ -727,13 +1061,9 @@
     const main = make('div', 'next-main');
     const info = make('div', 'next-info');
     info.append(make('strong', '', leg.headsign || (leg.to ? leg.to.name : 'Your selected service')), make('span', '', leg.from ? leg.from.name : 'Your boarding stop'));
-    const departure = timeValue(leg.departure);
-    const until = Math.ceil((departure - Date.now()) / 60000);
-    let countdown = until > 0 ? String(until) : 'Now';
-    let suffix = until > 0 ? 'min to board' : 'scheduled en route';
-    if (!Number.isFinite(departure)) { countdown = '—'; suffix = 'check timetable'; }
-    const time = make('div', 'next-countdown', countdown);
-    time.append(make('small', '', suffix));
+    const countdown = boardingCountdown(leg);
+    const time = make('div', 'next-countdown', countdown.value);
+    time.append(make('small', '', countdown.label));
     const routeBadge = make('div', 'next-route', serviceLabel(leg));
     styleRoute(routeBadge, leg);
     routeBadge.title = leg.routeName || mode;
@@ -746,12 +1076,14 @@
   function clearJourney(showMessage = true) {
     state.planNumber++;
     state.selected = null;
+    document.body.classList.remove('has-active-journey');
+    clearApproach();
+    updateLeaveWidget();
     state.journeys = [];
     state.nextTrip = null;
     state.wholeNetwork = false;
     state.needsJourneyFit = false;
     state.lastFollowFit = null;
-    stopLocationWatch();
     $('follow-journey').hidden = true;
     if (journeyLayers) journeyLayers.clearLayers();
     $('journey-results').hidden = true;
@@ -867,12 +1199,12 @@
       const highlighted = Boolean(state.nextTrip && String(vehicle.tripId) === state.nextTrip);
       let marker = state.markers.get(id);
       if (!marker) {
-        marker = L.marker([vehicle.lat, vehicle.lon], { icon: vehicleIcon(vehicle, highlighted), zIndexOffset: highlighted ? 1000 : 300, bubblingMouseEvents: false }).addTo(map);
+        marker = L.marker([vehicle.lat, vehicle.lon], { icon: vehicleIcon(vehicle, highlighted), zIndexOffset: highlighted ? 4000 : 300, bubblingMouseEvents: false }).addTo(map);
         marker.bindPopup(servicePopup(vehicle, highlighted));
         state.markers.set(id, marker);
       } else {
         marker.setIcon(vehicleIcon(vehicle, highlighted));
-        marker.setZIndexOffset(highlighted ? 1000 : 300);
+        marker.setZIndexOffset(highlighted ? 4000 : 300);
         marker.setPopupContent(servicePopup(vehicle, highlighted));
       }
       moveMarker(marker, vehicle, data.generatedAt);
@@ -953,6 +1285,12 @@
     networkLayers = L.layerGroup().addTo(map);
     journeyLayers = L.layerGroup().addTo(map);
     stopLayers = L.layerGroup().addTo(map);
+    state.phoneLayers = L.layerGroup().addTo(map);
+    map.createPane('approachPane');
+    map.getPane('approachPane').style.zIndex = '450';
+    map.getPane('approachPane').style.pointerEvents = 'none';
+    state.approachRenderer = L.svg({ pane: 'approachPane', padding: .5 });
+    state.approachLayers = L.layerGroup().addTo(map);
     updatePlaceMarker('origin');
     map.on('click', event => {
       if (isMobile() && !state.pickField) { setPanel(false); return; }
@@ -961,11 +1299,15 @@
       message(field === 'destination' ? 'Destination set on the map. Find your next ride below.' : 'Starting point set on the map.');
       if (isMobile()) setPanel(false);
     });
-    map.on('moveend', () => { drawNetworkLines(); clearTimeout(moveTimer); moveTimer = setTimeout(fetchVehicles, 350); });
+    map.on('moveend', () => {
+      drawNetworkLines(); clearTimeout(moveTimer); moveTimer = setTimeout(fetchVehicles, 350);
+      if (state.phonesEnabled) { clearTimeout(state.phonesMoveTimer); state.phonesMoveTimer = setTimeout(() => fetchPhones(false), 450); }
+    });
     map.on('dragstart', () => { if (state.selected) setFollow(false); });
     map.on('zoomstart', () => { state.zooming = true; if (state.selected && !state.programmaticView) setFollow(false); });
     map.on('zoomend', () => {
       state.zooming = false;
+      if (state.phonesEnabled) renderPhones();
       const pendingFit = state.fitAfterZoom;
       state.fitAfterZoom = false;
       if (pendingFit && state.selected && state.followJourney) {
@@ -981,8 +1323,11 @@
       resizeTimer = setTimeout(() => { map.invalidateSize({ pan: false }); setPanel(state.panelOpen); if (state.selected) fitJourneyBounds(state.selected); }, 150);
     });
 
-    $('open-panel').addEventListener('click', () => setPanel(true, true));
+    $('open-panel').addEventListener('click', event => { if (event.detail === 0 || Date.now() >= state.suppressSheetClickUntil) setPanel(true, true); });
     $('close-panel').addEventListener('click', () => { setPanel(false); $('open-panel').focus({ preventScroll: true }); });
+    $('sheet-handle').addEventListener('click', event => { if (event.detail === 0 || Date.now() >= state.suppressSheetClickUntil) { setPanel(false); $('open-panel').focus({ preventScroll: true }); } });
+    bindSheetGesture($('sheet-handle'), false);
+    bindSheetGesture($('open-panel'), true);
     $('timetable-close').addEventListener('click', () => $('timetable-dialog').close());
     $('timetable-back').addEventListener('click', () => {
       if (state.timetableHistory.length < 2) return;
@@ -1020,6 +1365,7 @@
     document.querySelectorAll('[data-search]').forEach(button => button.addEventListener('click', () => search(button.dataset.search)));
     $('use-location').addEventListener('click', locate);
     $('map-locate').addEventListener('click', locate);
+    $('map-phones').addEventListener('click', togglePhones);
     $('choose-on-map').addEventListener('click', () => {
       const field = state.field || 'destination';
       setMapPick(field);
@@ -1040,7 +1386,7 @@
     $('map-zoom-out').addEventListener('click', () => { if (state.selected) setFollow(false); map.zoomOut(); });
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        fetchVehicles(); loadStatus(); startLocationWatch();
+        fetchVehicles(); loadStatus(); startLocationWatch(); fetchApproach();
         if (!state.routeCatalog) { state.routeRetryCount = 0; refreshRouteCatalog(); }
       } else {
         stopLocationWatch(); clearTimeout(state.routeRetryTimer);
@@ -1052,7 +1398,15 @@
     loadStatus();
     loadRouteCatalog();
     fetchVehicles();
-    setInterval(() => { updateClock(); updateNextService(); updateLauncher(); if (!document.hidden) fetchVehicles(); }, 15000);
+    setInterval(() => { updateClock(); updateNextService(); updateLauncher(); if (!document.hidden) { fetchVehicles(); fetchApproach(); } }, 15000);
+    setInterval(() => {
+      updateLeaveWidget(); updateBoardingCountdown();
+      if (state.approachData) {
+        const leg = nextLeg();
+        if (!leg || String(leg.tripId) !== String(state.approachData.tripId)) { clearApproach(); if (!document.hidden) fetchApproach(); }
+        else if (timeValue(state.approachData.arrival) <= Date.now()) state.approachLayers.clearLayers();
+      }
+    }, 1000);
     setInterval(() => { if (!document.hidden) loadStatus(); }, 60000);
     setInterval(() => { if (!document.hidden) refreshRouteCatalog(); }, 300000);
   }

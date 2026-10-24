@@ -94,11 +94,17 @@ def main():
               and not (root / 'bootstrap.php').exists(),
               'CLI refresh saves retryable status and never downloads application files')
 
+        phones = run('--refresh-phones')
+        phone_result = json.loads(phones.stdout)
+        check(phones.returncode == 1 and phone_result['complete'] is False
+              and 'Install or update' in phone_result['error'] and token not in phones.stdout,
+              'phone refresh requires installed application files without exposing the setup key')
+
         # PHP flock and Python fcntl share the same local advisory lock mechanism.
         # These commands must fail before downloading or importing anything.
         with open(root / 'var/loader.lock', 'a') as lock:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            for flag in ['--refresh', '--install', '--update']:
+            for flag in ['--refresh', '--install', '--update', '--refresh-phones']:
                 locked = run(flag)
                 failure = json.loads(locked.stdout)
                 check(locked.returncode == 1 and failure['complete'] is False

@@ -42,6 +42,10 @@ final class VehicleMotion
             $arrival = (int)$to['arrival'];
             if ($arrival < $departure) { break; }
             $line = $i === 0 ? $segment : Geo::slice($shape, $from, $to);
+            if ($i>0 && isset($trip['shapeStopIndices'][$from['seq']],$trip['shapeStopIndices'][$to['seq']])) {
+                $a=$trip['shapeStopIndices'][$from['seq']]; $b=$trip['shapeStopIndices'][$to['seq']];
+                $line=array_merge([[$from['lat'],$from['lon']]],array_slice($shape,$a,max(1,$b-$a+1)),[[$to['lat'],$to['lon']]]);
+            }
             $legs[] = ['from'=>$from, 'to'=>$to, 'departure'=>$departure, 'arrival'=>$arrival,
                 'path'=>self::path($line, $from, $to)];
             // Stops beyond the bounded window are not needed, even if fetched.

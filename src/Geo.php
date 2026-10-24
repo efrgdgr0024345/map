@@ -4,6 +4,11 @@ namespace App;
 
 final class Geo
 {
+    public static function walkingKey(array $from,array $to): string
+    {
+        return sprintf('%.6F,%.6F>%.6F,%.6F',(float)$from['lat'],(float)$from['lon'],(float)$to['lat'],(float)$to['lon']);
+    }
+
     public static function distance(array $a, array $b): float
     {
         $p = deg2rad($b['lat'] - $a['lat']);
@@ -72,5 +77,45 @@ final class Geo
     public static function inside(array $point, array $bbox): bool
     {
         return $point['lon'] >= $bbox[0] && $point['lat'] >= $bbox[1] && $point['lon'] <= $bbox[2] && $point['lat'] <= $bbox[3];
+    }
+
+    /** Keep only the path ahead of a distance-based progress point. */
+    public static function tail(array $line,float $progress): array
+    {
+        if (count($line)<2) { return $line; }
+        $position=self::point($line,$progress);
+        $lengths=[0.0];
+        for ($i=1;$i<count($line);$i++) {
+            $lengths[]=end($lengths)+self::distance(['lat'=>$line[$i-1][0],'lon'=>$line[$i-1][1]],['lat'=>$line[$i][0],'lon'=>$line[$i][1]]);
+        }
+        $target=max(0,min(1,$progress))*end($lengths);
+        for ($i=1;$i<count($line);$i++) {
+            if ($lengths[$i]>=$target && $lengths[$i]-$lengths[$i-1]>0.01) {
+                return array_merge([$position],array_slice($line,$i));
+            }
+        }
+        return [$position];
+    }
+
+    /** Associate stop visits with a monotonically advancing position on a shape. */
+    public static function stopIndices(array $shape,array $stops): array
+    {
+        $indices=[]; $cursor=0;
+        foreach ($stops as $stop) {
+            $best=$cursor; $distance=INF;
+            for ($i=$cursor;$i<count($shape);$i++) {
+                $candidate=self::distance($stop,['lat'=>$shape[$i][0],'lon'=>$shape[$i][1]]);
+                if ($candidate<$distance) { $distance=$candidate; $best=$i; }
+            }
+            $indices[]=$best; $cursor=$best;
+        }
+        return $indices;
+    }
+
+    public static function betweenStops(array $shape,array $stops,array $indices,int $from,int $to): array
+    {
+        $a=$stops[$from]; $b=$stops[$to];
+        if (!$shape) { return [[$a['lat'],$a['lon']],[$b['lat'],$b['lon']]]; }
+        return array_merge([[$a['lat'],$a['lon']]],array_slice($shape,$indices[$from],max(1,$indices[$to]-$indices[$from]+1)),[[$b['lat'],$b['lon']]]);
     }
 }

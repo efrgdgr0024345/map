@@ -10,6 +10,7 @@ final class Transit
     private PDO $db;
     private array $shapes=[];
     private array $routeStyles=[];
+    private array $walkDurations=[];
 
     public function __construct(?string $path = null)
     {
@@ -116,6 +117,16 @@ final class Transit
                 $f=max(0,min(1,($seconds-(int)$before['departure'])/max(1,(int)$after['arrival']-(int)$before['departure'])));
                 $shape=$this->shape($trip['shape_id']);
                 $segment=Geo::slice($shape,$before,$after);
+                if ($trip['id']===$selected && $shape) {
+                    $visitQuery=$this->db->prepare('SELECT s.*,st.seq FROM stop_times st JOIN stops s ON s.id=st.stop_id WHERE st.trip_id=? ORDER BY st.seq');
+                    $visitQuery->execute([$trip['id']]); $visits=$visitQuery->fetchAll();
+                    $indices=Geo::stopIndices($shape,$visits); $seqs=array_column($visits,'seq');
+                    $from=array_search($before['seq'],$seqs); $to=array_search($after['seq'],$seqs);
+                    if ($from!==false && $to!==false) {
+                        $segment=Geo::betweenStops($shape,$visits,$indices,$from,$to);
+                        $trip['shapeStopIndices']=array_combine($seqs,$indices);
+                    }
+                }
                 $position=Geo::position($segment,$f);
                 $lat=$position['lat']; $lon=$position['lon'];
                 if (!Geo::inside(['lat'=>$lat,'lon'=>$lon],$bbox) && $trip['id']!==$selected) { continue; }
@@ -152,7 +163,16 @@ final class Transit
         return ['vehicles'=>$vehicles,'stops'=>$stops,'lines'=>array_values($lines),'generatedAt'=>date(DATE_ATOM),'estimated'=>true,'truncated'=>$truncated,'mode'=>'timetable','message'=>$this->status()['message']];
     }
 
-    private function nearby(array $point,float $radius=1500): array
+    private function walkingSeconds(array $from,array $to): int
+    {
+        $key=Geo::walkingKey($from,$to);
+        if (array_key_exists($key,$this->walkDurations)) {
+            return max(0,(int)ceil($this->walkDurations[$key]));
+        }
+        return (int)ceil(Geo::distance($from,$to)*1.3/1.25);
+    }
+
+    private function nearby(array $point,float $radius=1500,bool $reverse=false): array
     {
         $q=$this->db->prepare('SELECT id,name,lat,lon FROM stops WHERE lat BETWEEN ? AND ? AND lon BETWEEN ? AND ?');
         $dlat=$radius/111000; $dlon=$radius/(111000*cos(deg2rad($point['lat'])));
@@ -161,7 +181,7 @@ final class Transit
         foreach ($q as $row) {
             $row['lat']=(float)$row['lat']; $row['lon']=(float)$row['lon'];
             $dist=Geo::distance($point,$row);
-            if ($dist<=$radius) { $row['walk']=(int)ceil($dist*1.3/1.25); $out[]=$row; }
+            if ($dist<=$radius) { $row['walk']=$reverse ? $this->walkingSeconds($row,$point) : $this->walkingSeconds($point,$row); $out[]=$row; }
         }
         usort($out,static fn($a,$b)=>$a['walk']<=>$b['walk']);
         return array_slice($out,0,30);
@@ -237,9 +257,65 @@ final class Transit
         return $result;
     }
 
-    public function plan(array $from,array $to,int $now): array
+    /** The remaining incoming path to a particular scheduled boarding-stop visit. */
+    public function approach(string $tripId,string $stopId,?int $now=null,?string $serviceDate=null,?string $boardingAt=null): array
+    {
+        if ($tripId==='' || $stopId==='') { throw new \InvalidArgumentException('Choose a service and its boarding stop.'); }
+        $now ??= time();
+        $table=$this->timetable('',$tripId,$now,$serviceDate);
+        $stops=$table['stops']; $target=null; $firstMatch=null;
+        $requested=null;
+        if ($boardingAt!==null) {
+            $normalized=str_ends_with($boardingAt,'Z') ? substr($boardingAt,0,-1).'+00:00' : $boardingAt;
+            $parsed=\DateTimeImmutable::createFromFormat('!Y-m-d\TH:i:sP',$normalized);
+            $errors=\DateTimeImmutable::getLastErrors();
+            if (!$parsed || ($errors!==false && ($errors['warning_count'] || $errors['error_count'])) || $parsed->format(DATE_ATOM)!==$normalized) {
+                throw new \InvalidArgumentException('Choose a valid boarding time.');
+            }
+            $requested=$parsed->getTimestamp();
+        }
+        foreach ($stops as $i=>$stop) {
+            if ($stop['id']!==$stopId) { continue; }
+            $firstMatch ??= $i;
+            if ($requested!==null) {
+                if (strtotime($stop['departure'])===$requested) { $target=$i; break; }
+            } elseif (strtotime($stop['departure'])>=$now) { $target=$i; break; }
+        }
+        if ($target===null && $requested===null) { $target=$firstMatch; }
+        if ($target===null) { throw new \InvalidArgumentException('That boarding-stop visit was not found on this service.'); }
+        $boarding=$stops[$target]; $arrival=strtotime($boarding['arrival']); $departure=strtotime($boarding['departure']);
+        $q=$this->db->prepare('SELECT shape_id FROM trips WHERE id=?'); $q->execute([$tripId]);
+        $shape=$this->shape((string)$q->fetchColumn());
+        $indices=Geo::stopIndices($shape,$stops);
+        $currentIndex=0;
+        foreach ($stops as $i=>$stop) { if (strtotime($stop['arrival'])<=$now) { $currentIndex=$i; } }
+        $before=$stops[$currentIndex]; $after=$stops[min(count($stops)-1,$currentIndex+1)];
+        $segment=Geo::betweenStops($shape,$stops,$indices,$currentIndex,min(count($stops)-1,$currentIndex+1));
+        $f=max(0,min(1,($now-strtotime($before['departure']))/max(1,strtotime($after['arrival'])-strtotime($before['departure']))));
+        $position=Geo::position($segment,$f);
+        $notStarted=$now<strtotime($stops[0]['departure']);
+        $phase=$now>$departure ? 'departed' : ($now>=$arrival ? 'at-stop' : ($notStarted ? 'not-started' : 'approaching'));
+        $geometry=[];
+        if (in_array($phase,['approaching','not-started'],true) && $currentIndex<$target) {
+            $geometry=Geo::tail($segment,$f);
+            for ($i=$currentIndex+1;$i<$target;$i++) {
+                $next=Geo::betweenStops($shape,$stops,$indices,$i,$i+1);
+                if ($geometry && $next && end($geometry)===$next[0]) { array_shift($next); }
+                $geometry=array_merge($geometry,$next);
+            }
+        } elseif ($phase==='at-stop') {
+            $geometry=[[$boarding['lat'],$boarding['lon']]];
+            $position=['lat'=>$boarding['lat'],'lon'=>$boarding['lon'],'bearing'=>$position['bearing']];
+        }
+        return array_merge($table['trip'],['tripId'=>$tripId,'stop'=>$boarding,'geometry'=>$geometry,'position'=>$position,
+            'arrival'=>$boarding['arrival'],'departure'=>$boarding['departure'],'secondsToStop'=>max(0,$arrival-$now),
+            'phase'=>$phase,'upcoming'=>$notStarted,'estimated'=>true,'generatedAt'=>date(DATE_ATOM,$now)]);
+    }
+
+    public function plan(array $from,array $to,int $now,array $walkDurations=[]): array
     {
         $this->activeGuard();
+        $this->walkDurations=$walkDurations;
         $journeys=[];
         $first=$this->scan($from,$to,$now);
         if ($first) { $journeys[]=$first; }
@@ -274,14 +350,14 @@ final class Transit
         $labels=[]; $onboard=[]; $nodes=[]; $nearCache=[];
         foreach ($this->nearby($from) as $stop) {
             $idx=count($nodes);
-            $nodes[]=['time'=>$now+$stop['walk'],'prev'=>null,'leg'=>Demo::walk($from,$stop,$now,$now+$stop['walk']),'initial'=>true,'boardings'=>0];
+            $nodes[]=['time'=>$now+$stop['walk'],'prev'=>null,'leg'=>Demo::walk($from,$stop,$now,$now+$stop['walk']),'initial'=>true,'boardingBuffer'=>$stop['walk']>0 ? 120 : 0,'boardings'=>0];
             $labels[$stop['id']]=$idx;
         }
         $dest=[];
-        foreach ($this->nearby($to) as $stop) { $dest[$stop['id']]=$stop['walk']; }
+        foreach ($this->nearby($to,1500,true) as $stop) { $dest[$stop['id']]=$stop['walk']; }
         $bestArrival=PHP_INT_MAX; $bestIdx=null; $bestStop=null;
         // Walking-only is allowed locally, never fabricated as a bus journey.
-        $direct=(int)ceil(Geo::distance($from,$to)*1.3/1.25);
+        $direct=$this->walkingSeconds($from,$to);
         if ($direct<=2400) { $bestArrival=$now+$direct; }
         foreach ($connections as $c) {
             if ($c['departure']>$bestArrival) { break; }
@@ -289,7 +365,7 @@ final class Transit
             $boarding=false;
             if ($prev===null && (int)$c['pickup']===0 && isset($labels[$c['from_id']])) {
                 $candidate=$labels[$c['from_id']];
-                $buffer=$nodes[$candidate]['initial'] ? 0 : 120;
+                $buffer=$nodes[$candidate]['initial'] ? ($nodes[$candidate]['boardingBuffer'] ?? 0) : 120;
                 if ($nodes[$candidate]['time']+$buffer<=$c['departure'] && $nodes[$candidate]['boardings']<4) { $prev=$candidate; $boarding=true; }
             }
             if ($prev===null) { continue; }

@@ -78,7 +78,17 @@ try {
         case 'plan':
             $from=point((string)($_GET['from'] ?? '')); $to=point((string)($_GET['to'] ?? ''));
             $from['name']='Your starting point'; $to['name']='Your destination';
-            $result=$service->plan($from,$to,time());
+            $result=App\StreetJourneys::plan($service,$from,$to,time());
+            break;
+        case 'phones':
+            $parts=explode(',',(string)($_GET['bbox'] ?? '115.65,-32.2,116.1,-31.7'));
+            if (count($parts)!==4 || count(array_filter($parts,'is_numeric'))!==4) { throw new InvalidArgumentException('Invalid map bounds.'); }
+            $result=App\Payphones::inBounds(array_map('floatval',$parts));
+            break;
+        case 'approach':
+            $trip=trim((string)($_GET['trip'] ?? '')); $stop=trim((string)($_GET['stop'] ?? ''));
+            if (strlen($trip)>200 || strlen($stop)>200) { throw new InvalidArgumentException('Invalid stop or service.'); }
+            $result=$service->approach($trip,$stop,null,isset($_GET['date']) ? (string)$_GET['date'] : null,isset($_GET['boarding']) ? (string)$_GET['boarding'] : null);
             break;
         case 'timetable':
             $stop=trim((string)($_GET['stop'] ?? '')); $trip=trim((string)($_GET['trip'] ?? ''));
