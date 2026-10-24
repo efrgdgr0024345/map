@@ -62,7 +62,7 @@
       <button type="button" id="network-toggle" class="network-toggle" aria-pressed="false"><span class="toggle-track"><span></span></span><span>Show the whole network</span></button>
     </div>
 
-    <div class="panel-footer"><span class="small-map-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></svg></span><span>Open maps. A clearer way forward.</span></div>
+    <div class="panel-footer"><span class="small-map-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></svg></span><span>Open maps. A clearer way forward.</span><p class="timetable-attribution">Timetable data available free of charge from <a href="https://www.transperth.wa.gov.au/About/Spatial-Data-Access" target="_blank" rel="noopener">www.transperth.wa.gov.au</a></p></div>
   </main>
 
   <div class="map-hint" id="map-hint" hidden><span id="map-hint-text">Tap the map to choose your destination</span><button type="button" id="cancel-map-pick" aria-label="Cancel map selection">×</button></div>

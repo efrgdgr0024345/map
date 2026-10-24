@@ -24,5 +24,6 @@ jobs:
       - run: php tests/transit.php
       - run: php tests/loader_install.php
       - run: PHP_BINARY=php python3 tests/loader_http.py
+      - run: PHP_BINARY=php python3 tests/loader_cli.py
       - run: node --check assets/app.js
       - run: php loader.php --check

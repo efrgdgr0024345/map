@@ -200,6 +200,37 @@ try {
     unset($transit);
     $repeat = (new GtfsImporter())->import($feed);
     check($repeat['counts'] === $imported['counts'] && (new Transit())->status()['mode'] === 'timetable', 'reimport is repeatable and retains timetable functionality');
+
+    // Exact header formatting observed in the official Transperth shapes.txt.
+    $spaced = $files;
+    $spaced['shapes.txt'] = preg_replace('/^[^\n]+\n/', "shape_id, shape_pt_lat, shape_pt_lon, shape_pt_sequence\r\n", $files['shapes.txt'], 1);
+    archive($isolated . '/official-header-format.zip', $spaced);
+    $spacedResult = (new GtfsImporter())->import($isolated . '/official-header-format.zip');
+    $shapeDb = new PDO('sqlite:' . APP_VAR . '/transit.sqlite');
+    $actualShapes = array_map(static fn($row) => [$row['id'], (float)$row['lat'], (float)$row['lon'], (int)$row['seq']], $shapeDb->query('SELECT id,seq,lat,lon FROM shapes ORDER BY id,seq')->fetchAll(PDO::FETCH_ASSOC));
+    $expectedShapes = $shapeRows;
+    usort($expectedShapes, static fn($a, $b) => [$a[0], $a[3]] <=> [$b[0], $b[3]]);
+    check($spacedResult['counts']['shapes'] === count($shapeRows) && $actualShapes === $expectedShapes, 'official whitespace-padded shapes headers preserve every latitude, longitude and sequence');
+    $shapeDb = null;
+    $publishedHash = hash_file('sha256', APP_VAR . '/transit.sqlite');
+
+    $missingColumn = $spaced;
+    $missingColumn['shapes.txt'] = preg_replace('/^[^\n]+\n/', "shape_id, shape_pt_lat, shape_pt_lon, incorrect_sequence\r\n", $spaced['shapes.txt'], 1);
+    archive($isolated . '/missing-column.zip', $missingColumn);
+    $missingRejected = false;
+    try { (new GtfsImporter())->import($isolated . '/missing-column.zip'); } catch (RuntimeException $error) {
+        $missingRejected = str_contains($error->getMessage(), 'Invalid GTFS columns in shapes.txt') && str_contains($error->getMessage(), 'missing shape_pt_sequence');
+    }
+    check($missingRejected && hash_file('sha256', APP_VAR . '/transit.sqlite') === $publishedHash, 'missing required shape column reports its name and preserves the previous database');
+
+    $duplicateColumn = $spaced;
+    $duplicateColumn['shapes.txt'] = preg_replace('/^[^\n]+\n/', "shape_id, shape_pt_lat, shape_pt_lon, shape_pt_sequence,shape_pt_sequence\r\n", $spaced['shapes.txt'], 1);
+    archive($isolated . '/duplicate-column.zip', $duplicateColumn);
+    $duplicateRejected = false;
+    try { (new GtfsImporter())->import($isolated . '/duplicate-column.zip'); } catch (RuntimeException $error) {
+        $duplicateRejected = str_contains($error->getMessage(), 'Invalid GTFS columns in shapes.txt') && str_contains($error->getMessage(), 'duplicate column names');
+    }
+    check($duplicateRejected && hash_file('sha256', APP_VAR . '/transit.sqlite') === $publishedHash, 'duplicate normalized shape column is rejected clearly without replacing the previous database');
     echo PHP_EOL . $checks . ' checks passed. Synthetic fixtures only; no official feed or live vehicle access was tested.' . PHP_EOL;
 } finally {
     removeTree($isolated);

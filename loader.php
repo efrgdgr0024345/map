@@ -4,6 +4,7 @@
  * Upload this file into an empty site folder, open it, and read the generated
  * var/setup-token.php in cPanel File Manager to obtain the maintenance key.
  * No key is ever returned by this page. The app and this loader update together.
+ * Local CLI commands are documented by php loader.php --help.
  */
 declare(strict_types=1);
 
@@ -511,15 +512,99 @@ function pm_run_setup(bool $downloadApplication = true): array
     return $result;
 }
 
+function pm_cli_usage(): string
+{
+    return <<<'USAGE'
+Perth Map — installer and maintenance
+
+Usage: php loader.php <command>
+
+  --help              Show this help (also the default without a command).
+  --check             Check PHP extensions and writable application storage.
+  --show-setup-token  Show the initial browser maintenance key in this terminal.
+                      Available only before maintenance has been configured.
+  --install           Download the app and loader, then import and verify the timetable.
+  --update            Back up and update the app and loader, then refresh the timetable.
+  --refresh           Import and verify the timetable without downloading application files.
+
+Install, update and refresh print a JSON result. Exit status is 0 only when
+setup completes, 1 on a failed check/setup, or 2 for an invalid command.
+Run commands as your cPanel account user from the folder containing loader.php.
+The guarded var/setup-token.php is private data: read it in File Manager or
+use --show-setup-token; executing that token file directly does not print it.
+USAGE;
+}
+
+/** CLI access requires local account access; it never uses a browser session. */
+function pm_cli(array $arguments): int
+{
+    if ($arguments === [] || $arguments === ['--help'] || $arguments === ['-h']) {
+        fwrite(STDOUT, pm_cli_usage() . PHP_EOL);
+        return 0;
+    }
+    if (count($arguments) !== 1 || !in_array($arguments[0], ['--check', '--show-setup-token', '--install', '--update', '--refresh'], true)) {
+        fwrite(STDERR, "Unknown or combined commands. Choose exactly one command.\n\n" . pm_cli_usage() . PHP_EOL);
+        return 2;
+    }
+    $command = $arguments[0];
+    if ($command === '--check') {
+        $requirements = pm_requirements();
+        foreach ($requirements as $label => $passed) {
+            fwrite(STDOUT, ($passed ? '[OK] ' : '[MISSING] ') . $label . PHP_EOL);
+        }
+        return in_array(false, $requirements, true) ? 1 : 0;
+    }
+    if ($command === '--show-setup-token') {
+        try {
+            pm_prepare_private();
+            $lock = pm_lock();
+            try {
+                if (file_exists(PM_LOADER_PRIVATE . '/maintenance.php') || is_link(PM_LOADER_PRIVATE . '/maintenance.php')) {
+                    throw new RuntimeException('No setup token is available: maintenance is already configured and only a password hash is stored. Use your saved maintenance key; if it is lost, follow the recovery instructions on loader.php.');
+                }
+                $environment = getenv('PERTH_MAP_SETUP_TOKEN');
+                if (is_string($environment) && $environment !== '') {
+                    throw new RuntimeException('No generated setup token is available: the maintenance key is supplied by PERTH_MAP_SETUP_TOKEN in your hosting settings. Use your configured key.');
+                }
+                $source = pm_auth_source();
+                if (!isset($source['plain'])) {
+                    throw new RuntimeException('No plaintext setup token is stored. Use your saved maintenance key.');
+                }
+                $token = $source['plain'];
+            } finally {
+                flock($lock, LOCK_UN);
+                fclose($lock);
+            }
+            // The operator explicitly requested this value in their own terminal.
+            fwrite(STDOUT, $token . PHP_EOL);
+            return 0;
+        } catch (Throwable $exception) {
+            fwrite(STDERR, $exception->getMessage() . PHP_EOL);
+            return 1;
+        }
+    }
+    try {
+        pm_prepare_private();
+        $lock = pm_lock();
+        try {
+            $result = pm_run_setup($command !== '--refresh');
+        } finally {
+            flock($lock, LOCK_UN);
+            fclose($lock);
+        }
+    } catch (Throwable $exception) {
+        $result = ['complete' => false, 'error' => $exception->getMessage(), 'steps' => []];
+    }
+    fwrite(STDOUT, json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR) . PHP_EOL);
+    return !empty($result['complete']) ? 0 : 1;
+}
+
 if (defined('PM_LOADER_LIBRARY_ONLY') && PM_LOADER_LIBRARY_ONLY === true) {
     return;
 }
 
 if (PHP_SAPI === 'cli') {
-    foreach (pm_requirements() as $label => $passed) {
-        echo ($passed ? '[OK] ' : '[MISSING] ') . $label . PHP_EOL;
-    }
-    exit(in_array(false, pm_requirements(), true) ? 1 : 0);
+    exit(pm_cli(array_slice($argv, 1)));
 }
 
 header('Cache-Control: no-store, private');
@@ -675,7 +760,7 @@ $csrf = pm_escape($_SESSION['csrf']);
 </ul></section>
 <?php if (!$authenticated && !$fatal): ?>
 <section class="card"><h2>Unlock maintenance</h2><p>This console requires a maintenance key before it can change your site.</p>
-<?php if ($environmentKey): ?><p class="note">Use the key configured in your hosting environment as <code>PERTH_MAP_SETUP_TOKEN</code>.</p><?php elseif (is_file(PM_LOADER_PRIVATE . '/setup-token.php')): ?><p class="note">In <strong>cPanel → File Manager</strong>, open <code>var/setup-token.php</code> beside this file. Copy the value of <code>setup_token</code> below and save it in your password manager. The token file will be removed after your first successful login. Its contents are never served by this page.</p><?php else: ?><p class="note">Use your saved maintenance key. If it is lost, use cPanel File Manager to remove <code>var/maintenance.php</code>, then reload this page to generate a new private setup token. Existing transport data is preserved.</p><?php endif; ?>
+<?php if ($environmentKey): ?><p class="note">Use the key configured in your hosting environment as <code>PERTH_MAP_SETUP_TOKEN</code>.</p><?php elseif (is_file(PM_LOADER_PRIVATE . '/setup-token.php')): ?><p class="note">In <strong>cPanel → File Manager</strong>, open <code>var/setup-token.php</code> beside this file and read the <code>setup_token</code> value. Alternatively, open cPanel Terminal in this folder and run <code>php loader.php --show-setup-token</code>. Paste that key below and save it in your password manager. The token file is protected data: opening it over HTTP returns 404, and executing the token file directly prints nothing. It is removed after your first successful login.</p><?php else: ?><p class="note">Use your saved maintenance key. If it is lost, use cPanel File Manager to remove <code>var/maintenance.php</code>, then reload this page to generate a new private setup token. Existing transport data is preserved.</p><?php endif; ?>
 <form method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="login"><label for="key">Maintenance key</label><input id="key" type="password" name="key" required autocomplete="current-password" maxlength="512"><div class="row"><button class="primary" type="submit">Unlock setup ↗</button></div></form></section>
 <?php elseif ($authenticated): ?>
 <section class="card"><span class="status"><?= $setupComplete ? 'Map ready · current timetable verified' : ($installed ? 'Setup incomplete · timetable needs attention' : 'Ready to install from one file') ?></span><h2 style="margin-top:16px"><?= $installed ? 'Update the complete system' : 'Install & set up your map' ?></h2><p><?= $installed ? 'Back up and update the map and loader together, then automatically refresh the official Perth timetable.' : 'This one action downloads all project files, sets up protected storage, and imports the official Perth timetable. You do not need to upload the application separately.' ?></p><p class="note">Code comes from <a href="https://github.com/efrgdgr0024345/map" rel="noreferrer">efrgdgr0024345/map</a>, branch <code>main</code>, over verified HTTPS. Your database, local <code>config.php</code>, environment files, and maintenance credentials are preserved. Replaced files, including the loader, are backed up before installation.</p><p class="note">The application code must already be published to that GitHub repository. A README-only repository is refused without changing application files. Your hosting needs outbound HTTPS access to <code>codeload.github.com</code> and the official Transperth feed.</p>
@@ -695,7 +780,7 @@ $csrf = pm_escape($_SESSION['csrf']);
 <section class="card"><h2><?= $setupComplete ? 'Timetable maintenance' : 'Finish timetable setup' ?></h2><p><?= pm_escape($readiness['message']) ?></p><p class="note">Refresh imports the official schedule and verifies that it covers today in Perth. Scheduled vehicle positions are estimates; importing the timetable does not enable live GPS tracking.</p><p class="note">Allow several minutes and free disk space for the feed, a temporary database, and existing data. The console requests up to 600 seconds, but your hosting provider may impose a shorter limit. A failed import retains the previous database.</p>
 <form method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="import"><div class="row"><button type="submit"><?= $setupComplete ? 'Refresh timetable' : 'Retry timetable setup' ?></button><?php if ($setupComplete): ?><a class="button quiet" href="./">Open map</a><?php endif; ?></div></form>
 <details style="margin-top:20px"><summary>Large-feed troubleshooting</summary><p class="note">If your hosting request limit prevents the browser import from finishing, ask your provider to raise it. cPanel Terminal or a scheduled task can also run the same importer without a browser timeout:</p><pre>cd <?= pm_escape(PM_LOADER_ROOT) ?>
-php scripts/import-gtfs.php</pre><p class="note">Return here afterwards; readiness is checked against the actual database, not the presence of application files.</p></details>
+php loader.php --refresh</pre><p class="note">Return here afterwards; readiness is checked against the actual database, not the presence of application files.</p></details>
 </section>
 <?php endif; ?>
 <section class="card"><details><summary>Maintenance key & storage</summary><p class="note">Keep <code>var</code> private and writable by your PHP user. Do not grant world-write permissions. Download a backup through cPanel File Manager before clearing old backups. Authenticated access expires after one hour of inactivity.</p>

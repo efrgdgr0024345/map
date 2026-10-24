@@ -42,6 +42,21 @@ Keep timetables fresh using the loader's refresh button or an optional daily cPa
 
 Keep HTTPS enabled. Confirm a request to `var/` and any private file is denied. On Nginx, add equivalent deny rules for `var`, `src`, `scripts`, `tests`, dotfiles and `bootstrap.php`; `.htaccess` is Apache-specific. The built-in development server must use the supplied router.
 
+### cPanel Terminal
+
+The same single file supports command-line installation and updates. Run these from the folder containing `loader.php`; **no `sudo` is needed**:
+
+```sh
+php loader.php --check
+php -d memory_limit=512M loader.php --install
+php -d memory_limit=512M loader.php --update
+php -d memory_limit=512M loader.php --refresh
+```
+
+`--install` and `--update` download the application and loader, prepare storage, import timetables and validate readiness. `--refresh` retries only the timetable. Commands print structured results and exit nonzero when setup is incomplete. `--help` lists the commands.
+
+To obtain the initial key for the browser console from your own terminal, use `php loader.php --show-setup-token`. This command never serves the key over HTTP and refuses to reveal a key after maintenance has been initialized. If you are already inside the generated `var` folder, `cat setup-token.php` lets you read the initial `setup_token` value directly. This guarded file stores data; do not try to execute it or visit its URL. Keep your key private.
+
 ## Local development
 
 No Node build, Composer packages, API key or database server is required. Install PHP 8.1+ with the above extensions, then:
@@ -59,6 +74,7 @@ Run the checks:
 php tests/transit.php
 php tests/loader_install.php
 PHP_BINARY=php python3 tests/loader_http.py
+PHP_BINARY=php python3 tests/loader_cli.py
 node --check assets/app.js
 php loader.php --check
 ```
@@ -68,7 +84,7 @@ Tests create isolated temporary data and never replace the installed timetable. 
 ## Sources and network access
 
 - Official schedule: <https://www.transperth.wa.gov.au/TimetablePDFs/GoogleTransit/Production/google_transit.zip>
-- Official spatial-data terms: <https://www.transperth.wa.gov.au/About/Spatial-Data-Access>. Review those terms before deploying or redistributing the feed. The download's availability and current contents have not yet been verified in this cloud environment because the host is blocked by its outbound network policy.
+- Official spatial-data terms: <https://www.transperth.wa.gov.au/About/Spatial-Data-Access>. Timetable data is available free of charge from www.transperth.wa.gov.au; the application displays that statement. The feed and its current service dates have been imported and checked in this cloud environment. The importer handles spaces in the official shape-file headers, calendar exceptions and services after midnight. Review the official terms for your deployment; no PTA/Transperth logos or implied endorsement are used.
 - Map tiles and attribution: OpenStreetMap contributors, <https://tile.openstreetmap.org>. Follow the OSM tile usage policy; use a suitable tile provider for substantial traffic. There is no bulk downloading or offline prefetch.
 - Address suggestions: Photon / OpenStreetMap, <https://photon.komoot.io>. Results are limited to the Perth region, cached on the server and debounced in the browser. The public service has no SLA; for production traffic, configure a supported hosted/self-hosted provider in `src/Geocoder.php`. Typed searches go to Photon; GPS/map-click coordinates go to this app's server for planning.
 - Leaflet 1.9.4 is vendored locally under `assets/vendor/leaflet`, with upstream licence and verified upstream SRI checksums. No runtime CDN is required for the map library.

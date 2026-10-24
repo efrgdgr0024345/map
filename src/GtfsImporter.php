@@ -65,7 +65,7 @@ final class GtfsImporter
             $counts['stops'] = $this->rows($zip, 'stops.txt', true, $db,
                 'INSERT INTO stops VALUES (?,?,?,?)', static fn($r) => [$r['stop_id'], $r['stop_name'], (float)$r['stop_lat'], (float)$r['stop_lon']]);
             $counts['routes'] = $this->rows($zip, 'routes.txt', true, $db,
-                'INSERT INTO routes VALUES (?,?,?)', static fn($r) => [$r['route_id'], $r['route_short_name'] ?: ($r['route_long_name'] ?? $r['route_id']), (int)$r['route_type']]);
+                'INSERT INTO routes VALUES (?,?,?)', static fn($r) => [$r['route_id'], ($r['route_short_name'] ?? '') ?: ($r['route_long_name'] ?? $r['route_id']), (int)$r['route_type']]);
             $counts['trips'] = $this->rows($zip, 'trips.txt', true, $db,
                 'INSERT INTO trips VALUES (?,?,?,?,?,NULL,NULL)', static fn($r) => [$r['trip_id'], $r['route_id'], $r['service_id'], $r['trip_headsign'] ?? '', $r['shape_id'] ?? '']);
             $counts['stop_times'] = $this->rows($zip, 'stop_times.txt', true, $db,
@@ -132,6 +132,22 @@ final class GtfsImporter
         $header = fgetcsv($stream, 0, ',', '"', '');
         if (!$header) { throw new RuntimeException('Empty GTFS file: ' . $name); }
         $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', $header[0]);
+        // The official Perth shapes file contains spaces after its header commas.
+        $header = array_map(static fn($column) => trim((string)$column), $header);
+        $columns = [
+            'stops.txt' => ['stop_id','stop_name','stop_lat','stop_lon'],
+            'routes.txt' => ['route_id','route_type'],
+            'trips.txt' => ['trip_id','route_id','service_id'],
+            'stop_times.txt' => ['trip_id','stop_id','stop_sequence','arrival_time','departure_time'],
+            'calendar.txt' => ['service_id','monday','tuesday','wednesday','thursday','friday','saturday','sunday','start_date','end_date'],
+            'calendar_dates.txt' => ['service_id','date','exception_type'],
+            'shapes.txt' => ['shape_id','shape_pt_lat','shape_pt_lon','shape_pt_sequence'],
+        ];
+        $missing = array_diff($columns[$name] ?? [], $header);
+        if ($missing || count($header) !== count(array_unique($header))) {
+            fclose($stream);
+            throw new RuntimeException('Invalid GTFS columns in ' . $name . ($missing ? ': missing ' . implode(', ', $missing) : ': duplicate column names'));
+        }
         $stmt = $db->prepare($sql);
         $count = 0;
         $db->beginTransaction();
