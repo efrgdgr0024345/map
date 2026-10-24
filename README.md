@@ -10,9 +10,9 @@ A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and 
 - Focused journey view, walking legs, transfers, boarding countdown and a later service alternative when found. Follow mode fits the remaining journey, selected service, consented GPS position and destination; exploring the map pauses following until you recenter.
 - In-app departure boards and full stop-by-stop service timetables, including service-day and after-midnight times. Tap a stop, vehicle, itinerary action or **View timetable** on your next-service card.
 - A compact phone layout with search initially collapsed, a touch-draggable sheet, and the scheduled-service card directly above the bottom search pill. Pull the handle down to dismiss, drag the pill up to open, or use the accessible buttons. Normal explanatory notes are hidden on phones; errors and source details remain available.
-- Street/footpath walking directions, a top-left **Leave by** time (walking duration plus a two-minute boarding allowance), and a route-coloured pulse on the incoming service's remaining path to your boarding stop. Arrival countdowns use the timetable arrival rather than a later departure after dwell.
+- Street/footpath walking directions and a top-right circular **Leave home** clock: first departure minus the actual walking time and a two-minute boarding allowance. It pulses during the final three minutes, respects reduced motion, and disappears after the first boarding. A route-coloured pulse traces the incoming service's remaining path; arrival countdowns use timetable arrival rather than a later departure after dwell.
 - Public-phone toggle above the zoom controls, using the official Telstra location register cached on your server. Larger street-level phone symbols have a 44-pixel touch target; overview clusters keep the map readable. The inspected register has **783 Perth-area sites containing 870 payphones**; a marker may represent multiple phones.
-- Transfer guidance opens from an itinerary transfer or an accurate GPS approach to that stage of the trip. Nearby stops remain visible, with the required boarding stand/platform highlighted and sequential dots along a verified pedestrian path. See [docs/transfer-guidance.md](docs/transfer-guidance.md).
+- Transfer guidance opens from an itinerary transfer or an accurate GPS approach to that stage of the trip. Locally stored station detail adds mapped platforms, buildings, footpaths, crossings, entrances, stairs and lifts where available. An A marker identifies alighting; the required boarding stand/platform flashes while dots reveal the verified pedestrian path. Official minimum connection times are enforced separately from walking duration. See [docs/station-data.md](docs/station-data.md) and [docs/transfer-guidance.md](docs/transfer-guidance.md).
 - Official static GTFS import into SQLite, with calendar exceptions, after-midnight services and route shapes.
 - Persistent server and browser route caches: geometry redraws locally when panning; public vehicle positions refresh independently.
 - A protected root-level `loader.php` for cPanel setup, timetable refresh and GitHub updates with backups.
@@ -39,6 +39,12 @@ The browser keeps public geometry in memory and IndexedDB, draws the visible are
 The first visit still downloads the catalog. Street-map tiles come from the configured OpenStreetMap tile service and have their own loading/cache behaviour; this is not an offline basemap. If a cache build fails, the valid timetable and previous route cache are retained, and the route endpoint can retry building it. You can optionally rebuild it in Terminal with `php scripts/build-route-cache.php`.
 
 Official colour values, fallback behaviour and sources are documented in [docs/network-colours.md](docs/network-colours.md). Existing databases remain readable without a schema migration: named network colours apply immediately, and the next import adds optional feed colour metadata.
+
+Station detail is also stored on the server under `assets/station-maps/`. The bundled GeoJSON catalog comes from Geofabrik's Western Australia OpenStreetMap extract, with source date and ODbL attribution. Opening a station view reads the relevant local files; it does not wait for Overpass or download geometry on each map movement. The normal cPanel loader downloads this catalog with the application, with no extra runtime extension or API key.
+
+The inspected snapshot is dated 23 October 2026 and covers **119 station areas**, with 34,515 unique mapped features. The files total about 14 MB uncompressed (about 2.3 MB compressed across the catalog); only the relevant station file or pair is returned for a transfer. Source and licence details are in [assets/station-maps/README.md](assets/station-maps/README.md).
+
+The current GTFS import preserves station parent/child relationships and official transfer rules. Connection feasibility uses the greater of the official minimum and the verified walk plus boarding allowance; it does not pretend that an allowance is extra walking. Older databases remain readable and gain the additional metadata on the next normal import/update. Maps show actual mapped features, not certified indoor or step-free routing. Verified official station-plan references are available in the collapsed map details.
 
 ## cPanel installation
 
@@ -111,6 +117,10 @@ php tests/approach.php
 php tests/walking.php
 php tests/street_journeys.php
 php tests/transfer.php
+php tests/station_metadata.php
+php tests/transfer_rules.php
+php tests/station_map.php
+python3 tests/station_catalog.py
 php tests/payphones.php
 php tests/loader_install.php
 PHP_BINARY=php python3 tests/loader_http.py
@@ -124,6 +134,8 @@ Tests create isolated temporary data and never replace the installed timetable. 
 Browser checks use Playwright and a running local app with an imported timetable. Install Playwright separately in a development environment if it is not already available. Browser map-tile rendering in this cloud can be blocked by proxy certificate trust; do not disable TLS verification to work around it.
 
 The current suite is `node tests/browser-mobile-v5.mjs`. It covers the peeking mascot, map-first location selection, automatic planning, transfer guidance, continuous location updates, larger phone markers and desktop picker behaviour. It uses actual application/timetable/pedestrian/phone data, synthetic browser GPS, and a controlled browser clock when testing arrival at a real scheduled transfer. These checks do not simulate a completed physical journey. `CORE_ONLY=1` leaves provider-dependent checks explicitly unrun; only the full default run validates those integrations. The historical `browser-ui.mjs` and `browser-mobile-v4.mjs` suites target the preceding search flow and marker sizes.
+
+`node tests/browser-station-v6.mjs` checks the circular leave clock and detailed station rendering. Its controlled UI fixtures and browser clock are explicitly separated from real station-map/transfer API checks. Rebuilding the bundled station catalog is a development task using `scripts/build-station-maps.py`, a trusted local Geofabrik PBF, the GTFS ZIP and pyosmium; none of those development tools are required on cPanel.
 
 ## Sources and network access
 

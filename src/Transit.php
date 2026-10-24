@@ -15,12 +15,14 @@ final class Transit
     private array $computedStyles=[];
     private array $nearbyStops=[];
     private bool $materializedTrips;
+    private TransferRules $transferRules;
 
     public function __construct(?string $path = null)
     {
         $this->db=new PDO('sqlite:'.($path ?? APP_VAR.'/transit.sqlite'),null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]);
         $this->db->exec('PRAGMA query_only=ON; PRAGMA busy_timeout=3000;');
         $this->materializedTrips=version_compare((string)$this->db->query('SELECT sqlite_version()')->fetchColumn(),'3.35.0','>=');
+        $this->transferRules=new TransferRules($this->db);
         // Older cPanel databases work immediately; a refresh adds optional feed colours.
         if ($this->db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='route_styles'")->fetchColumn()) {
             $this->routeStyles=$this->db->query('SELECT route_id,color,text_color FROM route_styles')->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
@@ -350,6 +352,23 @@ final class Transit
         return ['journeys'=>$journeys,'mode'=>'timetable','message'=>$journeys ? 'Timetable journeys within the next 3 hours. Walking links are approximate; confirm safe access and crossings.' : 'No journey found within 3 hours and 1.5 km of each endpoint. Try another nearby stop or refresh the timetable.'];
     }
 
+    public function transferRule(string $fromId,string $toId,array $context=[]): array
+    {
+        return $this->transferRules->between($fromId,$toId,$context);
+    }
+
+    private function boardingReady(array $node,string $stopId,array $next=[]): ?int
+    {
+        if ($node['initial']) { return $node['time']+($node['boardingBuffer'] ?? 0); }
+        $ready=$node['time']+120;
+        $previous=$node['lastRide'] ?? null;
+        if (!$previous) { return $ready; }
+        $rule=$this->transferRule($previous['stopId'],$stopId,['fromTripId'=>$previous['tripId'],
+            'fromRouteId'=>$previous['routeId'],'toTripId'=>$next['trip_id'] ?? '', 'toRouteId'=>$next['route_id'] ?? '']);
+        if (!$rule['allowed']) { return null; }
+        return max($ready,$previous['arrival']+$rule['minimumSeconds']);
+    }
+
     /** Earliest-arrival connection scan, with nearby walking transfers and immutable predecessor paths. */
     private function scan(array $from,array $to,int $now,string $skipTrip=''): ?array
     {
@@ -377,11 +396,26 @@ final class Transit
             $connections=$this->db->prepare($with.implode(' UNION ALL ',$queries).' ORDER BY departure,seq');
             $connections->execute(array_merge($tripArgs,$args));
         }
-        $labels=[]; $onboard=[]; $nodes=[]; $nearCache=[];
+        $labels=[]; $onboard=[]; $nodes=[]; $nearCache=[]; $directArrivals=[];
+        $qualifiedRules=$this->transferRules->hasQualifiedRules();
+        $rulesActive=$this->transferRules->hasRules();
+        // Keep distinct trip/alighting contexts when a rule depends on them. Otherwise
+        // compare boarding-ready times rather than only physical arrival times.
+        $label=function(string $stopId,array $node,?int $existing=null) use (&$labels,&$nodes,$qualifiedRules,$rulesActive): bool {
+            $last=$node['lastRide'] ?? null;
+            $key=$qualifiedRules ? (string)$node['boardings'] : '';
+            if ($qualifiedRules && $last) { $key.=':'.$last['tripId'].':'.$last['stopId']; }
+            $score=$qualifiedRules ? $node['time'] : $this->boardingReady($node,$stopId);
+            if ($score===null) { return false; }
+            $old=$labels[$stopId][$key] ?? null;
+            if ($old!==null && $nodes[$old]['labelScore']<=$score) { return false; }
+            $node['labelScore']=$score;
+            $index=$existing ?? count($nodes);
+            $nodes[$index]=$node; $labels[$stopId][$key]=$index;
+            return true;
+        };
         foreach ($this->nearby($from) as $stop) {
-            $idx=count($nodes);
-            $nodes[]=['time'=>$now+$stop['walk'],'prev'=>null,'leg'=>Demo::walk($from,$stop,$now,$now+$stop['walk']),'initial'=>true,'boardingBuffer'=>$stop['walk']>0 ? 120 : 0,'boardings'=>0];
-            $labels[$stop['id']]=$idx;
+            $label($stop['id'],['time'=>$now+$stop['walk'],'prev'=>null,'leg'=>Demo::walk($from,$stop,$now,$now+$stop['walk']),'initial'=>true,'boardingBuffer'=>$stop['walk']>0 ? 120 : 0,'boardings'=>0]);
         }
         $dest=[];
         foreach ($this->nearby($to,1500,true) as $stop) { $dest[$stop['id']]=$stop['walk']; }
@@ -394,30 +428,47 @@ final class Transit
             $prev=$onboard[$c['key']] ?? null;
             $boarding=false;
             if ($prev===null && (int)$c['pickup']===0 && isset($labels[$c['from_id']])) {
-                $candidate=$labels[$c['from_id']];
-                $buffer=$nodes[$candidate]['initial'] ? ($nodes[$candidate]['boardingBuffer'] ?? 0) : 120;
-                if ($nodes[$candidate]['time']+$buffer<=$c['departure'] && $nodes[$candidate]['boardings']<4) { $prev=$candidate; $boarding=true; }
+                foreach ($labels[$c['from_id']] as $candidate) {
+                    $ready=$this->boardingReady($nodes[$candidate],$c['from_id'],$c);
+                    if ($ready===null || $ready>$c['departure'] || $nodes[$candidate]['boardings']>=4) { continue; }
+                    if ($prev===null || $nodes[$candidate]['boardings']<$nodes[$prev]['boardings']) { $prev=$candidate; $boarding=true; }
+                }
             }
             if ($prev===null) { continue; }
             $a=$this->stop($c['from_id']); $b=$this->stop($c['to_id']);
             $idx=count($nodes);
             $nodes[]=['time'=>$c['arrival'],'prev'=>$prev,'initial'=>false,'boardings'=>$nodes[$prev]['boardings']+($boarding?1:0),
+                'lastRide'=>['arrival'=>$c['arrival'],'stopId'=>$b['id'],'tripId'=>$c['trip_id'],'routeId'=>$c['route_id']],
                 'leg'=>array_merge(['mode'=>self::mode((int)$c['type']),'routeId'=>$c['route_id'],'routeName'=>$c['route_name'],'tripId'=>$c['trip_id'],'serviceDate'=>substr($c['key'],0,8),'headsign'=>$c['headsign'],'shapeId'=>$c['shape_id'],'from'=>$a,'to'=>$b,'departure'=>date(DATE_ATOM,$c['departure']),'arrival'=>date(DATE_ATOM,$c['arrival'])],$this->routeStyle($c['route_id'],$c['route_name'],(int)$c['type']))];
+            if ($boarding && isset($nodes[$prev]['lastRide'])) {
+                $previous=$nodes[$prev]['lastRide'];
+                $rule=$this->transferRule($previous['stopId'],$a['id'],['fromTripId'=>$previous['tripId'],'fromRouteId'=>$previous['routeId'],
+                    'toTripId'=>$c['trip_id'],'toRouteId'=>$c['route_id']]);
+                if ($rule['matched']) {
+                    $nodes[$idx]['leg']['transferMinimumSeconds']=$rule['minimumSeconds'];
+                    $nodes[$idx]['leg']['transferType']=$rule['type'];
+                    $nodes[$idx]['leg']['transferRuleSource']=$rule['source'];
+                }
+            }
             $onboard[$c['key']]=$idx;
             if ((int)$c['dropoff']!==0) { continue; }
             if (isset($dest[$b['id']]) && $c['arrival']+$dest[$b['id']]<$bestArrival) { $bestArrival=$c['arrival']+$dest[$b['id']]; $bestIdx=$idx; $bestStop=$b; }
-            if (!isset($labels[$b['id']]) || $c['arrival']<$nodes[$labels[$b['id']]]['time']) {
-                $labels[$b['id']]=$idx;
-                $nearCache[$b['id']] ??= $this->nearby($b,250);
-                foreach ($nearCache[$b['id']] as $transfer) {
-                    if ($transfer['id']===$b['id']) { continue; }
-                    $arr=$c['arrival']+$transfer['walk'];
-                    if (!isset($labels[$transfer['id']]) || $arr<$nodes[$labels[$transfer['id']]]['time']) {
-                        $w=count($nodes);
-                        $nodes[]=['time'=>$arr,'prev'=>$idx,'leg'=>Demo::walk($b,$transfer,$c['arrival'],$arr),'initial'=>false,'boardings'=>$nodes[$idx]['boardings']];
-                        $labels[$transfer['id']]=$w;
-                    }
-                }
+            $improved=$label($b['id'],$nodes[$idx],$idx);
+            if (!$rulesActive && !$improved) { continue; }
+            if ($rulesActive && !$qualifiedRules) {
+                // Generic stop/station rules depend only on the alighting stop and
+                // arrival, so a later arrival at that same stop cannot improve any
+                // outgoing walking transfer. A walk-in label at B cannot make that
+                // assumption about a new vehicle arrival at B with different rules.
+                if (isset($directArrivals[$b['id']]) && $directArrivals[$b['id']]<=$c['arrival']) { continue; }
+                $directArrivals[$b['id']]=$c['arrival'];
+            }
+            $nearCache[$b['id']] ??= $this->nearby($b,250);
+            foreach ($nearCache[$b['id']] as $transfer) {
+                if ($transfer['id']===$b['id']) { continue; }
+                $arr=$c['arrival']+$transfer['walk'];
+                $label($transfer['id'],['time'=>$arr,'prev'=>$idx,'leg'=>Demo::walk($b,$transfer,$c['arrival'],$arr),'initial'=>false,
+                    'boardings'=>$nodes[$idx]['boardings'],'lastRide'=>$nodes[$idx]['lastRide']]);
             }
         }
         if ($bestIdx===null) {

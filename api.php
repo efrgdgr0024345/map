@@ -90,6 +90,9 @@ try {
             if (strlen($trip)>200 || strlen($stop)>200) { throw new InvalidArgumentException('Invalid stop or service.'); }
             $result=$service->approach($trip,$stop,null,isset($_GET['date']) ? (string)$_GET['date'] : null,isset($_GET['boarding']) ? (string)$_GET['boarding'] : null);
             break;
+        case 'station-map':
+            $result=App\StationMap::forStops(trim((string)($_GET['from'] ?? '')),trim((string)($_GET['to'] ?? '')));
+            break;
         case 'transfer':
             $from=trim((string)($_GET['from'] ?? '')); $to=trim((string)($_GET['to'] ?? ''));
             $trip=trim((string)($_GET['trip'] ?? ''));

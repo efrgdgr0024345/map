@@ -66,7 +66,7 @@ final class StreetJourneys
         $verified=[];
         $readyNow=$now+max(0,(int)floor((float)$clock()-$started));
         foreach ($pool as $journey) {
-            $ready=self::finish($journey,$paths,$readyNow);
+            $ready=self::finish($journey,$paths,$readyNow,$service);
             if ($ready!==null) { $verified[self::candidateKey($ready)]=$ready; }
         }
         $verified=array_values($verified);
@@ -115,9 +115,9 @@ final class StreetJourneys
     }
 
     /** Re-clock walks and reject any missed boarding, including a missed transfer. */
-    private static function finish(array $journey,array $paths,int $now): ?array
+    private static function finish(array $journey,array $paths,int $now,object $service): ?array
     {
-        $legs=[]; $cursor=$now; $walkSeconds=0; $initialWalk=0; $boardings=0; $firstBoarding=null;
+        $legs=[]; $cursor=$now; $walkSeconds=0; $initialWalk=0; $boardings=0; $firstBoarding=null; $previousRide=null;
         foreach ($journey['legs'] ?? [] as $leg) {
             if (($leg['mode'] ?? '')==='walk') {
                 if (self::zeroWalk($leg)) { continue; }
@@ -139,9 +139,26 @@ final class StreetJourneys
             $arrival=strtotime((string)($leg['arrival'] ?? ''));
             if ($departure===false || $arrival===false || $arrival<$departure) { return null; }
             $buffer=$boardings>0 || $initialWalk>0 ? self::BOARDING_BUFFER : 0;
-            if ($departure<$cursor+$buffer) { return null; }
+            $readyAt=$cursor+$buffer;
+            if ($previousRide!==null) {
+                if (isset($leg['transferType']) && !in_array((int)$leg['transferType'],[0,1,2],true)) { return null; }
+                $minimum=max(0,(int)($leg['transferMinimumSeconds'] ?? 0));
+                if ($service instanceof Transit) {
+                    $rule=$service->transferRule((string)($previousRide['to']['id'] ?? ''),(string)($leg['from']['id'] ?? ''),[
+                        'fromTripId'=>$previousRide['tripId'] ?? '', 'fromRouteId'=>$previousRide['routeId'] ?? '',
+                        'toTripId'=>$leg['tripId'] ?? '', 'toRouteId'=>$leg['routeId'] ?? '']);
+                    if (!$rule['allowed']) { return null; }
+                    $minimum=$rule['minimumSeconds'];
+                    if ($rule['matched']) {
+                        $leg['transferMinimumSeconds']=$minimum; $leg['transferType']=$rule['type'];
+                        $leg['transferRuleSource']=$rule['source'];
+                    }
+                }
+                $readyAt=max($readyAt,strtotime($previousRide['arrival'])+$minimum);
+            }
+            if ($departure<$readyAt) { return null; }
             $firstBoarding ??= $departure;
-            $boardings++; $cursor=$arrival; $legs[]=$leg;
+            $boardings++; $cursor=$arrival; $legs[]=$leg; $previousRide=$leg;
         }
         if (!$legs || $cursor<$now) { return null; }
         $journey['legs']=$legs;

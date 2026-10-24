@@ -3,3 +3,5 @@
 !/var/index.php
 /.tools/
 *.log
+__pycache__/
+*.py[cod]

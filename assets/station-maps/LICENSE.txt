@@ -1,0 +1,6 @@
+Station geometry is © OpenStreetMap contributors, available under the Open Database License (ODbL) 1.0.
+https://www.openstreetmap.org/copyright
+https://opendatacommons.org/licenses/odbl/1-0/
+Derived from the Geofabrik Western Australia extract listed in manifest.json.
+GTFS station names/groupings locate these excerpts; timetable data is available free of charge from www.transperth.wa.gov.au.
+This is mapped context, not a certified station floor plan, accessibility audit or live lift-status feed.

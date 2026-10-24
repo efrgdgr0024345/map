@@ -214,9 +214,9 @@ function pm_application_manifest(): array
 {
     return ['loader.php', 'index.php', 'bootstrap.php', 'api.php', '.htaccess',
         'src/.htaccess', 'scripts/.htaccess',
-        'src/GtfsImporter.php', 'src/Transit.php', 'src/Demo.php', 'src/Geo.php', 'src/Geocoder.php', 'src/NetworkStyle.php', 'src/RouteCache.php', 'src/VehicleMotion.php', 'src/WalkingRouter.php', 'src/StreetJourneys.php', 'src/Payphones.php', 'src/TransferGuide.php', 'scripts/import-gtfs.php', 'scripts/build-route-cache.php',
+        'src/GtfsImporter.php', 'src/Transit.php', 'src/TransferRules.php', 'src/StationMap.php', 'src/Demo.php', 'src/Geo.php', 'src/Geocoder.php', 'src/NetworkStyle.php', 'src/RouteCache.php', 'src/VehicleMotion.php', 'src/WalkingRouter.php', 'src/StreetJourneys.php', 'src/Payphones.php', 'src/TransferGuide.php', 'scripts/import-gtfs.php', 'scripts/build-route-cache.php',
         'assets/app.js', 'assets/style.css', 'assets/black-cat.svg', 'assets/mascot-head.webp', 'assets/mascot-paws.webp',
-        'assets/vendor/leaflet/leaflet.js', 'assets/vendor/leaflet/leaflet.css', 'assets/vendor/leaflet/LICENSE'];
+        'assets/station-maps/manifest.json', 'assets/vendor/leaflet/leaflet.js', 'assets/vendor/leaflet/leaflet.css', 'assets/vendor/leaflet/LICENSE'];
 }
 
 /** Apply a previously obtained trusted package. No browser input reaches this path. */

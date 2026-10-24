@@ -47,12 +47,18 @@ final class TransferGuide
             if (!$canBoard) { throw new InvalidArgumentException('The selected service does not pick up passengers at this boarding stop.'); }
             $trip=$table['trip'];
         }
+        $rule=$transit->transferRule($fromId,$toId,['toTripId'=>$tripId ?? '', 'toRouteId'=>$trip['routeId'] ?? '']);
+        if (!$rule['allowed']) { throw new InvalidArgumentException('The timetable does not allow this transfer. Choose another connection.'); }
         $stops=self::nearby($db,$from,$to);
         $result=['mode'=>'transfer','timezone'=>'Australia/Perth','generatedAt'=>date(DATE_ATOM),
             'from'=>$from,'to'=>$to,'stops'=>$stops,'geometry'=>[], 'distance'=>null,'duration'=>null,
             'routing'=>'unavailable','routingSource'=>null,'accessConnectors'=>[], 'pathAvailable'=>false,
             'station'=>['name'=>self::name($from['name'],$to['name']),'kind'=>'stop-area','indoorMap'=>false,'bounds'=>[]],
-            'message'=>''];
+            'transferMinimumSeconds'=>$rule['matched'] ? $rule['minimumSeconds'] : null,
+            'transferTimeSource'=>$rule['source'], 'message'=>''];
+        if (($from['stationId'] ?? '')!=='' && ($from['stationId'] ?? '')===($to['stationId'] ?? '')) {
+            $result['station']['name']=$to['stationName'];
+        }
         if ($trip!==null) { $result['trip']=$trip; $result['serviceDate']=$trip['serviceDate']; }
         if ($straightDistance<=0.5) {
             $result['geometry']=[[$to['lat'],$to['lon']]];
@@ -99,6 +105,17 @@ final class TransferGuide
         $stop['lat']=(float)$stop['lat']; $stop['lon']=(float)$stop['lon'];
         if (!is_finite($stop['lat']) || !is_finite($stop['lon']) || abs($stop['lat'])>90 || abs($stop['lon'])>180) {
             throw new RuntimeException('The timetable contains an invalid stop location.');
+        }
+        if ($db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='stop_details'")->fetchColumn()) {
+            $details=$db->prepare('SELECT d.*,p.name station_name FROM stop_details d LEFT JOIN stops p ON p.id=d.parent_station WHERE d.stop_id=?');
+            $details->execute([$id]); $row=$details->fetch();
+            if ($row) {
+                $stop['stationId']=(string)($row['parent_station'] ?: ((int)$row['location_type']===1 ? $id : ''));
+                $stop['stationName']=(string)($row['station_name'] ?: ((int)$row['location_type']===1 ? $stop['name'] : ''));
+                $stop['description']=(string)$row['description'];
+                $stop['platformCode']=(string)$row['platform_code'];
+                $stop['supportedModes']=(string)$row['supported_modes'];
+            }
         }
         return $stop;
     }

@@ -45,6 +45,7 @@
     addressEditField: null, autoPlanTimer: null, planController: null, planSignature: '', pickerPreviousFollow: null,
     mascotTucked: false, transfers: [], guidance: null, guidanceController: null, guidanceLayers: null,
     guidanceRenderer: null, guidanceTargetMarker: null, guidancePrevious: null, dismissedTransfers: new Set(),
+    stationMapController: null, stationMapLayers: null, stationMapRenderer: null,
     originUserChosen: false, awaitingGpsOrigin: false
   };
   const perthTime = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Perth', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -820,30 +821,28 @@
 
   function updateLeaveWidget() {
     const widget = $('leave-widget');
-    widget.hidden = !state.selected;
-    if (!state.selected) return;
     const journey = state.selected;
-    const board = timeValue(journey.boardingAt || (transitLegs()[0] && transitLegs()[0].departure));
-    const departure = timeValue(journey.leaveAt);
+    const firstRide = transitLegs()[0];
+    const board = journey ? timeValue(journey.boardingAt || (firstRide && firstRide.departure)) : NaN;
+    const departure = journey ? timeValue(journey.leaveAt) : NaN;
+    const verified = Boolean(journey && firstRide && journey.walkRouting === 'street' && Number.isFinite(departure) && Number.isFinite(board));
+    const visible = verified && Date.now() < board;
+    widget.hidden = !visible;
+    document.body.classList.toggle('leave-clock-visible', visible);
+    if (!visible) { widget.classList.remove('is-urgent', 'is-due'); return; }
     const title = $('leave-title'), countdown = $('leave-countdown');
-    if (!transitLegs().length && journey.walkRouting === 'street') {
-      title.textContent = 'Walk to your destination';
-      countdown.textContent = `${minutes(journey.duration)} min walk`;
-      return;
-    }
-    if (journey.walkRouting === 'unavailable' || !Number.isFinite(departure)) {
-      title.textContent = journey.walkRouting === 'unavailable' ? 'Walking route unavailable' : 'Leave time unavailable';
-      countdown.textContent = 'Check your starting point';
-      return;
-    }
-    if (Number.isFinite(board) && Date.now() >= board) {
-      title.textContent = 'Scheduled departure passed';
-      countdown.textContent = 'Check your next service';
-      return;
-    }
     const seconds = Math.ceil((departure - Date.now()) / 1000);
-    title.textContent = seconds > 0 ? `Leave by ${clock(journey.leaveAt)}` : 'Leave now';
-    countdown.textContent = seconds > 0 ? `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, '0')}s` : `Boards ${clock(journey.boardingAt || (transitLegs()[0] && transitLegs()[0].departure))}`;
+    const walking = Number(journey.walkToBoardSeconds) > 0;
+    $('leave-label').textContent = walking ? 'LEAVE HOME' : 'BOARD BY';
+    title.textContent = seconds > 0 ? clock(journey.leaveAt) : walking ? 'Leave now' : 'Board now';
+    countdown.textContent = seconds > 0 ? `in ${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, '0')}s` : `Boards ${clock(board)}`;
+    widget.classList.toggle('is-urgent', seconds > 0 && seconds <= 180);
+    widget.classList.toggle('is-due', seconds <= 0);
+    const walkMinutes = Math.ceil(Math.max(0, Number(journey.walkToBoardSeconds) || 0) / 60);
+    const bufferMinutes = Math.ceil(Math.max(0, Number(journey.boardingBufferSeconds) || 0) / 60);
+    widget.setAttribute('aria-label', walking
+      ? `Leave home by ${clock(journey.leaveAt)}. ${walkMinutes} minute walk plus ${bufferMinutes} minutes before boarding.`
+      : `Board by ${clock(board)}.`);
   }
 
   function bindSheetGesture(element, opening) {
@@ -955,13 +954,143 @@
     state.viewTimer = setTimeout(() => { state.programmaticView = false; }, 500);
   }
 
+  function stationFeatureRestricted(properties) {
+    return properties.restricted === true || ['no', 'private'].includes(properties.access) || ['no', 'private'].includes(properties.foot);
+  }
+
+  function stationFeatureStyle(feature) {
+    const kind = feature.properties.kind;
+    const target = state.guidance && state.guidance.data && state.guidance.data.to;
+    const mappedIds = [feature.properties.gtfsStopId, ...(Array.isArray(feature.properties.gtfsStopIds) ? feature.properties.gtfsStopIds : [])];
+    const exactPlatform = kind === 'platform' && target && mappedIds.some(id => id !== undefined && String(id) === String(target.id));
+    const styles = {
+      building: { color: '#cbd2c3', weight: 1.5, fillColor: '#eeefe8', fillOpacity: .96 },
+      platform: { color: '#9aa98d', weight: 2, fillColor: '#dce7cf', fillOpacity: .95 },
+      rail: { color: '#a8ada8', weight: 2, opacity: .65, dashArray: '5 4' },
+      footway: { color: '#b9c5ae', weight: 5, opacity: .75 },
+      steps: { color: '#8b7a5d', weight: 6, opacity: .8, dashArray: '2 3', lineCap: 'butt' }
+    };
+    const restricted = stationFeatureRestricted(feature.properties);
+    return { ...styles[kind], ...(exactPlatform ? { color: '#698c3d', weight: 2.5, fillColor: '#c2f65b', fillOpacity: .38 } : {}), ...(restricted ? { opacity: .4, fillOpacity: .35, dashArray: '3 5' } : {}), renderer: state.stationMapRenderer, pane: 'stationDetailPane', className: `station-feature station-feature-${kind}${exactPlatform ? ' is-boarding-platform' : ''}`, interactive: ['building', 'platform', 'steps'].includes(kind) };
+  }
+
+  function stationFeatureLabel(properties) {
+    const names = { platform: 'Platform', building: 'Building', footway: 'Walkway', steps: 'Steps', rail: 'Railway', entrance: 'Entrance', lift: 'Lift', crossing: 'Crossing', bus_stop: 'Bus stop' };
+    const reference = properties.localRef || properties.ref;
+    const label = String(properties.name || (reference ? `${names[properties.kind] || 'Station feature'} ${reference}` : names[properties.kind] || 'Station feature'));
+    const level = properties.level === undefined || properties.level === null || properties.level === '' ? '' : ` · level ${properties.level}`;
+    return `${label}${level}${stationFeatureRestricted(properties) ? ' · restricted access' : ''}`;
+  }
+
+  function stationPointIcon(kind, restricted = false) {
+    const body = make('span', `station-place-body station-place-${kind}${restricted ? ' is-restricted' : ''}`);
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    const paths = { entrance: 'M3 12h13m-4-4 4 4-4 4M18 4h3v16h-3', lift: 'm8 7 4-4 4 4M12 3v18m-4-4 4 4 4-4', crossing: 'M6 6h12M6 12h12M6 18h12', steps: 'M3 20h5v-5h5v-5h5V5h4' };
+    path.setAttribute('d', paths[kind] || paths.entrance);
+    svg.append(path); body.append(svg);
+    return L.divIcon({ html: body, className: `station-place-marker station-place-marker-${kind}`, iconSize: [22, 22], iconAnchor: [11, 11] });
+  }
+
+  function stationMapSource(data) {
+    const source = $('station-map-source');
+    source.replaceChildren();
+    const attribution = make('span', '', data.attribution || '© OpenStreetMap contributors');
+    try {
+      const url = new URL(data.sourceUrl);
+      if (url.protocol === 'https:' && !url.username && !url.password && ['openstreetmap.org', 'www.openstreetmap.org', 'download.geofabrik.de'].includes(url.hostname)) {
+        const link = make('a', '', data.attribution || '© OpenStreetMap contributors');
+        link.href = url.href; link.target = '_blank'; link.rel = 'noopener';
+        attribution.replaceChildren(link);
+      }
+    } catch { /* A source is still shown as text if its link is unavailable. */ }
+    source.append(attribution);
+    const updated = timeValue(data.updatedAt);
+    if (Number.isFinite(updated)) source.append(make('span', '', `${data.stale ? 'Saved map' : 'Map updated'} ${new Intl.DateTimeFormat('en-AU', { dateStyle: 'medium', timeZone: 'Australia/Perth' }).format(updated)}`));
+    const transfer = state.guidance && state.guidance.data;
+    if (transfer && Number(transfer.transferMinimumSeconds) > 0) source.append(make('span', '', `Official timetable connection allowance: ${Math.ceil(Number(transfer.transferMinimumSeconds) / 60)} min.`));
+    (Array.isArray(data.stations) ? data.stations : []).forEach(station => {
+      try {
+        const url = new URL(station.officialPlanUrl);
+        if (url.protocol !== 'https:' || url.hostname !== 'www.transperth.wa.gov.au' || url.username || url.password || !/^\/timetablePDFs\/BusStationMaps\/[^/]+\.pdf$/i.test(url.pathname)) return;
+        const link = make('a', 'station-official-plan', `Official ${station.name || 'station'} plan (PDF)`);
+        link.href = url.href; link.target = '_blank'; link.rel = 'noopener'; source.append(link);
+      } catch { /* Official plans are optional, fixed-source references. */ }
+    });
+    source.append(make('span', '', 'Mapped station features. Follow the signs for platform access and levels.'));
+  }
+
+  function renderStationMap(data) {
+    state.stationMapLayers.clearLayers();
+    const kinds = ['building', 'platform', 'rail', 'footway', 'steps', 'entrance', 'lift', 'crossing', 'bus_stop'];
+    const features = data.available && data.featureCollection && Array.isArray(data.featureCollection.features)
+      ? data.featureCollection.features.filter(feature => feature && feature.type === 'Feature' && feature.properties && kinds.includes(feature.properties.kind) && feature.geometry && ['Point', 'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon'].includes(feature.geometry.type)).slice(0, 2500) : [];
+    features.sort((a, b) => kinds.indexOf(a.properties.kind) - kinds.indexOf(b.properties.kind));
+    if (!features.length) {
+      $('station-map-state').textContent = 'Unavailable';
+      $('station-map-source').replaceChildren(make('span', '', 'Station detail is unavailable. Your walking route and boarding stop remain on the map.'));
+      const retry = make('button', 'guidance-retry', 'Retry station map');
+      retry.type = 'button'; retry.addEventListener('click', loadStationMap);
+      $('station-map-source').append(retry);
+      return;
+    }
+    L.geoJSON({ type: 'FeatureCollection', features }, {
+      style: stationFeatureStyle,
+      pointToLayer: (feature, point) => {
+        const kind = feature.properties.kind;
+        if (['entrance', 'lift', 'crossing', 'steps'].includes(kind)) {
+          const restricted = stationFeatureRestricted(feature.properties);
+          return L.marker(point, { icon: stationPointIcon(kind, restricted), opacity: restricted ? .35 : 1, zIndexOffset: 300, bubblingMouseEvents: false, title: stationFeatureLabel(feature.properties) });
+        }
+        return L.circleMarker(point, { ...stationFeatureStyle(feature), radius: kind === 'platform' ? 5 : 3 });
+      },
+      onEachFeature: (feature, layer) => {
+        const properties = feature.properties;
+        const name = stationFeatureLabel(properties);
+        if (properties.kind === 'platform' && (properties.localRef || properties.ref)) layer.bindTooltip(make('span', '', String(properties.localRef || properties.ref)), { permanent: true, direction: 'center', pane: 'stationLabelPane', className: 'station-platform-label' });
+        else if (properties.name || properties.ref || ['entrance', 'lift', 'crossing', 'steps'].includes(properties.kind)) layer.bindTooltip(make('span', '', name));
+        if (['platform', 'building', 'entrance', 'lift', 'crossing', 'steps'].includes(properties.kind)) {
+          const popup = make('div', 'service-popup');
+          popup.append(make('strong', '', name));
+          if (properties.access) popup.append(make('span', '', `Mapped access: ${properties.access}`));
+          else if (stationFeatureRestricted(properties)) popup.append(make('span', '', 'Restricted pedestrian access'));
+          if (properties.wheelchair) popup.append(make('span', '', `Mapped wheelchair access: ${properties.wheelchair}`));
+          popup.append(make('span', '', '© OpenStreetMap contributors'));
+          layer.bindPopup(popup);
+        }
+      }
+    }).addTo(state.stationMapLayers);
+    $('station-map-state').textContent = data.stale ? 'Saved map' : '';
+    stationMapSource(data);
+  }
+
+  async function loadStationMap() {
+    if (!state.guidance) return;
+    const guidance = state.guidance;
+    if (state.stationMapController) state.stationMapController.abort();
+    const controller = new AbortController();
+    state.stationMapController = controller;
+    $('station-map-state').textContent = 'Loading…';
+    try {
+      const data = await api('station-map', { from: guidance.transfer.from.id, to: guidance.transfer.to.id }, controller.signal);
+      if (!controller.signal.aborted && state.guidance === guidance) renderStationMap(data);
+    } catch (error) {
+      if (error.name !== 'AbortError' && state.guidance === guidance) renderStationMap({ available: false });
+    } finally { if (state.stationMapController === controller) state.stationMapController = null; }
+  }
+
   function renderStationGuidance(data, loading = false) {
     if (!state.guidance) return;
     state.guidance.data = data;
     state.guidanceLayers.clearLayers();
     $('station-guidance-title').textContent = data.station && data.station.name || 'Your transfer';
     $('guidance-target-name').textContent = `Board at ${data.to.name}`;
-    $('guidance-detail').textContent = loading ? 'Loading station…' : data.routing === 'street' ? `${Math.round(data.distance)} m · ${minutes(data.duration)} min walk · follow platform signs` : data.routing === 'stationary' ? 'Use the signed boarding stop or platform.' : 'Walking path unavailable. Follow the station signs.';
+    const minimum = Number(data.transferMinimumSeconds);
+    const allowance = Number.isFinite(minimum) && minimum > (Number(data.duration) || 0) + 120
+      ? ` · allow ${Math.ceil(minimum / 60)} min to change` : '';
+    $('guidance-detail').textContent = loading ? 'Loading station…' : data.routing === 'street' ? `${Math.round(data.distance)} m · ${Math.max(1, Math.ceil(Number(data.duration) / 60))} min walk${allowance || ' · follow platform signs'}` : data.routing === 'stationary' ? `Use the signed boarding stop or platform${allowance}.` : 'Walking path unavailable. Follow the station signs.';
     const stops = new Map((data.stops || []).map(stop => [String(stop.id), stop]));
     stops.set(String(data.to.id), { ...data.to, target: true });
     stops.forEach(stop => {
@@ -970,7 +1099,7 @@
       if (target) {
         const body = make('div', 'guidance-target-pin');
         const shortName = String(data.to.name).match(/\b(?:platform|stand|bay)\s+[^,]+$/i);
-        body.append(make('span', 'guidance-target-ring'), make('span', 'guidance-target-label', shortName ? shortName[0] : data.to.name));
+        body.append(make('span', 'guidance-target-ring', 'B'), make('span', 'guidance-target-label', shortName ? shortName[0] : data.to.name));
         marker = L.marker([stop.lat, stop.lon], { icon: L.divIcon({ html: body, className: 'guidance-stop-target', iconSize: [22, 22], iconAnchor: [11, 11] }), zIndexOffset: 6000, bubblingMouseEvents: false, title: `Board at ${data.to.name}` });
         const popup = make('div', 'service-popup');
         popup.append(make('strong', '', `Board at ${data.to.name}`), timetableButton('View next service', tripQuery(state.guidance.transfer.next)));
@@ -979,6 +1108,11 @@
       } else marker = L.marker([stop.lat, stop.lon], { icon: L.divIcon({ className: 'guidance-stop-context', iconSize: [8, 8], iconAnchor: [4, 4] }), zIndexOffset: 200, bubblingMouseEvents: false, keyboard: false, title: stop.name }).bindTooltip(make('span', '', stop.name));
       marker.addTo(state.guidanceLayers);
     });
+    if (String(data.from.id) !== String(data.to.id) && map.distance([data.from.lat, data.from.lon], [data.to.lat, data.to.lon]) > .5) {
+      const arrival = make('span', 'guidance-origin-pin', 'A');
+      const marker = L.marker([data.from.lat, data.from.lon], { icon: L.divIcon({ html: arrival, className: 'guidance-stop-origin', iconSize: [22, 22], iconAnchor: [11, 11] }), zIndexOffset: 5500, bubblingMouseEvents: false, title: `Get off at ${data.from.name}` });
+      marker.bindTooltip(make('span', '', `Get off at ${data.from.name}`)).addTo(state.guidanceLayers);
+    }
     if (data.routing === 'street' && Array.isArray(data.geometry) && data.geometry.length > 1) {
       L.polyline(data.geometry, { renderer: state.guidanceRenderer, color: '#647c55', weight: 3, opacity: .45, interactive: false }).addTo(state.guidanceLayers);
       const dots = guidanceDots(data.geometry);
@@ -1001,7 +1135,7 @@
     try {
       const transfer = guidance.transfer;
       const data = await api('transfer', { from: transfer.from.id, to: transfer.to.id, ...tripQuery(transfer.next) }, controller.signal);
-      if (!controller.signal.aborted && state.guidance === guidance) renderStationGuidance(data);
+      if (!controller.signal.aborted && state.guidance === guidance) { renderStationGuidance(data); loadStationMap(); }
     } catch (error) {
       if (error.name === 'AbortError' || state.guidance !== guidance) return;
       const retry = make('button', 'guidance-retry', 'Retry');
@@ -1020,6 +1154,10 @@
     $('station-guidance').hidden = false;
     $('confirm-guidance').disabled = false;
     $('confirm-guidance').textContent = 'I can see this stop';
+    state.stationMapLayers.clearLayers();
+    $('station-map-details').open = false;
+    $('station-map-state').textContent = 'Loading…';
+    $('station-map-source').replaceChildren();
     [journeyLayers, networkLayers, state.approachLayers].forEach(layer => { if (map.hasLayer(layer)) map.removeLayer(layer); });
     setPanel(false);
     renderStationGuidance({ from: transfer.from, to: transfer.to, stops: [transfer.from, transfer.to], geometry: [], station: { name: transfer.to.name }, routing: 'unavailable' }, true);
@@ -1037,10 +1175,13 @@
     if (!state.guidance) return;
     if (state.guidance.activation === 'auto' || transferTimeEligible(state.guidance.transfer)) state.dismissedTransfers.add(state.guidance.transfer.key);
     if (state.guidanceController) state.guidanceController.abort();
+    if (state.stationMapController) state.stationMapController.abort();
+    state.stationMapController = null;
     state.guidanceController = null;
     state.guidance = null;
     state.guidanceTargetMarker = null;
     state.guidanceLayers.clearLayers();
+    state.stationMapLayers.clearLayers();
     document.body.classList.remove('station-guidance-active');
     $('station-guidance').hidden = true;
     [networkLayers, journeyLayers, state.approachLayers].forEach(layer => { if (!map.hasLayer(layer)) layer.addTo(map); });
@@ -1577,6 +1718,13 @@
     map.getPane('guidancePane').style.pointerEvents = 'none';
     state.guidanceRenderer = L.svg({ pane: 'guidancePane', padding: .5 });
     state.guidanceLayers = L.layerGroup().addTo(map);
+    map.createPane('stationDetailPane');
+    map.getPane('stationDetailPane').style.zIndex = '430';
+    state.stationMapRenderer = L.svg({ pane: 'stationDetailPane', padding: .5 });
+    state.stationMapLayers = L.layerGroup().addTo(map);
+    map.createPane('stationLabelPane');
+    map.getPane('stationLabelPane').style.zIndex = '445';
+    map.getPane('stationLabelPane').style.pointerEvents = 'none';
     updatePlaceMarker('origin');
     map.on('click', event => {
       if (state.pickField) { finishMapPick(event.latlng); return; }
@@ -1641,6 +1789,7 @@
       updateGuidanceTarget();
     });
     $('guidance-timetable').addEventListener('click', () => { if (state.guidance) openTimetable(tripQuery(state.guidance.transfer.next)); });
+    $('station-map-details').addEventListener('toggle', () => { if (state.guidance && state.guidance.following) fitStationGuidance(); });
     $('timetable-close').addEventListener('click', () => $('timetable-dialog').close());
     $('timetable-back').addEventListener('click', () => {
       if (state.timetableHistory.length < 2) return;

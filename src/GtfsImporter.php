@@ -54,6 +54,8 @@ final class GtfsImporter
             $db->exec('PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA temp_store=FILE;');
             $db->exec('CREATE TABLE meta (key TEXT PRIMARY KEY,value TEXT);
                 CREATE TABLE stops (id TEXT PRIMARY KEY,name TEXT,lat REAL,lon REAL);
+                CREATE TABLE stop_details (stop_id TEXT PRIMARY KEY,parent_station TEXT,location_type INTEGER,description TEXT,platform_code TEXT,supported_modes TEXT);
+                CREATE TABLE transfers (from_stop_id TEXT,to_stop_id TEXT,transfer_type INTEGER,min_transfer_time INTEGER,from_route_id TEXT,to_route_id TEXT,from_trip_id TEXT,to_trip_id TEXT);
                 CREATE TABLE routes (id TEXT PRIMARY KEY,name TEXT,type INTEGER);
                 CREATE TABLE route_styles (route_id TEXT PRIMARY KEY,color TEXT,text_color TEXT);
                 CREATE TABLE trips (id TEXT PRIMARY KEY,route_id TEXT,service_id TEXT,headsign TEXT,shape_id TEXT,start INTEGER,end INTEGER);
@@ -65,6 +67,11 @@ final class GtfsImporter
             $counts = [];
             $counts['stops'] = $this->rows($zip, 'stops.txt', true, $db,
                 'INSERT INTO stops VALUES (?,?,?,?)', static fn($r) => [$r['stop_id'], $r['stop_name'], (float)$r['stop_lat'], (float)$r['stop_lon']]);
+            $counts['stop_details'] = $this->rows($zip, 'stops.txt', true, $db,
+                'INSERT INTO stop_details VALUES (?,?,?,?,?,?)', static fn($r) => [
+                    $r['stop_id'], $r['parent_station'] ?? '', self::integer($r['location_type'] ?? '', 0, 4, 'stops.txt location_type', 0),
+                    $r['stop_desc'] ?? '', $r['platform_code'] ?? '', $r['supported_modes'] ?? '',
+                ]);
             $counts['routes'] = $this->rows($zip, 'routes.txt', true, $db,
                 'INSERT INTO routes VALUES (?,?,?)', static fn($r) => [$r['route_id'], ($r['route_short_name'] ?? '') ?: ($r['route_long_name'] ?? $r['route_id']), (int)$r['route_type']]);
             $this->rows($zip, 'routes.txt', true, $db, 'INSERT INTO route_styles VALUES (?,?,?)',
@@ -79,6 +86,20 @@ final class GtfsImporter
                 'INSERT INTO exceptions VALUES (?,?,?)', static fn($r) => [$r['service_id'], $r['date'], (int)$r['exception_type']]);
             $counts['shapes'] = $this->rows($zip, 'shapes.txt', false, $db,
                 'INSERT INTO shapes VALUES (?,?,?,?)', static fn($r) => [$r['shape_id'], (int)$r['shape_pt_sequence'], (float)$r['shape_pt_lat'], (float)$r['shape_pt_lon']]);
+            $counts['transfers'] = $this->rows($zip, 'transfers.txt', false, $db,
+                'INSERT INTO transfers VALUES (?,?,?,?,?,?,?,?)', static function ($r): array {
+                    $type=self::integer($r['transfer_type'], 0, 5, 'transfers.txt transfer_type');
+                    $minimumValue=trim($r['min_transfer_time'] ?? '');
+                    $minimum=$minimumValue==='' ? null : self::integer($minimumValue, 0, PHP_INT_MAX, 'transfers.txt min_transfer_time');
+                    $from=$r['from_stop_id'] ?? ''; $to=$r['to_stop_id'] ?? '';
+                    $fromTrip=$r['from_trip_id'] ?? ''; $toTrip=$r['to_trip_id'] ?? '';
+                    if ($type===2 && $minimum===null) { throw new RuntimeException('GTFS transfers.txt type 2 needs min_transfer_time.'); }
+                    if (($type<=3 && ($from==='' || $to==='')) || ($type>=4 && ($fromTrip==='' || $toTrip===''))) {
+                        throw new RuntimeException('GTFS transfers.txt needs valid stop endpoints, or both trip endpoints for in-seat rules.');
+                    }
+                    return [$from, $to, $type, $minimum, $r['from_route_id'] ?? '', $r['to_route_id'] ?? '', $fromTrip, $toTrip];
+                });
+            $this->validateStationReferences($db);
             foreach (['stops', 'routes', 'trips', 'stop_times'] as $required) {
                 if (!$counts[$required]) {
                     throw new RuntimeException('GTFS has no ' . $required . '.');
@@ -93,6 +114,9 @@ final class GtfsImporter
                  FROM stop_times WINDOW w AS (PARTITION BY trip_id ORDER BY seq)) WHERE next_stop IS NOT NULL AND next_arrival>=departure;
                 UPDATE trips SET start=(SELECT MIN(departure) FROM stop_times WHERE trip_id=trips.id),end=(SELECT MAX(arrival) FROM stop_times WHERE trip_id=trips.id);
                 CREATE INDEX stops_location ON stops(lat,lon);
+                CREATE INDEX stop_details_parent ON stop_details(parent_station);
+                CREATE INDEX transfers_stops ON transfers(from_stop_id,to_stop_id);
+                CREATE INDEX transfers_reverse ON transfers(to_stop_id,from_stop_id);
                 CREATE INDEX trips_service ON trips(service_id,start,end);
                 CREATE INDEX connections_time ON connections(departure);
                 CREATE INDEX times_stop ON stop_times(stop_id,departure);
@@ -140,9 +164,10 @@ final class GtfsImporter
             if ($required) { throw new RuntimeException('Missing GTFS file: ' . $name); }
             return 0;
         }
-        $header = fgetcsv($stream, 0, ',', '"', '');
-        if (!$header) { throw new RuntimeException('Empty GTFS file: ' . $name); }
-        $header[0] = preg_replace('/^\xEF\xBB\xBF/', '', $header[0]);
+        $headerLine = fgets($stream);
+        if ($headerLine === false) { fclose($stream); throw new RuntimeException('Empty GTFS file: ' . $name); }
+        // Strip a BOM before CSV parsing so a quoted first header is recognized too.
+        $header = str_getcsv(preg_replace('/^\xEF\xBB\xBF/', '', $headerLine), ',', '"', '');
         // The official Perth shapes file contains spaces after its header commas.
         $header = array_map(static fn($column) => trim((string)$column), $header);
         $columns = [
@@ -153,6 +178,7 @@ final class GtfsImporter
             'calendar.txt' => ['service_id','monday','tuesday','wednesday','thursday','friday','saturday','sunday','start_date','end_date'],
             'calendar_dates.txt' => ['service_id','date','exception_type'],
             'shapes.txt' => ['shape_id','shape_pt_lat','shape_pt_lon','shape_pt_sequence'],
+            'transfers.txt' => ['transfer_type'],
         ];
         $missing = array_diff($columns[$name] ?? [], $header);
         if ($missing || count($header) !== count(array_unique($header))) {
@@ -184,6 +210,54 @@ final class GtfsImporter
             throw new RuntimeException('GTFS has a missing/invalid stop time. Interpolate untimed stops before import.');
         }
         return (int)$parts[1] * 3600 + (int)$parts[2] * 60 + (int)$parts[3];
+    }
+
+    /** Optional station fields must not silently turn invalid text into zero. */
+    private static function integer(string $value, int $minimum, int $maximum, string $field, ?int $empty = null): int
+    {
+        $value=trim($value);
+        if ($value==='') {
+            if ($empty!==null) { return $empty; }
+            throw new RuntimeException('GTFS has a missing/invalid '.$field.'.');
+        }
+        if (!preg_match('/^\d+$/D',$value)) { throw new RuntimeException('GTFS has a missing/invalid '.$field.'.'); }
+        $normalized=ltrim($value,'0');
+        $normalized=$normalized==='' ? '0' : $normalized;
+        if (strlen($normalized)>strlen((string)$maximum) || (strlen($normalized)===strlen((string)$maximum) && strcmp($normalized,(string)$maximum)>0)) {
+            throw new RuntimeException('GTFS has an out-of-range '.$field.'.');
+        }
+        $number=(int)$normalized;
+        if ($number<$minimum || $number>$maximum) { throw new RuntimeException('GTFS has an out-of-range '.$field.'.'); }
+        return $number;
+    }
+
+    private function validateStationReferences(PDO $db): void
+    {
+        if ((int)$db->query("SELECT COUNT(*) FROM stop_details d LEFT JOIN stops p ON p.id=d.parent_station
+            WHERE d.parent_station<>'' AND (p.id IS NULL OR d.parent_station=d.stop_id)")->fetchColumn()) {
+            throw new RuntimeException('GTFS stops.txt contains an unknown or self-referencing parent_station.');
+        }
+        $parents=$db->query("SELECT stop_id,parent_station FROM stop_details WHERE parent_station<>''")->fetchAll(PDO::FETCH_KEY_PAIR);
+        $done=[];
+        foreach ($parents as $id=>$parent) {
+            $path=[]; $cursor=$id;
+            while (isset($parents[$cursor]) && !isset($done[$cursor])) {
+                if (isset($path[$cursor])) { throw new RuntimeException('GTFS stops.txt contains a parent_station cycle.'); }
+                $path[$cursor]=true; $cursor=$parents[$cursor];
+            }
+            $done+=$path;
+        }
+        foreach (['from_stop_id'=>'stops','to_stop_id'=>'stops','from_route_id'=>'routes','to_route_id'=>'routes','from_trip_id'=>'trips','to_trip_id'=>'trips'] as $column=>$table) {
+            if ((int)$db->query("SELECT COUNT(*) FROM transfers t LEFT JOIN $table r ON r.id=t.$column WHERE t.$column<>'' AND r.id IS NULL")->fetchColumn()) {
+                throw new RuntimeException('GTFS transfers.txt contains an unknown '.$column.'.');
+            }
+        }
+        foreach (['from','to'] as $direction) {
+            if ((int)$db->query("SELECT COUNT(*) FROM transfers t JOIN trips p ON p.id=t.{$direction}_trip_id
+                WHERE t.{$direction}_route_id<>'' AND t.{$direction}_route_id<>p.route_id")->fetchColumn()) {
+                throw new RuntimeException('GTFS transfers.txt route and trip qualifiers do not match.');
+            }
+        }
     }
 
     private function download(string $target): void
