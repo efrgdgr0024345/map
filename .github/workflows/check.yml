@@ -1,0 +1,28 @@
+name: Check application and installer
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.1', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_sqlite, sqlite3, curl, zip
+          coverage: none
+      - run: find . -name '*.php' -not -path './var/*' -print0 | xargs -0 -n1 php -l
+      - run: php tests/transit.php
+      - run: php tests/loader_install.php
+      - run: PHP_BINARY=php python3 tests/loader_http.py
+      - run: node --check assets/app.js
+      - run: php loader.php --check

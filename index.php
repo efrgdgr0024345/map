@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f7f3">
+  <meta name="description" content="Find your next Perth bus or train, follow your journey, and see the network in motion on an open map.">
+  <title>Nextstop — Perth in motion</title>
+  <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=">
+  <link rel="stylesheet" href="assets/style.css">
+  <script src="assets/vendor/leaflet/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" defer></script>
+  <script src="assets/app.js" defer></script>
+</head>
+<body>
+  <div id="map" aria-label="Interactive Perth public transport map"></div>
+
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Nextstop home"><span class="brand-mark" aria-hidden="true">n<span><svg viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></svg></span></span><span>nextstop<span class="brand-dot">.</span></span></a>
+    <div class="topbar-right"><span class="city-label"><span class="city-dot"></span>PERTH, WA</span><span class="clock" id="perth-clock">--:--</span></div>
+  </header>
+
+  <main class="journey-panel" aria-label="Plan your journey">
+    <div class="panel-handle" aria-hidden="true"></div>
+    <div class="panel-intro">
+      <div class="eyebrow">A BETTER WAY TO GET THERE</div>
+      <h1>Your city.<br><span>In motion.</span></h1>
+      <p>Find your next ride. See what’s coming.</p>
+    </div>
+
+    <div class="data-banner" id="data-banner" role="status"><span class="status-dot"></span><span id="data-banner-text">Connecting to the network…</span></div>
+
+    <form id="journey-form" autocomplete="off">
+      <div class="location-fields">
+        <div class="location-rail" aria-hidden="true"><span class="origin-dot"></span><span class="rail-line"></span><span class="destination-dot"></span></div>
+        <div class="location-inputs">
+          <div class="location-row">
+            <label class="sr-only" for="origin-input">Starting point</label>
+            <input id="origin-input" name="origin" type="text" value="Perth Busport" placeholder="Starting point" spellcheck="false" aria-controls="search-results">
+            <button class="icon-button location-search" type="button" data-search="origin" aria-label="Search starting address" title="Search starting address">⌕</button>
+          </div>
+          <div class="location-row">
+            <label class="sr-only" for="destination-input">Destination</label>
+            <input id="destination-input" name="destination" type="text" placeholder="Where are you going?" spellcheck="false" aria-controls="search-results">
+            <button class="icon-button location-search" type="button" data-search="destination" aria-label="Search destination address" title="Search destination address">⌕</button>
+          </div>
+        </div>
+      </div>
+      <div id="search-results" class="search-results" aria-label="Address search results" hidden></div>
+      <div class="location-options">
+        <button type="button" id="use-location" class="text-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20 4-6.1 16-3.5-6.4L4 10.1 20 4Z"/></svg>Use my location</button>
+        <button type="button" id="choose-on-map" class="text-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 10c0 5-7 10-7 10S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2"/></svg>Choose on map</button>
+      </div>
+      <button type="submit" class="primary-button" id="plan-button"><span>Find my next ride</span><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></svg></span></button>
+    </form>
+
+    <div class="message" id="message" role="status" aria-live="polite" hidden></div>
+    <div id="journey-results" hidden>
+      <div class="results-heading"><h2>Your journey</h2><button type="button" id="clear-journey" class="text-button">Clear <span aria-hidden="true">×</span></button></div>
+      <div id="journey-options" class="journey-options"></div>
+      <div id="next-service" class="next-service" hidden></div>
+      <div id="itinerary" class="itinerary"></div>
+      <button type="button" id="network-toggle" class="network-toggle" aria-pressed="false"><span class="toggle-track"><span></span></span><span>Show the whole network</span></button>
+    </div>
+
+    <div class="panel-footer"><span class="small-map-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></svg></span><span>Open maps. A clearer way forward.</span></div>
+  </main>
+
+  <div class="map-hint" id="map-hint" hidden><span id="map-hint-text">Tap the map to choose your destination</span><button type="button" id="cancel-map-pick" aria-label="Cancel map selection">×</button></div>
+  <div class="map-warning" id="map-warning" role="status" hidden>Map tiles couldn’t load. Check your connection; you can still search and plan a route.</div>
+
+  <aside class="network-card" aria-label="Network activity">
+    <div class="network-pulse" aria-hidden="true"><span></span></div>
+    <div><strong id="network-count">Finding services…</strong><span id="network-detail">In this map area</span></div>
+    <span class="estimate-label" id="estimate-label">TIMETABLE</span>
+  </aside>
+  <div class="map-controls"><button type="button" id="map-locate" title="Show my location" aria-label="Show my location"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3"/></svg></button><button type="button" id="map-zoom-in" aria-label="Zoom in">+</button><button type="button" id="map-zoom-out" aria-label="Zoom out">−</button></div>
+  <div class="map-legend"><span><i class="legend-next"></i>Your next ride</span><span><i class="legend-other"></i>Other services</span><span class="legend-note" id="legend-note">Positions estimated from timetable</span></div>
+  <noscript><div class="noscript">Enable JavaScript to use the map and plan a journey.</div></noscript>
+</body>
+</html>

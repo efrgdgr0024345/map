@@ -1,0 +1,2 @@
+# Preserve upstream Leaflet bytes for the verified integrity hashes.
+assets/vendor/leaflet/** -text -whitespace
