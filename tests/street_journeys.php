@@ -6,6 +6,7 @@ use App\Demo;
 use App\Geo;
 use App\StreetJourneys;
 use App\Transit;
+use App\WalkingRouteException;
 
 $checks=0;
 function sjCheck(bool $condition,string $message): void
@@ -133,6 +134,24 @@ try {
     $invalid=StreetJourneys::plan($walkOnly,$home,$a,$now,static fn()=>['routing'=>'street','duration'=>60,'distance'=>75,'geometry'=>[[NAN,115.8],[-31.95,115.85]]]);
     sjCheck($invalid['journeys']===[],'invalid provider geometry cannot be labelled a street route');
 
+    $personalGoal=['name'=>'Venue centre','lat'=>$a['lat'],'lon'=>$a['lon']];
+    $personalWalk=sjService(static fn()=>sjResponse([sjJourney([Demo::walk($home,$personalGoal,$now,$now+100)])]));
+    $unmapped=StreetJourneys::plan($personalWalk,$home,$personalGoal,$now,static function(): array { throw new WalkingRouteException('no_segment',1); });
+    sjCheck($unmapped['journeys']===[] && $unmapped['walkingIssue']['endpoint']==='destination' && $unmapped['walkingIssue']['reason']==='no_segment','an unmapped venue destination is classified without inventing a route');
+    sjCheck(str_contains($unmapped['message'],'public entrance') && !str_contains($unmapped['message'],'temporarily unavailable'),'venue-centre access errors explain how to choose a mapped entrance rather than pretending the routing server is down');
+    sjCheck(!isset($unmapped['walkingIssue']['lat'],$unmapped['walkingIssue']['lon'],$unmapped['walkingIssue']['url']),'the public access hint contains no provider URL or incidental endpoint coordinates');
+    $unmappedOrigin=StreetJourneys::plan($personalWalk,$home,$personalGoal,$now,static function(): array { throw new WalkingRouteException('no_segment',0); });
+    sjCheck($unmappedOrigin['walkingIssue']['endpoint']==='origin' && str_contains($unmappedOrigin['message'],'starting point'),'an unmapped initial location points to the starting field rather than the destination');
+    $unmappedTransfer=StreetJourneys::plan($transfer,$a,$goal,$now,static function(): array { throw new WalkingRouteException('no_segment',1); });
+    sjCheck($unmappedTransfer['walkingIssue']['endpoint']==='connection' && !str_contains($unmappedTransfer['message'],'The destination'),'an unmapped intermediate transfer is not mislabelled as the final destination');
+    $unmappedStop=StreetJourneys::plan($walkOnly,$home,$a,$now,static function(): array { throw new WalkingRouteException('no_segment',1); });
+    sjCheck($unmappedStop['walkingIssue']['endpoint']==='connection','a trusted GTFS stop stays a stop access issue even if its coordinates coincide with the requested endpoint');
+    $zeroStop=['id'=>'0','name'=>'Zero stop identifier','lat'=>$a['lat'],'lon'=>$a['lon']];
+    $zeroStopWalk=sjService(static fn()=>sjResponse([sjJourney([Demo::walk($home,$zeroStop,$now,$now+100)])]));
+    $zeroStopIssue=StreetJourneys::plan($zeroStopWalk,$home,$personalGoal,$now,static function(): array { throw new WalkingRouteException('no_segment',1); });
+    sjCheck($zeroStopIssue['walkingIssue']['endpoint']==='connection','numeric-looking GTFS stop zero is not mistaken for a personal venue endpoint');
+    sjCheck(!isset($failure['walkingIssue']),'an actual provider failure is not mislabelled as a confirmed venue entrance problem');
+
     $many=[];
     for ($choice=0;$choice<2;$choice++) {
         $legs=[]; $point=$home;
@@ -150,7 +169,36 @@ try {
     $timed=StreetJourneys::plan($manyService,$home,$goal,$now,static function($from,$to) use (&$clock,&$timedCalls): array {
         $timedCalls++; $clock+=6.0; return sjProvider($from,$to,30);
     },static function() use (&$clock): float { return $clock; });
-    sjCheck($timedCalls===2 && $clock<=15 && $timed['journeys']===[],'time budget reserves the provider timeout before starting another network request');
+    sjCheck($timedCalls===4 && $clock<=24 && $timed['journeys']===[],'separate pedestrian time budget reserves a provider timeout and never offers an incompletely checked journey');
+
+    $slowPlannerClock=0.0; $slowPlannerLookups=0;
+    $slowPlanner=sjService(static function($from,$to,$at) use (&$slowPlannerClock,$a,$b,$now): array {
+        $slowPlannerClock+=11.0;
+        return sjResponse([sjJourney([Demo::walk($from,$a,$at,$at+180),sjRide('shared-host',$a,$b,$now+600,$now+1200),Demo::walk($b,$to,$now+1200,$now+1380)])]);
+    });
+    $slowPlannerResult=StreetJourneys::plan($slowPlanner,$home,$goal,$now,static function($from,$to) use (&$slowPlannerClock,&$slowPlannerLookups): array {
+        $slowPlannerLookups++; $slowPlannerClock+=2.0; return sjProvider($from,$to,180);
+    },static function() use (&$slowPlannerClock): float { return $slowPlannerClock; });
+    sjCheck(count($slowPlannerResult['journeys'])===1 && $slowPlannerLookups===2,'an eleven-second shared-host timetable scan still permits both required verified walking connections');
+    sjCheck($slowPlanner->calls===1 && $slowPlannerClock===15.0,'unchanged verified walking durations avoid an unnecessary second timetable scan');
+    sjCheck($slowPlannerResult['journeys'][0]['walkRouting']==='street' && strtotime($slowPlannerResult['journeys'][0]['leaveAt'])===$now+300,'shared-host budget fix preserves measured walking and the leave-home boarding allowance');
+
+    $exhaustedClock=0.0; $exhaustedLookups=0;
+    $exhausted=sjService(static function($from,$to,$at) use (&$exhaustedClock,$a,$b,$now): array {
+        $exhaustedClock+=44.0;
+        return sjResponse([sjJourney([Demo::walk($from,$a,$at,$at+180),sjRide('too-slow',$a,$b,$now+600,$now+1200)])]);
+    });
+    $exhaustedResult=StreetJourneys::plan($exhausted,$home,$goal,$now,static function() use (&$exhaustedLookups): array { $exhaustedLookups++; return []; },static function() use (&$exhaustedClock): float { return $exhaustedClock; });
+    sjCheck($exhaustedLookups===0 && $exhaustedResult['journeys']===[],'exhausting the overall shared-host deadline still cannot admit an unsafe or unverified route');
+
+    $replanClock=0.0;
+    $slowRounds=sjService(static function($from,$to,$at,$overrides,$round) use (&$replanClock): array {
+        $replanClock+=16.0;
+        $end=['lat'=>-31.95,'lon'=>115.85+$round*0.001];
+        return sjResponse([sjJourney([Demo::walk($from,$end,$at,$at+60)])]);
+    });
+    StreetJourneys::plan($slowRounds,$home,$goal,$now,static function($from,$to) use (&$replanClock): array { $replanClock+=1.0; return sjProvider($from,$to,90); },static function() use (&$replanClock): float { return $replanClock; });
+    sjCheck($slowRounds->calls===2 && $replanClock===34.0,'a slow shared-host scan is not restarted when the remaining deadline cannot cover its observed cost');
 
     $slowClock=0.0;
     $departing=sjService(static fn()=>sjResponse([

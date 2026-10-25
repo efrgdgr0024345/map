@@ -28,16 +28,22 @@ jobs:
       - run: php tests/motion.php
       - run: php tests/approach.php
       - run: php tests/walking.php
+      - run: php tests/geocoder.php
       - run: php tests/street_journeys.php
       - run: php tests/transfer.php
       - run: php tests/station_metadata.php
+      - run: php tests/import_progress.php
       - run: php tests/transfer_rules.php
       - run: php tests/station_map.php
       - run: python3 tests/station_catalog.py
       - run: php tests/payphones.php
       - run: php tests/loader_install.php
+      - run: php tests/loader_progress.php
       - run: PHP_BINARY=php python3 tests/loader_http.py
       - run: PHP_BINARY=php python3 tests/loader_cli.py
+      - run: PHP_BINARY=php python3 tests/loader_progress_http.py
       - run: node --check assets/app.js
       - run: node --check tests/browser-station-v6.mjs
+      - run: node --check tests/browser-loader-progress.mjs
+      - run: node --check tests/browser-station-browse.mjs
       - run: php loader.php --check

@@ -13,6 +13,7 @@ A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and 
 - Street/footpath walking directions and a top-right circular **Leave home** clock: first departure minus the actual walking time and a two-minute boarding allowance. It pulses during the final three minutes, respects reduced motion, and disappears after the first boarding. A route-coloured pulse traces the incoming service's remaining path; arrival countdowns use timetable arrival rather than a later departure after dwell.
 - Public-phone toggle above the zoom controls, using the official Telstra location register cached on your server. Larger street-level phone symbols have a 44-pixel touch target; overview clusters keep the map readable. The inspected register has **783 Perth-area sites containing 870 payphones**; a marker may represent multiple phones.
 - Transfer guidance opens from an itinerary transfer or an accurate GPS approach to that stage of the trip. Locally stored station detail adds mapped platforms, buildings, footpaths, crossings, entrances, stairs and lifts where available. An A marker identifies alighting; the required boarding stand/platform flashes while dots reveal the verified pedestrian path. Official minimum connection times are enforced separately from walking duration. See [docs/station-data.md](docs/station-data.md) and [docs/transfer-guidance.md](docs/transfer-guidance.md).
+- Zooming into a mapped interchange also opens a clean station map before a journey is planned. At zoom 17 and above, overlapping network-route variants are replaced by local station detail and stand labels; vehicles remain visible. **Show routes** restores the network view. Browsing never moves the camera or changes the selected starting point.
 - Official static GTFS import into SQLite, with calendar exceptions, after-midnight services and route shapes.
 - Persistent server and browser route caches: geometry redraws locally when panning; public vehicle positions refresh independently.
 - A protected root-level `loader.php` for cPanel setup, timetable refresh and GitHub updates with backups.
@@ -25,6 +26,8 @@ Marker animation follows bounded 15-second timetable predictions along the road/
 The phone may initially supply a coarse Wi-Fi/network location, then refine it from GPS. The app now keeps listening with high accuracy and zero cached-fix age even before planning, without resetting an active journey. Device accuracy still depends on permission, signal and hardware. A new explicit search uses the latest accepted phone position.
 
 Walking geometry comes from a dedicated pedestrian routing service, not straight-line displacements. Actual walking durations are fed back into planning: a bus or transfer that cannot be reached is removed or replanned. Unchecked pedestrian links never receive a made-up leave deadline. Small unmapped endpoint access connections (up to 50 m) remain separately identified, and accessible routing is not guaranteed. Personal GPS/address walking paths stay request-local; only public stop-to-stop links may be cached persistently. See [docs/walking.md](docs/walking.md).
+
+Place searches can identify a venue's centre rather than a walkable entrance. Reviewed access points in `assets/place-access.json` match exact Photon/OpenStreetMap object identities; they never choose a nearby gate by name or distance alone. Fremantle Oval's playing-field result uses its mapped Parry Street access, labelled explicitly in the search result. Unmapped endpoints receive a clear entrance-selection message; the app does not widen the 50-metre access limit or invent a shortcut through a fence.
 
 The public-phone overlay uses Telstra's published register coordinates and addresses, not bulk geocoding or guessed markers. It shows registered locations rather than live working/availability status and does not claim to include other operators. Source date, unit count, address and attribution are available from the markers/About. See [docs/payphones.md](docs/payphones.md).
 
@@ -82,6 +85,7 @@ The same single file supports command-line installation and updates. Run these f
 
 ```sh
 php loader.php --check
+php loader.php --status
 php -d memory_limit=512M loader.php --install
 php -d memory_limit=512M loader.php --update
 php -d memory_limit=512M loader.php --refresh
@@ -89,6 +93,10 @@ php -d memory_limit=512M loader.php --refresh-phones
 ```
 
 `--install` and `--update` download the application and loader, prepare storage, import timetables and validate readiness. `--refresh` retries only the timetable. Commands print structured results and exit nonzero when setup is incomplete. `--help` lists the commands.
+
+Installation and refresh print live task details to Terminal on stderr: package bytes, file counts, timetable rows, index creation and validation. Stdout remains one final JSON result for scripts. The authenticated browser loader shows the same stages in a progress bar, with elapsed time, time since the last report and recent task history. Percentages describe stages rather than time remaining; database indexing can remain on one stage for a while.
+
+`php loader.php --status` reads the current operation without starting another update. `running: true` means an OS maintenance lock is held; `interrupted: true` means the last operation stopped before reporting completion and its lock is now free. Otherwise inspect `progress.status` (`complete` or `failed`) and the message. Lock files normally remain on disk after completion: never delete one to force an update. Status contains no maintenance key. An older already-running loader keeps its original output until the next invocation; upload the refreshed single loader first if progress is needed immediately.
 
 Setup also warms the optional public-phone cache. Its failure does not discard a valid timetable or prevent using the map; use `--refresh-phones` or the authenticated loader button to retry the download independently.
 
@@ -115,21 +123,27 @@ php tests/route_cache.php
 php tests/motion.php
 php tests/approach.php
 php tests/walking.php
+php tests/geocoder.php
 php tests/street_journeys.php
 php tests/transfer.php
 php tests/station_metadata.php
+php tests/import_progress.php
 php tests/transfer_rules.php
 php tests/station_map.php
 python3 tests/station_catalog.py
 php tests/payphones.php
 php tests/loader_install.php
+php tests/loader_progress.php
 PHP_BINARY=php python3 tests/loader_http.py
 PHP_BINARY=php python3 tests/loader_cli.py
+PHP_BINARY=php python3 tests/loader_progress_http.py
 node --check assets/app.js
 php loader.php --check
 ```
 
 Tests create isolated temporary data and never replace the installed timetable. `loader.php --check` checks hosting prerequisites; it does not install the app.
+
+`node tests/browser-loader-progress.mjs` checks live maintenance UI using disclosed, delayed local import fixtures and multiple PHP workers, without provider requests. `node tests/browser-station-browse.mjs` checks standalone station browsing against the real local catalog and APIs. Both need Playwright in a development environment; cPanel does not need Node.
 
 Browser checks use Playwright and a running local app with an imported timetable. Install Playwright separately in a development environment if it is not already available. Browser map-tile rendering in this cloud can be blocked by proxy certificate trust; do not disable TLS verification to work around it.
 
@@ -152,6 +166,6 @@ Backend outbound HTTPS requires `www.transperth.wa.gov.au`, `photon.komoot.io`, 
 
 ## First-version boundaries
 
-The planner searches departures in the next three hours with up to four vehicle boardings, stops within a 1.5 km endpoint radius and transfers within a 250 m radius. It verifies chosen pedestrian paths and replans with their actual estimated durations, allowing two minutes before boarding after a walk. It can try an alternative that skips the first selected vehicle. Verification is bounded to three planning rounds, eight distinct walking lookups and a 15-second budget; only verified feasible candidates are offered. This is not a complete production routing engine or an accessibility guarantee. Journeys should be checked against official information before travel.
+The planner searches departures in the next three hours with up to four vehicle boardings, stops within a 1.5 km endpoint radius and transfers within a 250 m radius. It verifies chosen pedestrian paths and replans with their actual estimated durations, allowing two minutes before boarding after a walk. It can try an alternative that skips the first selected vehicle. Verification allows up to three planning rounds, eight distinct walking lookups, a 45-second overall admission budget and 24 seconds of pedestrian-provider work. Planning time counts toward the overall budget, and unchanged walking times do not trigger an unnecessary scan. Only verified feasible candidates are offered; a single SQLite query cannot be preempted by this application budget. This is not a complete production routing engine or an accessibility guarantee. Journeys should be checked against official information before travel.
 
 Vehicle positions and active service days use `Australia/Perth`, including GTFS times beyond `24:00:00`. An expired feed is refused for current routing/movement. Untimed GTFS stops currently require interpolation before import; unsupported files fail clearly instead of silently generating bad positions. Display responses are capped for map performance. Actual vehicle GPS, delay-aware rerouting, accessible routing and stop alerts are useful next additions once suitable data is available.

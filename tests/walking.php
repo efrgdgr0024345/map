@@ -10,23 +10,27 @@ namespace App {
         \WalkingFixture::$calls++;
         \WalkingFixture::$last=$handle;
         if (\WalkingFixture::$failure) { return false; }
-        $body=\WalkingFixture::$oversize ? str_repeat(' ',11*1024*1024) : \WalkingFixture::responseForUrl($handle->url);
+        $body=\WalkingFixture::$oversize ? str_repeat(' ',11*1024*1024) : (\WalkingFixture::$responseOverride ?? \WalkingFixture::responseForUrl($handle->url));
         return $handle->options[CURLOPT_WRITEFUNCTION]($handle,$body) === strlen($body);
     }
-    function curl_getinfo(object $handle,int $option): int { return \WalkingFixture::$failure ? 503 : 200; }
+    function curl_getinfo(object $handle,int $option): int { return \WalkingFixture::$failure ? 503 : \WalkingFixture::$httpStatus; }
     function usleep(int $microseconds): void { /* Offline tests must not wait on provider pacing. */ }
 }
 namespace {
     require_once dirname(__DIR__).'/src/Geo.php';
+    require_once dirname(__DIR__).'/src/WalkingRouteException.php';
     require_once dirname(__DIR__).'/src/WalkingRouter.php';
     use App\Geo;
     use App\WalkingRouter;
+    use App\WalkingRouteException;
 
     final class WalkingFixture {
         public static int $calls=0;
         public static ?object $last=null;
         public static bool $failure=false;
         public static bool $oversize=false;
+        public static int $httpStatus=200;
+        public static ?string $responseOverride=null;
         public static function response(array $a,array $b): array {
             $corner=['lat'=>$a['lat'],'lon'=>$b['lon']];
             $length=Geo::distance($a,$corner)+Geo::distance($corner,$b);
@@ -139,6 +143,28 @@ namespace {
         walkingRejected(static fn()=>WalkingRouter::route($b,$a),'provider responses exceeding the ten-megabyte limit are rejected');
         WalkingFixture::$oversize=false;
         walkingMemoReset();
+        WalkingFixture::$httpStatus=400;
+        WalkingFixture::$responseOverride=$encode(['code'=>'NoSegment','message'=>'Could not find a matching segment for coordinate 1 SECRET_PROVIDER_URL']);
+        $classified=null;
+        try { WalkingRouter::route($b,$a); } catch (WalkingRouteException $error) { $classified=$error; }
+        walkingCheck($classified!==null && $classified->reason==='no_segment' && $classified->endpoint===1,'HTTP 400 NoSegment identifies an unmapped destination instead of reporting a provider outage');
+        walkingCheck(str_contains($classified->getMessage(),'public entrance') && !str_contains($classified->getMessage(),'SECRET_PROVIDER_URL'),'unmapped destinations receive a trusted entrance instruction without raw provider text');
+        parse_str(parse_url(WalkingFixture::$last->url,PHP_URL_QUERY),$parameters);
+        walkingCheck($parameters['radiuses']==='50;50','endpoint classification never widens the mapped pedestrian safety radius');
+        walkingCheck(count(glob(APP_VAR.'/walking/route-*.php'))===1,'unmapped private endpoints do not create a persistent route or fictional geometry');
+        WalkingFixture::$responseOverride=$encode(['code'=>'NoSegment','message'=>'Could not find a matching segment for coordinate 0']);
+        $classified=null;
+        try { WalkingRouter::route($b,$a); } catch (WalkingRouteException $error) { $classified=$error; }
+        walkingCheck($classified!==null && $classified->endpoint===0 && str_contains($classified->getMessage(),'starting point'),'an unmapped origin remains distinct from an unmapped destination');
+        WalkingFixture::$responseOverride=$encode(['code'=>'NoRoute','message'=>'Provider internals must remain private']);
+        $classified=null;
+        try { WalkingRouter::route($b,$a); } catch (WalkingRouteException $error) { $classified=$error; }
+        walkingCheck($classified!==null && $classified->reason==='no_route' && $classified->endpoint===null,'a disconnected pedestrian network remains distinct from endpoint snapping or a service outage');
+        WalkingFixture::$responseOverride='<html>Bad gateway</html>';
+        $generic=null;
+        try { WalkingRouter::route($b,$a); } catch (RuntimeException $error) { $generic=$error; }
+        walkingCheck($generic!==null && !($generic instanceof WalkingRouteException),'an unknown HTTP failure cannot masquerade as a diagnosed entrance problem');
+        WalkingFixture::$httpStatus=200; WalkingFixture::$responseOverride=null;
         walkingRejected(static fn()=>WalkingRouter::route($a,$a),'coincident endpoints do not create an invented street route');
         echo PHP_EOL.$checks.' walking route checks passed. Provider responses are offline fixtures; public service availability is not established.'.PHP_EOL;
     } finally { walkingRemove($isolated); }

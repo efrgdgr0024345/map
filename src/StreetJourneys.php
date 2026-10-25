@@ -7,7 +7,11 @@ final class StreetJourneys
 {
     private const MAX_ROUNDS = 3;
     private const MAX_LOOKUPS = 8;
-    private const MAX_SECONDS = 15.0;
+    // Shared hosting can spend several seconds scanning the real timetable.
+    // Keep a separate, bounded pedestrian budget so that scan cannot consume
+    // almost the entire allowance before even one walking request is admitted.
+    private const MAX_SECONDS = 45.0;
+    private const MAX_ROUTING_SECONDS = 24.0;
     private const ROUTER_TIMEOUT_SECONDS = 6.0;
     private const BOARDING_BUFFER = 120;
 
@@ -28,40 +32,68 @@ final class StreetJourneys
         }
         $router ??= static fn(array $a,array $b): array => WalkingRouter::route($a,$b);
         $clock ??= static fn(): float => hrtime(true)/1_000_000_000;
-        $started=(float)$clock(); $lookups=0; $paths=[]; $durations=[]; $failed=[]; $pool=[];
+        $started=(float)$clock(); $lookups=0; $routingSeconds=0.0; $lastPlanSeconds=0.0;
+        $paths=[]; $durations=[]; $failed=[]; $issues=[]; $pool=[];
         $response=['mode'=>'timetable','journeys'=>[],'message'=>'No upcoming journey was found.'];
         $limited=false; $providerFailed=false;
         for ($round=0;$round<self::MAX_ROUNDS;$round++) {
-            if ((float)$clock()-$started>=self::MAX_SECONDS) { $limited=true; break; }
+            $remaining=self::MAX_SECONDS-((float)$clock()-$started);
+            if ($remaining<=0 || ($round>0 && $remaining<max(1.0,$lastPlanSeconds))) { $limited=true; break; }
             $planningNow=$now+max(0,(int)floor((float)$clock()-$started));
+            $planStarted=(float)$clock();
             $response=$service->plan($from,$to,$planningNow,$durations);
+            $lastPlanSeconds=max(0.0,(float)$clock()-$planStarted);
             $candidates=array_slice(is_array($response['journeys'] ?? null) ? $response['journeys'] : [],0,2);
             if (!$candidates) { break; }
             foreach ($candidates as $journey) { $pool[self::candidateKey($journey)]=$journey; }
-            $added=0;
+            $added=0; $changed=false;
             foreach ($candidates as $journey) {
                 foreach ($journey['legs'] ?? [] as $leg) {
                     if (($leg['mode'] ?? '')!=='walk' || self::zeroWalk($leg)) { continue; }
                     $key=Geo::walkingKey($leg['from'],$leg['to']);
                     if (isset($paths[$key]) || isset($failed[$key])) { continue; }
                     $remaining=self::MAX_SECONDS-((float)$clock()-$started);
-                    if ($lookups>=self::MAX_LOOKUPS || $remaining<self::ROUTER_TIMEOUT_SECONDS) {
+                    if ($lookups>=self::MAX_LOOKUPS || $remaining<self::ROUTER_TIMEOUT_SECONDS
+                        || self::MAX_ROUTING_SECONDS-$routingSeconds<self::ROUTER_TIMEOUT_SECONDS) {
                         $limited=true; continue;
                     }
                     $lookups++;
+                    $lookupStarted=(float)$clock();
                     try {
                         $path=$router($leg['from'],$leg['to']);
                         if (!self::validPath($path)) { throw new \RuntimeException('The walking service did not return a usable pedestrian route.'); }
                         $path['duration']=(int)ceil((float)$path['duration']);
                         $path['distance']=(float)$path['distance'];
                         $paths[$key]=$path; $durations[$key]=$path['duration']; $added++;
+                        $changed=$changed || $path['duration']!==strtotime((string)$leg['arrival'])-strtotime((string)$leg['departure']);
                     } catch (\Throwable $error) {
                         // Do not persist personal coordinates, provider bodies, or raw errors.
                         $failed[$key]=true; $providerFailed=true;
+                        if ($error instanceof WalkingRouteException) {
+                            $point=$error->endpoint===0 ? $leg['from'] : ($error->endpoint===1 ? $leg['to'] : null);
+                            $personal=$point!==null && (!isset($point['id']) || (string)$point['id']==='');
+                            $endpoint=$personal && Geo::distance($point,$from)<1 ? 'origin'
+                                : ($personal && Geo::distance($point,$to)<1 ? 'destination' : 'connection');
+                            $message=$endpoint==='destination'
+                                ? 'The destination is away from a mapped walking path. Choose its public entrance on the map.'
+                                : ($endpoint==='origin' ? 'The starting point is away from a mapped walking path. Choose its public entrance on the map.'
+                                    : 'A mapped walking connection could not be found. Check the public entrance or choose another connection.');
+                            $issues[$key]=['reason'=>$error->reason,'endpoint'=>$endpoint,'message'=>$message];
+                        }
+                    } finally {
+                        $routingSeconds+=max(0.0,(float)$clock()-$lookupStarted);
                     }
                 }
             }
             if ($added===0) { break; }
+            if (!$changed) {
+                // No corrected duration requires another metro-wide scan
+                // while an already verified boarding remains valid.
+                $readyNow=$now+max(0,(int)floor((float)$clock()-$started));
+                foreach ($candidates as $candidate) {
+                    if (self::finish($candidate,$paths,$readyNow,$service)!==null) { break 2; }
+                }
+            }
         }
         $verified=[];
         $readyNow=$now+max(0,(int)floor((float)$clock()-$started));
@@ -77,9 +109,24 @@ final class StreetJourneys
             $response['message']='';
             if ($limited || $providerFailed) { $response['walkingLimited']=true; }
         } elseif ($pool) {
-            $response['message']=$providerFailed
-                ? 'Walking directions are temporarily unavailable. Please try again shortly.'
-                : 'A safe walking connection could not be checked in time. Try a nearby stop or try again.';
+            $allAccessBlocked=$issues!==[];
+            foreach ($pool as $journey) {
+                $blocked=false;
+                foreach ($journey['legs'] ?? [] as $leg) {
+                    if (($leg['mode'] ?? '')==='walk' && isset($issues[Geo::walkingKey($leg['from'],$leg['to'])])) { $blocked=true; break; }
+                }
+                if (!$blocked) { $allAccessBlocked=false; break; }
+            }
+            if ($allAccessBlocked) {
+                $ordered=array_values($issues);
+                $priority=['destination'=>0,'origin'=>1,'connection'=>2];
+                usort($ordered,static fn($a,$b)=>$priority[$a['endpoint']]<=>$priority[$b['endpoint']]);
+                $response['walkingIssue']=$ordered[0]; $response['message']=$ordered[0]['message'];
+            } else {
+                $response['message']=$providerFailed
+                    ? 'Walking directions are temporarily unavailable. Please try again shortly.'
+                    : 'A safe walking connection could not be checked in time. Try a nearby stop or try again.';
+            }
         }
         return $response;
     }

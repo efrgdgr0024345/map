@@ -68,6 +68,7 @@ final class WalkingRouter
         if (strlen($json) > self::MAX_RESPONSE) { throw new RuntimeException('The walking service response is too large.'); }
         try { $data = json_decode($json, true, 64, JSON_THROW_ON_ERROR); }
         catch (Throwable) { throw new RuntimeException('The walking service returned an unreadable response. Please try again later.'); }
+        if (($failure=self::routeFailure($data))!==null) { throw $failure; }
         if (!is_array($data) || ($data['code'] ?? '') !== 'Ok') {
             throw new RuntimeException('No mapped pedestrian route was found between these points. Choose a nearby accessible street or stop.');
         }
@@ -246,9 +247,25 @@ final class WalkingRouter
                 $body.=$chunk; return strlen($chunk);
             }]);
         $ok = curl_exec($curl); $status = (int)curl_getinfo($curl,CURLINFO_HTTP_CODE); $curl = null;
+        if ($ok!==false && $status===400) {
+            $data=json_decode($body,true);
+            if (($failure=self::routeFailure($data))!==null) { throw $failure; }
+        }
         if ($ok === false || $status !== 200) {
             throw new RuntimeException('Pedestrian street routing is temporarily unavailable. No road or footpath route has been substituted; try again shortly.');
         }
         return $body;
+    }
+
+    private static function routeFailure(mixed $data): ?WalkingRouteException
+    {
+        if (!is_array($data)) { return null; }
+        if (($data['code'] ?? '')==='NoSegment') {
+            $endpoint=null; $message=is_string($data['message'] ?? null) ? $data['message'] : '';
+            if (preg_match('/coordinate\s+([01])\b/i',$message,$match)) { $endpoint=(int)$match[1]; }
+            return new WalkingRouteException('no_segment',$endpoint);
+        }
+        if (($data['code'] ?? '')==='NoRoute') { return new WalkingRouteException('no_route'); }
+        return null;
     }
 }

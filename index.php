@@ -20,7 +20,7 @@ function assetUrl(string $path): string
   <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=">
   <link rel="stylesheet" href="<?= assetUrl('assets/style.css') ?>">
   <script src="assets/vendor/leaflet/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" defer></script>
-  <script src="<?= assetUrl('assets/app.js') ?>" defer></script>
+  <script src="<?= assetUrl('assets/app.js') ?>" data-station-catalog="<?= assetUrl('assets/station-maps/manifest.json') ?>" defer></script>
 </head>
 <body class="mascot-visible">
   <div id="map" aria-label="Interactive Perth public transport map"></div>
@@ -85,6 +85,7 @@ function assetUrl(string $path): string
   <aside id="leave-widget" class="leave-widget" aria-label="When to leave home" hidden><span id="leave-label" class="leave-label">LEAVE HOME</span><strong id="leave-title">—</strong><span id="leave-countdown" aria-live="off"></span><span id="boarding-eta" class="boarding-eta" hidden></span></aside>
   <div id="map-toast" class="map-toast" role="status" hidden></div>
   <aside id="station-guidance" class="station-guidance" aria-labelledby="station-guidance-title" tabindex="-1" hidden><div class="guidance-card-heading"><span>STATION GUIDANCE</span><button type="button" id="exit-guidance" aria-label="Back to journey">×</button></div><h2 id="station-guidance-title">Your transfer</h2><button type="button" id="guidance-target-name" title="Show this boarding stop"></button><p id="guidance-detail" role="status"></p><div class="guidance-actions"><button type="button" id="confirm-guidance">I can see this stop</button><button type="button" id="guidance-timetable" class="text-button">Timetable</button></div><details id="station-map-details" class="station-map-details"><summary>Map details <span id="station-map-state"></span></summary><div id="station-map-source"></div></details></aside>
+  <aside id="station-browse" class="station-browse-card" aria-labelledby="station-browse-name" hidden><div class="station-browse-heading"><div><span id="station-browse-state">STATION MAP</span><strong id="station-browse-name"></strong></div><button type="button" id="station-browse-toggle" aria-pressed="true">Show routes</button></div><details id="station-browse-details"><summary>Map details</summary><div id="station-browse-source"></div></details></aside>
 
   <aside class="network-card" aria-label="Network activity">
     <div class="network-pulse" aria-hidden="true"><span></span></div>

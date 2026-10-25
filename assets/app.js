@@ -46,6 +46,10 @@
     mascotTucked: false, transfers: [], guidance: null, guidanceController: null, guidanceLayers: null,
     guidanceRenderer: null, guidanceTargetMarker: null, guidancePrevious: null, dismissedTransfers: new Set(),
     stationMapController: null, stationMapLayers: null, stationMapRenderer: null,
+    stationBrowseCatalog: null, stationBrowseCatalogRequest: null, stationBrowseCatalogRetryAt: 0,
+    stationBrowse: null, stationBrowseCandidate: null, stationBrowseSuppressed: null,
+    stationBrowseController: null, stationBrowseRequest: 0, stationBrowseLayers: null,
+    stationBrowseCache: new Map(), stationBrowseTimer: null, stationBrowseReady: false,
     originUserChosen: false, awaitingGpsOrigin: false
   };
   const perthTime = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Perth', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -258,6 +262,12 @@
 
   function drawNetworkLines() {
     if (!map || !networkLayers) return;
+    if (state.stationBrowse) {
+      if (state.renderedNetworkKey !== 'station-browse') networkLayers.clearLayers();
+      state.renderedNetworkKey = 'station-browse';
+      $('map').dataset.networkLines = '0';
+      return;
+    }
     if (state.selected && !state.wholeNetwork) {
       if (state.renderedNetworkKey !== 'focused') networkLayers.clearLayers();
       state.renderedNetworkKey = 'focused';
@@ -471,6 +481,8 @@
     document.body.classList.toggle('map-pick-active', Boolean(field));
     if (field) $('map-hint-text').textContent = `Tap the map to choose your ${field === 'origin' ? 'starting point' : 'destination'}`;
     setPanel(state.panelOpen);
+    if (field) $('station-browse').hidden = true;
+    else scheduleStationBrowse();
   }
 
   function beginMapPick(field) {
@@ -994,8 +1006,8 @@
     return L.divIcon({ html: body, className: `station-place-marker station-place-marker-${kind}`, iconSize: [22, 22], iconAnchor: [11, 11] });
   }
 
-  function stationMapSource(data) {
-    const source = $('station-map-source');
+  function stationMapSource(data, targetId = 'station-map-source') {
+    const source = $(targetId);
     source.replaceChildren();
     const attribution = make('span', '', data.attribution || '© OpenStreetMap contributors');
     try {
@@ -1022,12 +1034,50 @@
     source.append(make('span', '', 'Mapped station features. Follow the signs for platform access and levels.'));
   }
 
-  function renderStationMap(data) {
-    state.stationMapLayers.clearLayers();
+  function stationMapFeatures(data) {
     const kinds = ['building', 'platform', 'rail', 'footway', 'steps', 'entrance', 'lift', 'crossing', 'bus_stop'];
     const features = data.available && data.featureCollection && Array.isArray(data.featureCollection.features)
       ? data.featureCollection.features.filter(feature => feature && feature.type === 'Feature' && feature.properties && kinds.includes(feature.properties.kind) && feature.geometry && ['Point', 'LineString', 'MultiLineString', 'Polygon', 'MultiPolygon'].includes(feature.geometry.type)).slice(0, 2500) : [];
     features.sort((a, b) => kinds.indexOf(a.properties.kind) - kinds.indexOf(b.properties.kind));
+    return features;
+  }
+
+  function addStationMapFeatures(features, layers, stopIds = null) {
+    L.geoJSON({ type: 'FeatureCollection', features }, {
+      style: stationFeatureStyle,
+      bubblingMouseEvents: false,
+      pointToLayer: (feature, point) => {
+        const kind = feature.properties.kind;
+        if (['entrance', 'lift', 'crossing', 'steps'].includes(kind)) {
+          const restricted = stationFeatureRestricted(feature.properties);
+          return L.marker(point, { icon: stationPointIcon(kind, restricted), opacity: restricted ? .35 : 1, zIndexOffset: 300, bubblingMouseEvents: false, title: stationFeatureLabel(feature.properties) });
+        }
+        return L.circleMarker(point, { ...stationFeatureStyle(feature), bubblingMouseEvents: false, radius: kind === 'platform' ? 5 : 3, ...(stopIds && stopIds.has(String(feature.properties.gtfsStopId)) ? { interactive: true } : {}) });
+      },
+      onEachFeature: (feature, layer) => {
+        const properties = feature.properties;
+        const name = stationFeatureLabel(properties);
+        const boardingStop = stopIds && stopIds.has(String(properties.gtfsStopId));
+        if (properties.kind === 'bus_stop' && boardingStop && properties.localRef) layer.bindTooltip(make('span', '', String(properties.localRef)), { permanent: true, direction: 'top', offset: [0, -4], pane: 'stationLabelPane', className: 'station-stand-label' });
+        else if (properties.kind === 'platform' && (properties.localRef || properties.ref)) layer.bindTooltip(make('span', '', String(properties.localRef || properties.ref)), { permanent: true, direction: 'center', pane: 'stationLabelPane', className: 'station-platform-label' });
+        else if (properties.name || properties.ref || ['entrance', 'lift', 'crossing', 'steps'].includes(properties.kind)) layer.bindTooltip(make('span', '', name));
+        if (boardingStop || ['platform', 'building', 'entrance', 'lift', 'crossing', 'steps'].includes(properties.kind)) {
+          const popup = make('div', 'service-popup');
+          popup.append(make('strong', '', name));
+          if (properties.access) popup.append(make('span', '', `Mapped access: ${properties.access}`));
+          else if (stationFeatureRestricted(properties)) popup.append(make('span', '', 'Restricted pedestrian access'));
+          if (properties.wheelchair) popup.append(make('span', '', `Mapped wheelchair access: ${properties.wheelchair}`));
+          popup.append(make('span', '', '© OpenStreetMap contributors'));
+          if (boardingStop) popup.append(timetableButton('View departures', { stop: properties.gtfsStopId }));
+          layer.bindPopup(popup);
+        }
+      }
+    }).addTo(layers);
+  }
+
+  function renderStationMap(data) {
+    state.stationMapLayers.clearLayers();
+    const features = stationMapFeatures(data);
     if (!features.length) {
       $('station-map-state').textContent = 'Unavailable';
       $('station-map-source').replaceChildren(make('span', '', 'Station detail is unavailable. Your walking route and boarding stop remain on the map.'));
@@ -1036,32 +1086,7 @@
       $('station-map-source').append(retry);
       return;
     }
-    L.geoJSON({ type: 'FeatureCollection', features }, {
-      style: stationFeatureStyle,
-      pointToLayer: (feature, point) => {
-        const kind = feature.properties.kind;
-        if (['entrance', 'lift', 'crossing', 'steps'].includes(kind)) {
-          const restricted = stationFeatureRestricted(feature.properties);
-          return L.marker(point, { icon: stationPointIcon(kind, restricted), opacity: restricted ? .35 : 1, zIndexOffset: 300, bubblingMouseEvents: false, title: stationFeatureLabel(feature.properties) });
-        }
-        return L.circleMarker(point, { ...stationFeatureStyle(feature), radius: kind === 'platform' ? 5 : 3 });
-      },
-      onEachFeature: (feature, layer) => {
-        const properties = feature.properties;
-        const name = stationFeatureLabel(properties);
-        if (properties.kind === 'platform' && (properties.localRef || properties.ref)) layer.bindTooltip(make('span', '', String(properties.localRef || properties.ref)), { permanent: true, direction: 'center', pane: 'stationLabelPane', className: 'station-platform-label' });
-        else if (properties.name || properties.ref || ['entrance', 'lift', 'crossing', 'steps'].includes(properties.kind)) layer.bindTooltip(make('span', '', name));
-        if (['platform', 'building', 'entrance', 'lift', 'crossing', 'steps'].includes(properties.kind)) {
-          const popup = make('div', 'service-popup');
-          popup.append(make('strong', '', name));
-          if (properties.access) popup.append(make('span', '', `Mapped access: ${properties.access}`));
-          else if (stationFeatureRestricted(properties)) popup.append(make('span', '', 'Restricted pedestrian access'));
-          if (properties.wheelchair) popup.append(make('span', '', `Mapped wheelchair access: ${properties.wheelchair}`));
-          popup.append(make('span', '', '© OpenStreetMap contributors'));
-          layer.bindPopup(popup);
-        }
-      }
-    }).addTo(state.stationMapLayers);
+    addStationMapFeatures(features, state.stationMapLayers);
     $('station-map-state').textContent = data.stale ? 'Saved map' : '';
     stationMapSource(data);
   }
@@ -1079,6 +1104,118 @@
     } catch (error) {
       if (error.name !== 'AbortError' && state.guidance === guidance) renderStationMap({ available: false });
     } finally { if (state.stationMapController === controller) state.stationMapController = null; }
+  }
+
+  async function loadStationBrowseCatalog() {
+    if (state.stationBrowseCatalog || state.stationBrowseCatalogRequest || Date.now() < state.stationBrowseCatalogRetryAt) return;
+    const script = document.querySelector('script[data-station-catalog]');
+    if (!script) return;
+    state.stationBrowseCatalogRequest = (async () => {
+      try {
+        const response = await fetch(new URL(script.dataset.stationCatalog, location.href), { headers: { Accept: 'application/json' } });
+        if (!response.ok) throw new Error('Station catalog unavailable');
+        const data = await response.json();
+        if (data.version !== 1 || !data.stations || typeof data.stations !== 'object') throw new Error('Invalid station catalog');
+        state.stationBrowseCatalog = Object.entries(data.stations).map(([id, station]) => ({ ...station, id: String(id) })).filter(station =>
+          Number.isFinite(Number(station.lat)) && Number.isFinite(Number(station.lon)) && Array.isArray(station.bounds) && station.bounds.length === 4 && station.bounds.every(Number.isFinite));
+        scheduleStationBrowse();
+      } catch { state.stationBrowseCatalogRetryAt = Date.now() + 60000; }
+      finally { state.stationBrowseCatalogRequest = null; }
+    })();
+    await state.stationBrowseCatalogRequest;
+  }
+
+  function clearStationBrowse(redraw = true) {
+    state.stationBrowseRequest++;
+    if (state.stationBrowseController) state.stationBrowseController.abort();
+    state.stationBrowseController = null;
+    state.stationBrowse = null;
+    state.stationBrowseReady = false;
+    if (state.stationBrowseLayers) state.stationBrowseLayers.clearLayers();
+    document.body.classList.remove('station-browse-active');
+    $('map').dataset.stationBrowse = '';
+    $('station-browse').hidden = true;
+    if (redraw) drawNetworkLines();
+  }
+
+  function stationBrowseCard(station, active, loading = false) {
+    $('station-browse').hidden = Boolean(state.pickField || state.guidance || state.selected);
+    $('station-browse-name').textContent = station.name;
+    $('station-browse-state').textContent = loading ? 'Opening station map…' : 'STATION MAP';
+    $('station-browse-toggle').textContent = active ? 'Show routes' : 'Station map';
+    $('station-browse-toggle').setAttribute('aria-label', active ? 'Show network routes instead of station detail' : `Show ${station.name} station map`);
+    $('station-browse-toggle').setAttribute('aria-pressed', String(active));
+  }
+
+  async function openStationBrowse(station) {
+    clearStationBrowse(false);
+    state.stationBrowse = station;
+    const request = state.stationBrowseRequest;
+    const controller = new AbortController();
+    state.stationBrowseController = controller;
+    document.body.classList.add('station-browse-active');
+    $('map').dataset.stationBrowse = station.id;
+    $('station-browse-details').open = false;
+    $('station-browse-source').replaceChildren();
+    stationBrowseCard(station, true, true);
+    drawNetworkLines();
+    try {
+      let data = state.stationBrowseCache.get(station.id);
+      if (!data) {
+        data = await api('station-map', { from: station.id, to: station.id }, controller.signal);
+        if (data.available) {
+          state.stationBrowseCache.set(station.id, data);
+          if (state.stationBrowseCache.size > 6) state.stationBrowseCache.delete(state.stationBrowseCache.keys().next().value);
+        }
+      }
+      if (controller.signal.aborted || request !== state.stationBrowseRequest || state.stationBrowse !== station || state.selected || state.guidance || state.pickField) return;
+      const features = stationMapFeatures(data);
+      if (!features.length) throw new Error('Station detail unavailable');
+      addStationMapFeatures(features, state.stationBrowseLayers, new Set((station.stopIds || []).map(String)));
+      state.stationBrowseReady = true;
+      stationBrowseCard(station, true);
+      stationMapSource(data, 'station-browse-source');
+    } catch (error) {
+      if (error.name === 'AbortError' || request !== state.stationBrowseRequest) return;
+      state.stationBrowseSuppressed = station.id;
+      clearStationBrowse();
+      stationBrowseCard(station, false);
+      $('station-browse-state').textContent = 'Station detail unavailable';
+    } finally { if (state.stationBrowseController === controller) state.stationBrowseController = null; }
+  }
+
+  function refreshStationBrowse() {
+    if (!map) return;
+    if (state.pickField) { $('station-browse').hidden = true; return; }
+    if (state.selected || state.guidance || map.getZoom() < 17) {
+      state.stationBrowseCandidate = null;
+      if (map.getZoom() < 17) state.stationBrowseSuppressed = null;
+      if (state.stationBrowse) clearStationBrowse(); else $('station-browse').hidden = true;
+      return;
+    }
+    if (!state.stationBrowseCatalog) { loadStationBrowseCatalog(); return; }
+    const centre = map.getCenter();
+    const nearby = state.stationBrowseCatalog.map(station => ({ station, distance: map.distance(centre, [station.lat, station.lon]) })).filter(({ station, distance }) =>
+      distance <= 320 && centre.lng >= station.bounds[0] && centre.lng <= station.bounds[2] && centre.lat >= station.bounds[1] && centre.lat <= station.bounds[3]);
+    nearby.sort((a, b) => a.distance - b.distance);
+    const station = nearby[0] && nearby[0].station;
+    if (!station) {
+      state.stationBrowseCandidate = null;
+      state.stationBrowseSuppressed = null;
+      if (state.stationBrowse) clearStationBrowse(); else $('station-browse').hidden = true;
+      return;
+    }
+    state.stationBrowseCandidate = station;
+    if (state.stationBrowseSuppressed === station.id) {
+      if (state.stationBrowse) clearStationBrowse();
+      stationBrowseCard(station, false);
+    } else if (state.stationBrowse && state.stationBrowse.id === station.id && (state.stationBrowseReady || state.stationBrowseController)) stationBrowseCard(station, true, Boolean(state.stationBrowseController));
+    else openStationBrowse(station);
+  }
+
+  function scheduleStationBrowse() {
+    clearTimeout(state.stationBrowseTimer);
+    state.stationBrowseTimer = setTimeout(refreshStationBrowse, 180);
   }
 
   function renderStationGuidance(data, loading = false) {
@@ -1146,6 +1283,7 @@
 
   function openStationGuidance(transfer, activation = 'manual') {
     if (!state.selected || !transfer) return;
+    clearStationBrowse(false);
     if (state.guidance) exitStationGuidance(false);
     state.guidancePrevious = { follow: state.followJourney, center: map.getCenter(), zoom: map.getZoom() };
     state.guidance = { transfer, activation, following: true, confirmed: false, data: null };
@@ -1309,6 +1447,7 @@
   }
 
   function selectJourney(journey) {
+    clearStationBrowse(false);
     if (state.guidance) exitStationGuidance(false);
     clearApproach();
     state.selected = journey;
@@ -1516,6 +1655,7 @@
     if (map) fetchVehicles();
     drawNetworkLines();
     updateLauncher();
+    scheduleStationBrowse();
   }
 
   function vehicleIcon(vehicle, highlighted) {
@@ -1722,6 +1862,7 @@
     map.getPane('stationDetailPane').style.zIndex = '430';
     state.stationMapRenderer = L.svg({ pane: 'stationDetailPane', padding: .5 });
     state.stationMapLayers = L.layerGroup().addTo(map);
+    state.stationBrowseLayers = L.layerGroup().addTo(map);
     map.createPane('stationLabelPane');
     map.getPane('stationLabelPane').style.zIndex = '445';
     map.getPane('stationLabelPane').style.pointerEvents = 'none';
@@ -1737,6 +1878,7 @@
     });
     map.on('moveend', () => {
       drawNetworkLines(); clearTimeout(moveTimer); moveTimer = setTimeout(fetchVehicles, 350);
+      scheduleStationBrowse();
       if (state.phonesEnabled) { clearTimeout(state.phonesMoveTimer); state.phonesMoveTimer = setTimeout(() => fetchPhones(false), 450); }
     });
     map.on('dragstart', pauseMapFollowing);
@@ -1835,6 +1977,12 @@
     $('use-location').addEventListener('click', locate);
     $('map-locate').addEventListener('click', locate);
     $('map-phones').addEventListener('click', togglePhones);
+    $('station-browse-toggle').addEventListener('click', () => {
+      const station = state.stationBrowseCandidate;
+      if (!station || state.selected || state.guidance || state.pickField) return;
+      if (state.stationBrowse) { state.stationBrowseSuppressed = station.id; clearStationBrowse(); stationBrowseCard(station, false); }
+      else { state.stationBrowseSuppressed = null; openStationBrowse(station); }
+    });
     $('choose-on-map').addEventListener('click', () => {
       const field = state.field || 'destination';
       beginMapPick(field);
@@ -1865,6 +2013,7 @@
     setPanel(false);
     loadStatus();
     loadRouteCatalog();
+    loadStationBrowseCatalog();
     fetchVehicles();
     if (navigator.permissions && navigator.permissions.query) {
       navigator.permissions.query({ name: 'geolocation' }).then(permission => {

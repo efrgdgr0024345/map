@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "description": "Reviewed public arrival points for geocoder features whose centre is not a pedestrian destination. Entries match exact OpenStreetMap identity and tags; this is not a nearest-entrance lookup.",
+  "attribution": "© OpenStreetMap contributors. Mapped geometry is available under ODbL 1.0.",
+  "licenseUrl": "https://opendatacommons.org/licenses/odbl/1-0/",
+  "source": {
+    "url": "https://download.geofabrik.de/australia-oceania/australia/western-australia-latest.osm.pbf",
+    "updatedAt": "2026-10-23T23:04:02Z",
+    "sha256": "ea33f43b0278ceeeec37fb0d18f54dde17bfddb475eacdceb7fe8a4fc6253412"
+  },
+  "places": [
+    {
+      "osmType": "W",
+      "osmId": "29283043",
+      "osmKey": "leisure",
+      "osmValue": "pitch",
+      "venueName": "Fremantle Oval",
+      "reviewedAt": "2026-10-25",
+      "access": {
+        "name": "Parry Street access",
+        "lat": -32.0562977,
+        "lon": 115.7499259,
+        "osmType": "N",
+        "osmId": "2343952485",
+        "sourceUrl": "https://www.openstreetmap.org/node/2343952485"
+      },
+      "evidence": [
+        {
+          "url": "https://www.openstreetmap.org/node/2343952485",
+          "description": "Actual junction of Parry Street sidewalk way 47124137 and oval access driveway way 225638060, which connects to carpark way 225638061 and internal footway 1050213720 beside Victoria Pavilion. This point is not claimed to be the main entrance or currently open."
+        },
+        {
+          "url": "https://sffc.com.au/contact-us/",
+          "description": "The club gives William Street and Parry Street as its oval address and identifies its office beneath Victoria Pavilion on Parry Street, facing Fremantle Markets."
+        }
+      ],
+      "routingCheck": {
+        "checkedAt": "2026-10-25",
+        "source": "FOSSGIS OSRM foot / OpenStreetMap",
+        "fromStopId": "10454",
+        "distanceMetres": 178.5,
+        "durationSeconds": 142.8,
+        "destinationSnapMetres": 0
+      }
+    }
+  ]
+}
