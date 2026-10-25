@@ -337,17 +337,17 @@ final class GtfsImporter
         $curl = curl_init(self::SOURCE);
         curl_setopt_array($curl, [CURLOPT_FOLLOWLOCATION => false, CURLOPT_CONNECTTIMEOUT => 20, CURLOPT_TIMEOUT => 240,
             CURLOPT_USERAGENT => 'PerthMove/0.1 GTFS timetable importer', CURLOPT_PROTOCOLS => CURLPROTO_HTTPS,
-            CURLOPT_NOPROGRESS=>false,
-            CURLOPT_XFERINFOFUNCTION=>function ($curl,float $total,float $received,float $uploadTotal,float $uploadNow) use (&$downloadTotal): int {
-                $downloadTotal=max(0,(int)$total);
-                $received=max(0,(int)$received);
-                $this->notify('download', 'gtfs', 'Downloading the official timetable', number_format($received/1048576,1).' MB received from Transperth.',
-                    ['completed'=>$received,'total'=>$downloadTotal>0 ? $downloadTotal : null,'unit'=>'bytes','percent'=>$downloadTotal>0 ? min(99,(int)floor($received/$downloadTotal*100)) : null]);
-                return 0;
+            CURLOPT_HEADERFUNCTION=>static function ($curl,string $header) use (&$downloadTotal): int {
+                if (preg_match('/^HTTP\//i',$header)) { $downloadTotal=0; }
+                elseif (preg_match('/^Content-Length:\s*(\d+)/i',$header,$match)) { $downloadTotal=(int)$match[1]; }
+                return strlen($header);
             },
-            CURLOPT_WRITEFUNCTION => static function ($curl, string $chunk) use ($out, &$bytes): int {
-                $bytes += strlen($chunk);
-                return $bytes <= self::MAX_DOWNLOAD ? fwrite($out, $chunk) : 0;
+            CURLOPT_WRITEFUNCTION => function ($curl, string $chunk) use ($out, &$bytes, &$downloadTotal): int {
+                if ($bytes+strlen($chunk)>self::MAX_DOWNLOAD) { return 0; }
+                $written=(int)fwrite($out,$chunk); $bytes+=$written;
+                $this->notify('download', 'gtfs', 'Downloading the official timetable', number_format($bytes/1048576,1).' MB received from Transperth.',
+                    ['completed'=>$bytes,'total'=>$downloadTotal>0 ? $downloadTotal : null,'unit'=>'bytes','percent'=>$downloadTotal>0 ? min(99,(int)floor($bytes/$downloadTotal*100)) : null]);
+                return $written;
             }]);
         $ok = curl_exec($curl);
         $status = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);

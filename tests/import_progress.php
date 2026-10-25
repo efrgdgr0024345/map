@@ -15,11 +15,12 @@ namespace App {
         $body=file_get_contents(ImportProgressDownloadFixture::$zip);
         $options=ImportProgressDownloadFixture::$options;
         $total=ImportProgressDownloadFixture::$knownSize ? strlen($body) : 0;
+        $options[\CURLOPT_HEADERFUNCTION]($handle,"HTTP/1.1 200 OK\r\n");
+        if ($total>0) { $options[\CURLOPT_HEADERFUNCTION]($handle,"Content-Length: $total\r\n"); }
         $received=0;
         foreach (str_split($body,4096) as $chunk) {
             if ($options[\CURLOPT_WRITEFUNCTION]($handle,$chunk)!==strlen($chunk)) { return false; }
             $received+=strlen($chunk);
-            if ($options[\CURLOPT_XFERINFOFUNCTION]($handle,(float)$total,(float)$received,0.0,0.0)!==0) { return false; }
         }
         return true;
     }
@@ -132,7 +133,7 @@ namespace {
         ipCheck($network[0]['completed']===0 && $network[0]['total']===null,'download begins without guessing a content length before the server reports it');
         ipCheck($done['status']==='complete' && $done['completed']===filesize($zipPath) && $done['total']===filesize($zipPath) && $done['percent']===100,'download completion uses actual received bytes and the simulated content length');
         ipCheck(ImportProgressDownloadFixture::$url===GtfsImporter::SOURCE && ImportProgressDownloadFixture::$options[CURLOPT_PROTOCOLS]===CURLPROTO_HTTPS && ImportProgressDownloadFixture::$options[CURLOPT_FOLLOWLOCATION]===false,'progress keeps the fixed verified HTTPS source and redirect restrictions');
-        ipCheck(ImportProgressDownloadFixture::$options[CURLOPT_NOPROGRESS]===false && is_callable(ImportProgressDownloadFixture::$options[CURLOPT_XFERINFOFUNCTION]),'the cURL transfer callback supplies live byte progress');
+        ipCheck(is_callable(ImportProgressDownloadFixture::$options[CURLOPT_HEADERFUNCTION]) && is_callable(ImportProgressDownloadFixture::$options[CURLOPT_WRITEFUNCTION]),'portable header and write callbacks supply live byte progress');
         ipCheck($downloaded['counts']===$result['counts'] && glob(APP_VAR.'/gtfs-*')===[],'simulated remote imports preserve counts and remove the temporary ZIP');
         ImportProgressDownloadFixture::$knownSize=false;
         $unknown=[];

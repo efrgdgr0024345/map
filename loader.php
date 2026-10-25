@@ -299,6 +299,7 @@ function pm_download_archive(string $target): void
     }
     chmod($target, 0600);
     $bytes = 0;
+    $total = 0;
     $curl = curl_init(PM_LOADER_ARCHIVE);
     curl_setopt_array($curl, [
         CURLOPT_CONNECTTIMEOUT => 20,
@@ -308,15 +309,18 @@ function pm_download_archive(string $target): void
         CURLOPT_SSL_VERIFYPEER => true,
         CURLOPT_SSL_VERIFYHOST => 2,
         CURLOPT_USERAGENT => 'PerthMap-cPanel-Loader/1.0',
-        CURLOPT_NOPROGRESS => false,
-        CURLOPT_XFERINFOFUNCTION => static function ($handle,float $total,float $received,float $uploadTotal,float $uploaded): int {
-            pm_progress_report(['stage'=>'app-download','label'=>'Downloading application','message'=>'Receiving the GitHub package.',
-                'completed'=>(int)$received,'total'=>(int)$total,'unit'=>'bytes','percent'=>5+($total>0 ? 10*$received/$total : 0)]);
-            return 0;
+        // Header/write callbacks work on hosting builds without XFERINFOFUNCTION.
+        CURLOPT_HEADERFUNCTION => static function ($handle,string $header) use (&$total): int {
+            if (preg_match('/^HTTP\//i',$header)) { $total=0; }
+            elseif (preg_match('/^Content-Length:\s*(\d+)/i',$header,$match)) { $total=(int)$match[1]; }
+            return strlen($header);
         },
-        CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use ($stream, &$bytes): int {
-            $bytes += strlen($chunk);
-            return $bytes > 50 * 1024 * 1024 ? 0 : (int) fwrite($stream, $chunk);
+        CURLOPT_WRITEFUNCTION => static function ($handle, string $chunk) use ($stream, &$bytes, &$total): int {
+            if ($bytes+strlen($chunk)>50*1024*1024) { return 0; }
+            $written=(int)fwrite($stream,$chunk); $bytes+=$written;
+            pm_progress_report(['stage'=>'app-download','label'=>'Downloading application','message'=>'Receiving the GitHub package.',
+                'completed'=>$bytes,'total'=>$total,'unit'=>'bytes','percent'=>5+($total>0 ? 10*$bytes/$total : 0)]);
+            return $written;
         },
     ]);
     $ok = curl_exec($curl);

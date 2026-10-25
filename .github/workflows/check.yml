@@ -33,6 +33,7 @@ jobs:
       - run: php tests/transfer.php
       - run: php tests/station_metadata.php
       - run: php tests/import_progress.php
+      - run: php tests/curl_progress_compat.php
       - run: php tests/transfer_rules.php
       - run: php tests/station_map.php
       - run: python3 tests/station_catalog.py
