@@ -188,7 +188,7 @@ function pm_progress_report(array $event): void
     try { pm_write_private(PM_LOADER_PRIVATE.'/maintenance-progress.php',$state); } catch (Throwable) { }
     if (PHP_SAPI==='cli' && defined('STDERR')) {
         $elapsed=max(0,time()-strtotime($state['startedAt']));
-        $metrics=isset($state['completed']) ? ' · '.number_format((float)$state['completed']).(isset($state['total']) ? '/'.number_format((float)$state['total']) : '').' '.($state['unit'] ?? '') : '';
+        $metrics=isset($state['completed']) ? ' · '.number_format((float)$state['completed']).(isset($state['total']) && (float)$state['total']>0 ? '/'.number_format((float)$state['total']) : '').' '.($state['unit'] ?? '') : '';
         fwrite(STDERR,sprintf('[%02d:%02d] [%3d%%] %s%s — %s%s',intdiv($elapsed,60),$elapsed%60,(int)$state['percent'],$state['label'],$metrics,$state['message'],PHP_EOL));
         fflush(STDERR);
     }
