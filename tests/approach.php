@@ -83,6 +83,8 @@ try{
     approachCheck(in_array([$points['B']['lat'],$points['B']['lon']],$incoming['geometry'],true) && approachNear(end($incoming['geometry']),[$points['C']['lat'],$points['C']['lon']]),'remaining geometry follows intermediate stops and ends at the selected boarding stop');
     approachCheck($incoming['secondsToStop']===840 && strtotime($incoming['arrival'])===$noon+1200 && strtotime($incoming['departure'])===$noon+1260,'incoming ETA counts down to stop arrival instead of the later departure after dwell');
     approachCheck($incoming['routeColor']==='#FFFFFF' && $incoming['routeTextColor']==='#000000' && $incoming['serviceDate']===$today,'approach payload carries its service date and readable provider route colours');
+    approachCheck($incoming['id']===$today.'-T' && $incoming['motion']['duration']===15 && count($incoming['motion']['frames'])>=2,'approach independently supplies the selected service identity and smooth motion frames');
+    approachCheck(approachNear([$incoming['motion']['frames'][0]['lat'],$incoming['motion']['frames'][0]['lon']],[$incoming['position']['lat'],$incoming['position']['lon']]),'selected marker motion begins at the approach response position');
 
     $atStop=$transit->approach('T','B',$noon+660,$today);
     approachCheck($atStop['phase']==='at-stop' && $atStop['secondsToStop']===0 && $atStop['geometry']===[[-31.95,115.86]],'boarding-stop dwell is represented by one anchored point rather than a flashing full incoming line');
@@ -93,6 +95,9 @@ try{
     approachCheck($departed['phase']==='departed' && $departed['geometry']===[] && $departed['secondsToStop']===0,'a departed boarding visit has no incoming route or negative ETA');
     $notStarted=$transit->approach('T','B',$noon-300,$today);
     approachCheck($notStarted['phase']==='not-started' && $notStarted['upcoming'] && approachNear($notStarted['geometry'][0],[-31.95,115.85]),'an upcoming trip waits at its first stop before the service starts');
+    $originBoarding=$transit->approach('T','A',$noon-300,$today);
+    approachCheck($originBoarding['geometry']===[] && approachNear([$originBoarding['position']['lat'],$originBoarding['position']['lon']],[-31.95,115.85]),'boarding at the trip origin still has a selected vehicle position when there is no earlier incoming line');
+    approachCheck(count(array_filter($originBoarding['motion']['frames'],static fn($frame)=>!approachNear([$frame['lat'],$frame['lon']],[-31.95,115.85])))===0,'upcoming selected vehicle never fabricates movement before its trip starts');
     $duringPreviousDwell=$transit->approach('T','C',$noon+660,$today);
     approachCheck($duringPreviousDwell['phase']==='approaching' && approachNear($duringPreviousDwell['geometry'][0],[-31.95,115.86]),'incoming path stays anchored during a dwell at an earlier stop');
     $finished=$transit->approach('T','D',$noon+1860,$today);

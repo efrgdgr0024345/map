@@ -47,4 +47,5 @@ jobs:
       - run: node --check tests/browser-station-v6.mjs
       - run: node --check tests/browser-loader-progress.mjs
       - run: node --check tests/browser-station-browse.mjs
+      - run: node --check tests/browser-incoming-walk.mjs
       - run: php loader.php --check

@@ -41,7 +41,7 @@
     zooming: false, fitAfterZoom: false, locationRetryTimer: null, locationRetryCount: 0,
     phonesEnabled: false, phoneLayers: null, phones: [], phoneMetadata: null, phonesController: null, phoneRequest: 0, phonesMoveTimer: null,
     approachLayers: null, approachRenderer: null, approachController: null, approachKey: '', approachData: null,
-    approachRequestedAt: 0, toastTimer: null, suppressSheetClickUntil: 0,
+    approachRequestedAt: 0, approachMarker: null, firstWalkFocus: false, firstWalkLayers: null, toastTimer: null, suppressSheetClickUntil: 0,
     addressEditField: null, autoPlanTimer: null, planController: null, planSignature: '', pickerPreviousFollow: null,
     mascotTucked: false, transfers: [], guidance: null, guidanceController: null, guidanceLayers: null,
     guidanceRenderer: null, guidanceTargetMarker: null, guidancePrevious: null, dismissedTransfers: new Set(),
@@ -140,7 +140,7 @@
   function setPanel(open, focus = false) {
     state.panelOpen = Boolean(open);
     document.body.classList.toggle('panel-open', state.panelOpen);
-    const hidden = Boolean(state.pickField || state.guidance) || (isMobile() && !state.panelOpen);
+    const hidden = Boolean(state.pickField || state.guidance || state.firstWalkFocus) || (isMobile() && !state.panelOpen);
     $('journey-panel').inert = hidden;
     $('journey-panel').setAttribute('aria-hidden', String(hidden));
     $('open-panel').setAttribute('aria-expanded', String(!hidden));
@@ -599,10 +599,17 @@
   }
 
   function setFollow(enabled) {
+    if (enabled && state.firstWalkFocus) {
+      state.firstWalkFocus = false;
+      document.body.classList.remove('walk-to-stop-active');
+      if (state.firstWalkLayers) state.firstWalkLayers.clearLayers();
+      if (state.selected && !state.guidance && !map.hasLayer(journeyLayers)) journeyLayers.addTo(map);
+      setPanel(state.panelOpen);
+    }
     state.followJourney = Boolean(enabled);
     if (!state.followJourney) state.fitAfterZoom = false;
     $('follow-journey').setAttribute('aria-pressed', String(state.followJourney));
-    $('follow-journey').querySelector('span').textContent = state.followJourney ? 'Following journey' : 'Recenter journey';
+    $('follow-journey').querySelector('span').textContent = state.firstWalkFocus ? 'Show full journey' : state.followJourney ? 'Following journey' : 'Recenter journey';
     if (state.followJourney && state.selected) { state.lastFollowFit = null; fitJourneyBounds(state.selected); }
   }
 
@@ -772,7 +779,46 @@
     state.approachController = null;
     state.approachKey = '';
     state.approachData = null;
+    if (state.approachMarker) {
+      if (state.approachMarker.nextstopAnimation) cancelAnimationFrame(state.approachMarker.nextstopAnimation);
+      map.removeLayer(state.approachMarker);
+      state.approachMarker = null;
+    }
     if (state.approachLayers) state.approachLayers.clearLayers();
+  }
+
+  function approachVehicle() {
+    const data = state.approachData, leg = nextLeg();
+    if (!data || !leg || String(data.tripId) !== String(leg.tripId)
+      || (leg.serviceDate && data.serviceDate !== leg.serviceDate)
+      || timeValue(leg.departure) < Date.now() || data.phase === 'departed'
+      || !Number.isFinite(timeValue(data.generatedAt)) || Date.now() - timeValue(data.generatedAt) > 45000
+      || !data.position || !Number.isFinite(Number(data.position.lat)) || !Number.isFinite(Number(data.position.lon))) return null;
+    return { ...leg, ...data, ...data.position, id: `${data.serviceDate || leg.serviceDate}-${data.tripId}`,
+      nextStop: data.stop && data.stop.name, estimated: true };
+  }
+
+  function renderApproachVehicle() {
+    const vehicle = approachVehicle();
+    if (!vehicle) return;
+    // One highlighted marker per selected service, regardless of which request
+    // finishes first or whether the larger fleet request succeeds.
+    state.markers.forEach((marker, id) => {
+      if (String(id) === String(vehicle.id)) {
+        if (marker.nextstopAnimation) cancelAnimationFrame(marker.nextstopAnimation);
+        map.removeLayer(marker); state.markers.delete(id);
+      }
+    });
+    if (!state.approachMarker) {
+      state.approachMarker = L.marker([vehicle.lat, vehicle.lon], { icon: vehicleIcon(vehicle, true), zIndexOffset: 4000, bubblingMouseEvents: false }).addTo(map);
+      state.approachMarker.bindPopup(servicePopup(vehicle, true));
+    } else {
+      state.approachMarker.setIcon(vehicleIcon(vehicle, true));
+      state.approachMarker.setPopupContent(servicePopup(vehicle, true));
+    }
+    const element = state.approachMarker.getElement();
+    if (element) element.setAttribute('aria-label', `Your next ${vehicle.mode} ${vehicle.routeName}, ${vehicle.headsign || 'scheduled service'}, estimated position. Open for timetable.`);
+    moveMarker(state.approachMarker, vehicle, vehicle.generatedAt);
   }
 
   function drawApproach(data, leg) {
@@ -800,10 +846,15 @@
       if (controller.signal.aborted || state.approachKey !== key || !nextLeg() || String(nextLeg().tripId) !== String(leg.tripId)) return;
       state.approachData = data;
       drawApproach(data, leg);
+      renderApproachVehicle();
       updateBoardingCountdown();
       if (state.followJourney && state.selected) fitJourneyBounds(state.selected, false);
     } catch (error) {
-      if (error.name !== 'AbortError' && state.approachKey === key) { state.approachData = null; state.approachLayers.clearLayers(); }
+      if (error.name !== 'AbortError' && state.approachKey === key) {
+        // Keep a recent estimate through a transient error; stale estimates are
+        // removed by the clock tick and never replace a fresh fleet position.
+        state.approachLayers.clearLayers();
+      }
     } finally { if (state.approachController === controller) state.approachController = null; }
   }
 
@@ -853,8 +904,8 @@
     const walkMinutes = Math.ceil(Math.max(0, Number(journey.walkToBoardSeconds) || 0) / 60);
     const bufferMinutes = Math.ceil(Math.max(0, Number(journey.boardingBufferSeconds) || 0) / 60);
     widget.setAttribute('aria-label', walking
-      ? `Leave home by ${clock(journey.leaveAt)}. ${walkMinutes} minute walk plus ${bufferMinutes} minutes before boarding.`
-      : `Board by ${clock(board)}.`);
+      ? `Leave home by ${clock(journey.leaveAt)}. ${walkMinutes} minute walk plus ${bufferMinutes} minutes before boarding. Show walking route to the first stop.`
+      : `Board by ${clock(board)}. Show the first boarding stop.`);
   }
 
   function bindSheetGesture(element, opening) {
@@ -1451,6 +1502,10 @@
     if (state.guidance) exitStationGuidance(false);
     clearApproach();
     state.selected = journey;
+    state.firstWalkFocus = false;
+    document.body.classList.remove('walk-to-stop-active');
+    state.firstWalkLayers.clearLayers();
+    if (!map.hasLayer(journeyLayers)) journeyLayers.addTo(map);
     state.transfers = collectTransfers(journey);
     state.dismissedTransfers = new Set();
     document.body.classList.add('has-active-journey');
@@ -1503,11 +1558,61 @@
     return [nearest.point, ...geometry.slice(nearest.index + 1)];
   }
 
+  function focusFirstWalk() {
+    const journey = state.selected, ride = transitLegs()[0];
+    if (!journey || !ride || !ride.from || Date.now() >= timeValue(ride.departure)) return;
+    if (state.guidance) exitStationGuidance(false);
+    clearStationBrowse(false);
+    state.firstWalkFocus = true;
+    setPanel(false);
+    state.followJourney = true;
+    state.lastFollowFit = null;
+    document.body.classList.add('walk-to-stop-active');
+    $('follow-journey').setAttribute('aria-pressed', 'false');
+    $('follow-journey').querySelector('span').textContent = 'Show full journey';
+    state.firstWalkLayers.clearLayers();
+    const firstRideIndex = journey.legs.indexOf(ride);
+    journey.legs.slice(0, firstRideIndex).filter(leg => leg.mode === 'walk' && leg.routing === 'street' && Array.isArray(leg.geometry) && leg.geometry.length >= 2).forEach(leg => {
+      L.polyline(leg.geometry, { color: '#fff', weight: 9, interactive: false }).addTo(state.firstWalkLayers);
+      L.polyline(leg.geometry, { color: '#456b2c', weight: 5, dashArray: '4 8', lineCap: 'round', interactive: false }).addTo(state.firstWalkLayers);
+    });
+    const stop = L.circleMarker([ride.from.lat, ride.from.lon], { radius: 9, color: '#14201d', weight: 3, fillColor: '#c2f65b', fillOpacity: 1 }).addTo(state.firstWalkLayers);
+    stop.bindTooltip(make('span', '', `Board here · ${ride.from.name}`), { permanent: true, direction: 'top', className: 'first-walk-stop-label' });
+    if (map.hasLayer(journeyLayers)) map.removeLayer(journeyLayers);
+    startLocationWatch();
+    fitJourneyBounds(journey);
+  }
+
+  function fitFirstWalkBounds(journey, force) {
+    const ride = transitLegs(journey)[0];
+    if (!ride || Date.now() >= timeValue(ride.departure)) { setFollow(true); return; }
+    const bounds = L.latLngBounds([[ride.from.lat, ride.from.lon]]);
+    journey.legs.slice(0, journey.legs.indexOf(ride)).filter(leg => leg.mode === 'walk' && leg.routing === 'street').forEach(leg => {
+      (leg.geometry || []).forEach(point => bounds.extend(point));
+    });
+    const origin = state.userLocation || state.origin;
+    if (origin) bounds.extend([origin.lat, origin.lon]);
+    const previous = state.lastFollowFit;
+    const center = bounds.getCenter();
+    if (!force && previous && previous.leg === 'first-walk' && Date.now() - previous.at < 8000) return;
+    state.lastFollowFit = { leg: 'first-walk', at: Date.now(), center };
+    state.programmaticView = true;
+    clearTimeout(state.viewTimer);
+    map.stop();
+    const mobile = isMobile(), size = map.getSize();
+    const labelPadding = mobile ? Math.min(100, Math.max(60, (size.x - 160) / 2)) : 135;
+    const launcher = $('open-panel').getBoundingClientRect();
+    map.fitBounds(bounds, { maxZoom: 18, paddingTopLeft: [labelPadding + 5, 165],
+      paddingBottomRight: [labelPadding + 15, mobile ? Math.max(120, size.y - launcher.top + 20) : 100], animate: !force && !reducedMotion });
+    state.viewTimer = setTimeout(() => { state.programmaticView = false; }, 850);
+  }
+
   function fitJourneyBounds(journey, force = true) {
     if (!state.followJourney || !journey || !map || state.pickField || state.guidance) return;
     if (state.zooming) { state.fitAfterZoom = true; return; }
+    if (state.firstWalkFocus) { fitFirstWalkBounds(journey, force); return; }
     const bounds = L.latLngBounds([]);
-    const vehicle = state.vehicles.find(item => state.nextTrip && String(item.tripId) === state.nextTrip);
+    const vehicle = approachVehicle() || state.vehicles.find(item => state.nextTrip && String(item.tripId) === state.nextTrip);
     const now = Date.now();
     (journey.legs || []).forEach(leg => {
       if (Number.isFinite(timeValue(leg.arrival)) && timeValue(leg.arrival) < now) return;
@@ -1626,7 +1731,7 @@
     styleRoute(routeBadge, leg);
     routeBadge.title = leg.routeName || mode;
     main.append(routeBadge, info, time);
-    const isVisible = state.vehicles.some(vehicle => String(vehicle.tripId) === String(leg.tripId));
+    const isVisible = Boolean(approachVehicle()) || state.vehicles.some(vehicle => String(vehicle.tripId) === String(leg.tripId));
     const footnote = state.status && state.status.mode === 'demo' ? 'Demo only. Vehicle movement and journey times are illustrative.' : (isVisible ? 'Bright marker = your service. Other vehicles on this line stay visible. Positions are estimates.' : 'Other vehicles on your line stay visible. Your service marker appears while the trip is running.');
     container.append(heading, main, timetableButton('View timetable', tripQuery(leg), 'next-timetable'), make('div', 'next-footnote', footnote));
   }
@@ -1635,6 +1740,9 @@
     cancelPendingPlan();
     if (state.guidance) exitStationGuidance(false);
     state.selected = null;
+    state.firstWalkFocus = false;
+    document.body.classList.remove('walk-to-stop-active');
+    if (state.firstWalkLayers) state.firstWalkLayers.clearLayers();
     state.transfers = [];
     state.dismissedTransfers = new Set();
     document.body.classList.remove('has-active-journey');
@@ -1757,6 +1865,8 @@
     state.vehicles.forEach(vehicle => {
       if (!Number.isFinite(Number(vehicle.lat)) || !Number.isFinite(Number(vehicle.lon))) return;
       const id = String(vehicle.id || vehicle.tripId);
+      const incoming = approachVehicle();
+      if (incoming && state.approachMarker && String(incoming.id) === id) return;
       retained.add(id);
       const highlighted = Boolean(state.nextTrip && String(vehicle.tripId) === state.nextTrip);
       let marker = state.markers.get(id);
@@ -1853,6 +1963,7 @@
     map.getPane('approachPane').style.pointerEvents = 'none';
     state.approachRenderer = L.svg({ pane: 'approachPane', padding: .5 });
     state.approachLayers = L.layerGroup().addTo(map);
+    state.firstWalkLayers = L.layerGroup().addTo(map);
     map.createPane('guidancePane');
     map.getPane('guidancePane').style.zIndex = '470';
     map.getPane('guidancePane').style.pointerEvents = 'none';
@@ -1869,7 +1980,7 @@
     updatePlaceMarker('origin');
     map.on('click', event => {
       if (state.pickField) { finishMapPick(event.latlng); return; }
-      if (state.guidance) return;
+      if (state.guidance || state.firstWalkFocus) return;
       if (isMobile() && !state.pickField) { setPanel(false); return; }
       const field = state.pickField || 'destination';
       setPlace(field, { lat: event.latlng.lat, lon: event.latlng.lng, name: field === 'origin' ? 'Starting point on map' : 'Destination on map' });
@@ -1906,7 +2017,7 @@
       resizeTimer = setTimeout(() => { map.invalidateSize({ pan: false }); setPanel(state.panelOpen); if (state.guidance) fitStationGuidance(); else if (state.selected) fitJourneyBounds(state.selected); }, 150);
     });
 
-    $('open-panel').addEventListener('click', event => { if (event.detail === 0 || Date.now() >= state.suppressSheetClickUntil) setPanel(true, true); });
+    $('open-panel').addEventListener('click', event => { if (event.detail === 0 || Date.now() >= state.suppressSheetClickUntil) { if (state.firstWalkFocus) setFollow(true); setPanel(true, true); } });
     $('close-panel').addEventListener('click', () => { setPanel(false); $('open-panel').focus({ preventScroll: true }); });
     $('sheet-handle').addEventListener('click', event => { if (event.detail === 0 || Date.now() >= state.suppressSheetClickUntil) { setPanel(false); $('open-panel').focus({ preventScroll: true }); } });
     bindSheetGesture($('sheet-handle'), false);
@@ -1998,6 +2109,7 @@
       fetchVehicles();
     });
     $('follow-journey').addEventListener('click', () => setFollow(true));
+    $('leave-widget').addEventListener('click', focusFirstWalk);
     $('map-zoom-in').addEventListener('click', () => { pauseMapFollowing(); map.zoomIn(); });
     $('map-zoom-out').addEventListener('click', () => { pauseMapFollowing(); map.zoomOut(); });
     document.addEventListener('visibilitychange', () => {
@@ -2032,9 +2144,10 @@
       if (!document.hidden) maybeAutoGuidance();
       if (state.approachData) {
         const leg = nextLeg();
-        if (!leg || String(leg.tripId) !== String(state.approachData.tripId)) { clearApproach(); if (!document.hidden) fetchApproach(); }
+        if (!leg || String(leg.tripId) !== String(state.approachData.tripId) || !approachVehicle()) { clearApproach(); if (!document.hidden) { fetchApproach(); fetchVehicles(); } }
         else if (timeValue(state.approachData.arrival) <= Date.now()) state.approachLayers.clearLayers();
       }
+      if (state.firstWalkFocus && (!transitLegs()[0] || timeValue(transitLegs()[0].departure) <= Date.now())) setFollow(true);
     }, 1000);
     setInterval(() => { if (!document.hidden) loadStatus(); }, 60000);
     setInterval(() => { if (!document.hidden) refreshRouteCatalog(); }, 300000);

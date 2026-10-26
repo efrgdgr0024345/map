@@ -75,3 +75,9 @@
 .station-feature-platform.is-boarding-platform{fill:#c2f65b;stroke:#698c3d}
 @media(max-width:760px){.leave-clock-visible.station-guidance-active .station-guidance{top:128px}}
 .station-place-body.is-restricted{background:#f0ebe3;color:#9b8d78;border-style:dashed;box-shadow:none}
+
+/* The leave clock opens the road/footpath walk to the first boarding stop. */
+button.leave-widget{pointer-events:auto;cursor:pointer;font-family:inherit;-webkit-tap-highlight-color:transparent}
+button.leave-widget:focus-visible{outline:4px solid #c2f65b;outline-offset:3px}
+.walk-to-stop-active .journey-panel{display:none!important}
+.first-walk-stop-label{width:max-content;max-width:min(200px,calc(100vw - 160px));white-space:normal;text-align:center;font-size:11px;font-weight:600;line-height:1.4}

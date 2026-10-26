@@ -244,6 +244,7 @@ final class Transit
             $q->execute([$tripId]); $result['stops']=[];
             foreach ($q as $row) {
                 $result['stops'][]=['id'=>$row['id'],'name'=>$row['name'],'lat'=>(float)$row['lat'],'lon'=>(float)$row['lon'],
+                    'sequence'=>(int)$row['seq'],
                     'arrival'=>date(DATE_ATOM,$chosen['base']+(int)$row['arrival']),
                     'departure'=>date(DATE_ATOM,$chosen['base']+(int)$row['departure']),
                     'pickupType'=>(int)$row['pickup'],'dropoffType'=>(int)$row['dropoff']];
@@ -304,8 +305,9 @@ final class Transit
         if ($target===null && $requested===null) { $target=$firstMatch; }
         if ($target===null) { throw new \InvalidArgumentException('That boarding-stop visit was not found on this service.'); }
         $boarding=$stops[$target]; $arrival=strtotime($boarding['arrival']); $departure=strtotime($boarding['departure']);
-        $q=$this->db->prepare('SELECT shape_id FROM trips WHERE id=?'); $q->execute([$tripId]);
-        $shape=$this->shape((string)$q->fetchColumn());
+        $q=$this->db->prepare('SELECT id,shape_id,start,end FROM trips WHERE id=?'); $q->execute([$tripId]);
+        $trip=$q->fetch();
+        $shape=$this->shape((string)$trip['shape_id']);
         $indices=Geo::stopIndices($shape,$stops);
         $currentIndex=0;
         foreach ($stops as $i=>$stop) { if (strtotime($stop['arrival'])<=$now) { $currentIndex=$i; } }
@@ -327,7 +329,18 @@ final class Transit
             $geometry=[[$boarding['lat'],$boarding['lon']]];
             $position=['lat'=>$boarding['lat'],'lon'=>$boarding['lon'],'bearing'=>$position['bearing']];
         }
-        return array_merge($table['trip'],['tripId'=>$tripId,'stop'=>$boarding,'geometry'=>$geometry,'position'=>$position,
+        // The small approach response can render the selected vehicle independently
+        // of the viewport fleet request, including trips that have not started yet.
+        $base=(new \DateTimeImmutable($table['serviceDate'],new \DateTimeZone('Australia/Perth')))->setTime(0,0)->getTimestamp();
+        $timedStops=[];
+        foreach ($stops as $i=>$stop) {
+            $timedStops[]=array_merge($stop,['seq'=>$stop['sequence'],
+                'arrival'=>strtotime($stop['arrival'])-$base,'departure'=>strtotime($stop['departure'])-$base]);
+            $trip['shapeStopIndices'][$stop['sequence']]=$indices[$i];
+        }
+        $motion=VehicleMotion::predict($this->db,$trip,$timedStops[$currentIndex],
+            $timedStops[min(count($stops)-1,$currentIndex+1)],$shape,$now-$base,$position,$segment);
+        return array_merge($table['trip'],['id'=>$table['serviceDate'].'-'.$tripId,'tripId'=>$tripId,'stop'=>$boarding,'geometry'=>$geometry,'position'=>$position,'motion'=>$motion,
             'arrival'=>$boarding['arrival'],'departure'=>$boarding['departure'],'secondsToStop'=>max(0,$arrival-$now),
             'phase'=>$phase,'upcoming'=>$notStarted,'estimated'=>true,'generatedAt'=>date(DATE_ATOM,$now)]);
     }
