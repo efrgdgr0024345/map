@@ -1,0 +1,6965 @@
+{
+  "schemaVersion": 1,
+  "revision": "perth-curated-100-v1",
+  "updatedAt": "2026-10-27T02:59:45.679542Z",
+  "description": "100 curated, well-known Perth-area places. Editorial selection, not measured visitor rankings.",
+  "ranking": {
+    "method": "editorial",
+    "visitorCounts": null
+  },
+  "updatePolicy": {
+    "mode": "manual",
+    "automaticRefresh": false,
+    "nextReviewAt": null
+  },
+  "source": {
+    "name": "OpenStreetMap contributors / Geofabrik and Wikidata",
+    "osmSnapshotAt": "2026-10-23T23:04:02Z",
+    "osmExtractUrl": "https://download.geofabrik.de/australia-oceania/australia/western-australia-latest.osm.pbf",
+    "osmSha256": "ea33f43b0278ceeeec37fb0d18f54dde17bfddb475eacdceb7fe8a4fc6253412",
+    "license": "ODbL-1.0 (OSM-derived database); Wikidata source points CC0-1.0",
+    "attribution": "© OpenStreetMap contributors · Wikidata",
+    "attributionUrl": "https://www.openstreetmap.org/copyright"
+  },
+  "places": [
+    {
+      "id": "osm-way-103827714",
+      "name": "Kings Park",
+      "aliases": [
+        "Kings Park and Botanic Garden"
+      ],
+      "category": "park",
+      "lat": -31.8313246,
+      "lon": 115.8855147,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/103827714",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 1
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/103827714",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-8046233",
+      "name": "Perth Zoo",
+      "aliases": [],
+      "category": "attraction",
+      "lat": -31.9765613,
+      "lon": 115.85513,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/8046233",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "20",
+        "street": "Labouchere Road",
+        "suburb": "South Perth",
+        "postcode": "6151",
+        "display": "20 Labouchere Road, South Perth, 6151"
+      },
+      "openingHours": {
+        "text": "Mo-Su,PH 09:00-17:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/8046233",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://perthzoo.wa.gov.au/",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "yes",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 2
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/8046233",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-node-2269125755",
+      "name": "Fremantle Prison",
+      "aliases": [],
+      "category": "attraction",
+      "lat": -32.0550794,
+      "lon": 115.7527066,
+      "location": {
+        "kind": "mapped-point",
+        "sourceUrl": "https://www.openstreetmap.org/node/2269125755",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://fremantleprison.com.au/",
+        "phone": "+61 8 9336 9200",
+        "email": "info@fremantleprison.com.au",
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 3
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/node/2269125755",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-34911431",
+      "name": "Fremantle Markets",
+      "aliases": [],
+      "category": "shopping",
+      "lat": -32.0559571,
+      "lon": 115.749483,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/34911431",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -32.056432,
+        "lon": 115.7491321,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/34911431"
+      },
+      "address": {
+        "houseNumber": null,
+        "street": "South Terrace",
+        "suburb": "Fremantle",
+        "postcode": null,
+        "display": "South Terrace, Fremantle"
+      },
+      "openingHours": {
+        "text": "Fr 09:00-20:00; Sa-Su 09:00-18:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/34911431",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.fremantlemarkets.com.au/",
+        "phone": "+61 8 9335 2515",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "yes",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 4
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/34911431",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-47121746",
+      "name": "WA Maritime Museum",
+      "aliases": [
+        "Western Australian Maritime Museum"
+      ],
+      "category": "museum",
+      "lat": -32.0546654,
+      "lon": 115.7388957,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/47121746",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -32.0546225,
+        "lon": 115.7394655,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/47121746"
+      },
+      "address": {
+        "houseNumber": null,
+        "street": "Victoria Quay",
+        "suburb": "Fremantle",
+        "postcode": "6160",
+        "display": "Victoria Quay, Fremantle, 6160"
+      },
+      "openingHours": {
+        "text": "Mo-Su 09:30-17:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/47121746",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.museum.wa.gov.au/museums/wa-maritime-museum",
+        "phone": "+61 8 9437 8444",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 5
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/47121746",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-49736345",
+      "name": "WA Shipwrecks Museum",
+      "aliases": [
+        "Western Australian Museum Shipwrecks"
+      ],
+      "category": "museum",
+      "lat": -32.0571694,
+      "lon": 115.7424719,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/49736345",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -32.0573058,
+        "lon": 115.7426721,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/49736345"
+      },
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.museum.wa.gov.au/explore/education/wa-shipwrecks-museum",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 6
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/49736345",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-563455636",
+      "name": "WA Museum Boola Bardip",
+      "aliases": [
+        "Western Australian Museum Boola Bardip"
+      ],
+      "category": "museum",
+      "lat": -31.94958,
+      "lon": 115.8618696,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/563455636",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "40",
+        "street": "James Street Mall",
+        "suburb": null,
+        "postcode": null,
+        "display": "40 James Street Mall"
+      },
+      "openingHours": {
+        "text": "Mo-Su 09:30-17:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/563455636",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://museum.wa.gov.au/",
+        "phone": "+61 8 9431 8413",
+        "email": "reception@museum.wa.gov.au",
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "yes",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 7
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/563455636",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-node-13155709840",
+      "name": "Scitech",
+      "aliases": [],
+      "category": "museum",
+      "lat": -31.9440572,
+      "lon": 115.8467847,
+      "location": {
+        "kind": "mapped-point",
+        "sourceUrl": "https://www.openstreetmap.org/node/13155709840",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "102",
+        "street": "Railway Street",
+        "suburb": "West Perth",
+        "postcode": "6005",
+        "display": "102 Railway Street, West Perth, 6005"
+      },
+      "openingHours": {
+        "text": "Mo-Su 09:30-16:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/node/13155709840",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.scitech.org.au/",
+        "phone": "+61 8 9215 0700",
+        "email": "info@scitech.org.au",
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "yes",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 8
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/node/13155709840",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-147704624",
+      "name": "The Bell Tower",
+      "aliases": [
+        "Swan Bells"
+      ],
+      "category": "attraction",
+      "lat": -31.9589478,
+      "lon": 115.8582334,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/147704624",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": "Barrack Square",
+        "suburb": null,
+        "postcode": "6000",
+        "display": "Barrack Square, 6000"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.thebelltower.com.au/",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 9
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/147704624",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-695799456",
+      "name": "Perth Stadium",
+      "aliases": [
+        "Optus Stadium"
+      ],
+      "category": "venue",
+      "lat": -31.9510756,
+      "lon": 115.8893145,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/695799456",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "333",
+        "street": "Victoria Park Drive",
+        "suburb": "Burswood",
+        "postcode": null,
+        "display": "333 Victoria Park Drive, Burswood"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://optusstadium.com.au/",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 10
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/695799456",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-150405797",
+      "name": "RAC Arena",
+      "aliases": [
+        "Perth Arena"
+      ],
+      "category": "venue",
+      "lat": -31.9484036,
+      "lon": 115.8519049,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/150405797",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "700",
+        "street": "Wellington Street",
+        "suburb": "Perth",
+        "postcode": "6000",
+        "display": "700 Wellington Street, Perth, 6000"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.racarena.com.au/",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 11
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/150405797",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-44179566",
+      "name": "HBF Park",
+      "aliases": [
+        "Perth Rectangular Stadium"
+      ],
+      "category": "venue",
+      "lat": -31.9456973,
+      "lon": 115.8698297,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/44179566",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "310",
+        "street": "Pier Street",
+        "suburb": "Perth",
+        "postcode": "6000",
+        "display": "310 Pier Street, Perth, 6000"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.nibstadium.com.au/",
+        "phone": "+61 8 9422 1500",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 12
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/44179566",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-4957468",
+      "name": "WACA Ground",
+      "aliases": [
+        "WACA"
+      ],
+      "category": "venue",
+      "lat": -31.9598528,
+      "lon": 115.8795651,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/4957468",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 13
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/4957468",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-29283079",
+      "name": "Cottesloe Beach",
+      "aliases": [],
+      "category": "beach",
+      "lat": -31.9957041,
+      "lon": 115.7510315,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/29283079",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 14
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/29283079",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-141331765",
+      "name": "Scarborough Beach",
+      "aliases": [],
+      "category": "beach",
+      "lat": -31.8957579,
+      "lon": 115.7549633,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/141331765",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 15
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/141331765",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-141331767",
+      "name": "City Beach",
+      "aliases": [],
+      "category": "beach",
+      "lat": -31.9344391,
+      "lon": 115.7550633,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/141331767",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 16
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/141331767",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-25498075",
+      "name": "Trigg Beach",
+      "aliases": [],
+      "category": "beach",
+      "lat": -31.8771074,
+      "lon": 115.7517587,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/25498075",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 17
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/25498075",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-25498022",
+      "name": "Mettams Pool",
+      "aliases": [
+        "Mettam's Pool"
+      ],
+      "category": "beach",
+      "lat": -31.8677633,
+      "lon": 115.7523711,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/25498022",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 18
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/25498022",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-50343032",
+      "name": "South Beach",
+      "aliases": [
+        "South Beach Fremantle"
+      ],
+      "category": "beach",
+      "lat": -32.0766304,
+      "lon": 115.7512064,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/50343032",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 19
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/50343032",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-411547974",
+      "name": "Coogee Beach",
+      "aliases": [],
+      "category": "beach",
+      "lat": -32.1196136,
+      "lon": 115.7590969,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/411547974",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 20
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/411547974",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-219387369",
+      "name": "Hillarys Boat Harbour",
+      "aliases": [
+        "Hillarys"
+      ],
+      "category": "attraction",
+      "lat": -31.8237271,
+      "lon": 115.7377636,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/219387369",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "86",
+        "street": "Southside Drive",
+        "suburb": "Hillarys",
+        "postcode": "6025",
+        "display": "86 Southside Drive, Hillarys, 6025"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://hillarysboatharbour.com.au/",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 21
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/219387369",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-175944203",
+      "name": "AQWA",
+      "aliases": [
+        "Aquarium of Western Australia",
+        "AQWA – The Aquarium of Western Australia"
+      ],
+      "category": "attraction",
+      "lat": -31.8267422,
+      "lon": 115.7377406,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/175944203",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -31.8265178,
+        "lon": 115.7377271,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/175944203"
+      },
+      "address": {
+        "houseNumber": "91",
+        "street": "Southside Drive",
+        "suburb": "Hillarys",
+        "postcode": "6025",
+        "display": "91 Southside Drive, Hillarys, 6025"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.aqwa.com.au/",
+        "phone": "+61 8 9447 7500",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 22
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/175944203",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-25803408",
+      "name": "Adventure World",
+      "aliases": [],
+      "category": "attraction",
+      "lat": -32.0958901,
+      "lon": 115.8186709,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/25803408",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "351",
+        "street": "Progress Drive",
+        "suburb": "Bibra Lake",
+        "postcode": "6163",
+        "display": "351 Progress Drive, Bibra Lake, 6163"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://adventureworld.net.au",
+        "phone": "+61 8 9417 9666",
+        "email": "feedback@adventureworld.net.au",
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 23
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/25803408",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-node-3237117857",
+      "name": "Caversham Wildlife Park",
+      "aliases": [],
+      "category": "attraction",
+      "lat": -31.8339049,
+      "lon": 115.9499106,
+      "location": {
+        "kind": "mapped-point",
+        "sourceUrl": "https://www.openstreetmap.org/node/3237117857",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "99",
+        "street": "Lord Street",
+        "suburb": null,
+        "postcode": "6068",
+        "display": "99 Lord Street, 6068"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 24
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/node/3237117857",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-132746148",
+      "name": "Whiteman Park",
+      "aliases": [],
+      "category": "park",
+      "lat": -31.8661417,
+      "lon": 115.9560141,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/132746148",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 25
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/132746148",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-30594672",
+      "name": "Araluen Botanic Park",
+      "aliases": [],
+      "category": "park",
+      "lat": -32.1224433,
+      "lon": 116.1018428,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/30594672",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -32.1247374,
+        "lon": 116.1000684,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/30594672"
+      },
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 26
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/30594672",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-node-274233154",
+      "name": "Perth Observatory",
+      "aliases": [],
+      "category": "attraction",
+      "lat": -32.0077286,
+      "lon": 116.1354448,
+      "location": {
+        "kind": "mapped-point",
+        "sourceUrl": "https://www.openstreetmap.org/node/274233154",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 27
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/node/274233154",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-4938194",
+      "name": "Hyde Park",
+      "aliases": [
+        "Hyde Park Perth"
+      ],
+      "category": "park",
+      "lat": -31.9379753,
+      "lon": 115.86235,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/4938194",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 28
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/4938194",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-4938156",
+      "name": "Langley Park",
+      "aliases": [],
+      "category": "park",
+      "lat": -31.9616629,
+      "lon": 115.8690957,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/4938156",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 29
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/4938156",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-4957469",
+      "name": "Queens Gardens",
+      "aliases": [
+        "Queens Gardens Perth"
+      ],
+      "category": "park",
+      "lat": -31.9591048,
+      "lon": 115.8766328,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/4957469",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 30
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/4957469",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-8112592",
+      "name": "Harold Boas Gardens",
+      "aliases": [],
+      "category": "park",
+      "lat": -31.9461445,
+      "lon": 115.8443683,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/8112592",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 31
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/8112592",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-8112594",
+      "name": "Stirling Gardens",
+      "aliases": [],
+      "category": "park",
+      "lat": -31.9564813,
+      "lon": 115.8599184,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/8112594",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 32
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/8112594",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-4957439",
+      "name": "Supreme Court Gardens",
+      "aliases": [],
+      "category": "park",
+      "lat": -31.958092,
+      "lon": 115.8603064,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/4957439",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 33
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/4957439",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-51138412",
+      "name": "State War Memorial",
+      "aliases": [
+        "Kings Park War Memorial"
+      ],
+      "category": "landmark",
+      "lat": -31.9608252,
+      "lon": 115.8446446,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/51138412",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.bgpa.wa.gov.au/kings-park/visit/history/state-war-memorial",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 34
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/51138412",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-1274392791",
+      "name": "DNA Tower",
+      "aliases": [],
+      "category": "landmark",
+      "lat": -31.9642647,
+      "lon": 115.8362202,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/1274392791",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 35
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/1274392791",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-624728374",
+      "name": "Lotterywest Federation Walkway",
+      "aliases": [
+        "Kings Park Treetop Walk"
+      ],
+      "category": "attraction",
+      "lat": -31.964625,
+      "lon": 115.8392995,
+      "location": {
+        "kind": "mapped-path-point",
+        "sourceUrl": "https://www.openstreetmap.org/way/624728374",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": "Mo-Su 09:00-17:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/624728374",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 36
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/624728374",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-141311052",
+      "name": "Rio Tinto Naturescape Kings Park",
+      "aliases": [
+        "Naturescape"
+      ],
+      "category": "park",
+      "lat": -31.9573152,
+      "lon": 115.8400462,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/141311052",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 37
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/141311052",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-151266667",
+      "name": "Western Australian Botanic Garden",
+      "aliases": [
+        "WA Botanic Garden"
+      ],
+      "category": "park",
+      "lat": -31.9637866,
+      "lon": 115.8397353,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/151266667",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.bgpa.wa.gov.au/western-australian-botanic-garden",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 38
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/151266667",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-36993401",
+      "name": "Burswood Park",
+      "aliases": [],
+      "category": "park",
+      "lat": -31.9621419,
+      "lon": 115.8978971,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/36993401",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 39
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/36993401",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-36954975",
+      "name": "Sir James Mitchell Park",
+      "aliases": [
+        "South Perth Foreshore"
+      ],
+      "category": "park",
+      "lat": -31.9736441,
+      "lon": 115.87152,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/36954975",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 40
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/36954975",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-499414405",
+      "name": "Point Walter Reserve",
+      "aliases": [
+        "Point Walter"
+      ],
+      "category": "park",
+      "lat": -32.0132915,
+      "lon": 115.7893777,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/499414405",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 41
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/499414405",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-node-33164509",
+      "name": "Matilda Bay",
+      "aliases": [
+        "Matilda Bay Reserve"
+      ],
+      "category": "park",
+      "lat": -31.9802798,
+      "lon": 115.8252086,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/node/33164509",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 42
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/node/33164509",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-4956805",
+      "name": "Bold Park",
+      "aliases": [],
+      "category": "park",
+      "lat": -31.9323983,
+      "lon": 115.7760049,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/4956805",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 43
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/4956805",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-587889456",
+      "name": "Herdsman Lake Regional Park",
+      "aliases": [
+        "Herdsman Lake"
+      ],
+      "category": "park",
+      "lat": -31.9202571,
+      "lon": 115.8043147,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/587889456",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 44
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/587889456",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-998689739",
+      "name": "Bibra Lake Regional Playground",
+      "aliases": [
+        "Bibra Lake Playground"
+      ],
+      "category": "park",
+      "lat": -32.0875706,
+      "lon": 115.8224376,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/998689739",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 45
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/998689739",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-8031617",
+      "name": "Esplanade Park",
+      "aliases": [
+        "Fremantle Esplanade"
+      ],
+      "category": "park",
+      "lat": -32.0577142,
+      "lon": 115.7449382,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/8031617",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 46
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/8031617",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-49965210",
+      "name": "Round House",
+      "aliases": [
+        "Fremantle Round House"
+      ],
+      "category": "landmark",
+      "lat": -32.0561102,
+      "lon": 115.7412832,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/49965210",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "15",
+        "street": "Captains Lane",
+        "suburb": "Fremantle",
+        "postcode": "6160",
+        "display": "15 Captains Lane, Fremantle, 6160"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.fremantleroundhouse.com.au/",
+        "phone": "+61 8 9336 6897",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 47
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/49965210",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-114940034",
+      "name": "Monument Hill Park",
+      "aliases": [
+        "Fremantle War Memorial"
+      ],
+      "category": "park",
+      "lat": -32.0163993,
+      "lon": 115.761038,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/114940034",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 48
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/114940034",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-29283043",
+      "name": "Fremantle Oval",
+      "aliases": [
+        "Freo Oval"
+      ],
+      "category": "venue",
+      "lat": -32.0561826,
+      "lon": 115.7512941,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/29283043",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -32.0562977,
+        "lon": 115.7499259,
+        "kind": "reviewed-access",
+        "label": "Parry Street access",
+        "checkedAt": "2026-10-25",
+        "sourceUrl": "https://www.openstreetmap.org/node/2343952485"
+      },
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 49
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/29283043",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-147743499",
+      "name": "His Majesty's Theatre",
+      "aliases": [
+        "His Majestys Theatre"
+      ],
+      "category": "venue",
+      "lat": -31.9530733,
+      "lon": 115.8542598,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/147743499",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "825",
+        "street": "Hay Street",
+        "suburb": "Perth",
+        "postcode": "6000",
+        "display": "825 Hay Street, Perth, 6000"
+      },
+      "openingHours": {
+        "text": "Mo-Fr 09:00-17:30",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/147743499",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.ptt.wa.gov.au/venues/his-majestys-theatre/",
+        "phone": "+61 8 6212 9292",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "limited",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 50
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/147743499",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-147036007",
+      "name": "Perth Concert Hall",
+      "aliases": [],
+      "category": "venue",
+      "lat": -31.9581487,
+      "lon": 115.8637049,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/147036007",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 51
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/147036007",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-194941644",
+      "name": "State Theatre Centre of WA",
+      "aliases": [
+        "State Theatre Centre of Western Australia"
+      ],
+      "category": "venue",
+      "lat": -31.9498195,
+      "lon": 115.8594791,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/194941644",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "174-176",
+        "street": "William Street",
+        "suburb": "Perth",
+        "postcode": "6000",
+        "display": "174-176 William Street, Perth, 6000"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.ptt.wa.gov.au/",
+        "phone": "+61 8 6212 9200",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 52
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/194941644",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-166830279",
+      "name": "Crown Theatre Perth",
+      "aliases": [
+        "Crown Theatre",
+        "Crown Theatre, Perth"
+      ],
+      "category": "venue",
+      "lat": -31.9596369,
+      "lon": 115.8951971,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/166830279",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": "Crown Perth, Great Eastern Hwy, Burswood",
+        "suburb": null,
+        "postcode": null,
+        "display": "Crown Perth, Great Eastern Hwy, Burswood"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 53
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/166830279",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-219386986",
+      "name": "Perth Convention and Exhibition Centre",
+      "aliases": [
+        "PCEC",
+        "Perth Convention & Exhibition Centre"
+      ],
+      "category": "venue",
+      "lat": -31.9569071,
+      "lon": 115.8532521,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/219386986",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "21",
+        "street": "Mounts Bay Road",
+        "suburb": null,
+        "postcode": "6000",
+        "display": "21 Mounts Bay Road, 6000"
+      },
+      "openingHours": {
+        "text": "Mo-Fr 08:00-16:30",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/219386986",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.pcec.com.au/",
+        "phone": "+61 8 9475 3301",
+        "email": "info@pcec.com.au",
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "yes",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 54
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/219386986",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-42506693",
+      "name": "State Library of Western Australia",
+      "aliases": [
+        "State Library WA"
+      ],
+      "category": "library",
+      "lat": -31.9489703,
+      "lon": 115.8606713,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/42506693",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -31.9492908,
+        "lon": 115.8607699,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/42506693"
+      },
+      "address": {
+        "houseNumber": "25",
+        "street": "Francis Street",
+        "suburb": null,
+        "postcode": null,
+        "display": "25 Francis Street"
+      },
+      "openingHours": {
+        "text": "Mo-Th 09:00-20:00; Fr 09:00-17:30; Sa-Su 10:00-17:30; PH off",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/42506693",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://slwa.wa.gov.au",
+        "phone": "+61 8 9427 3111",
+        "email": "info@slwa.wa.gov.au",
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "yes",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 55
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/42506693",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-147657144",
+      "name": "Perth Institute of Contemporary Arts",
+      "aliases": [
+        "PICA"
+      ],
+      "category": "museum",
+      "lat": -31.9498308,
+      "lon": 115.8602637,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/147657144",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -31.9496305,
+        "lon": 115.8602452,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/147657144"
+      },
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": "Tu-Su 12:00-17:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/147657144",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "yes",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 56
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/147657144",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-50422388",
+      "name": "Lawrence Wilson Art Gallery",
+      "aliases": [],
+      "category": "museum",
+      "lat": -31.9768949,
+      "lon": 115.8161032,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/50422388",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": "Tu-Sa 12:00-17:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/50422388",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.uwa.edu.au/lwag/home/",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 57
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/50422388",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-1285020779",
+      "name": "Aviation Heritage Museum",
+      "aliases": [],
+      "category": "museum",
+      "lat": -32.0492069,
+      "lon": 115.8589534,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/1285020779",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": "Bull Creek Drive",
+        "suburb": "Bull Creek",
+        "postcode": "6149",
+        "display": "Bull Creek Drive, Bull Creek, 6149"
+      },
+      "openingHours": {
+        "text": "Mo-Su,PH 10:00-16:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/1285020779",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.raafawa.org.au",
+        "phone": "+61 8 9311 4470",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "yes",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 58
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/1285020779",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-123987972",
+      "name": "Motor Museum of Western Australia",
+      "aliases": [
+        "Motor Museum WA"
+      ],
+      "category": "museum",
+      "lat": -31.835993,
+      "lon": 115.9486121,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/123987972",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 59
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/123987972",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-123992161",
+      "name": "Revolutions Transport Museum",
+      "aliases": [
+        "Revolutions"
+      ],
+      "category": "museum",
+      "lat": -31.8339115,
+      "lon": 115.9433968,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/123992161",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.whitemanpark.com.au/attractions/revolutions.aspx",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 60
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/123992161",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-593639432",
+      "name": "Railway Museum",
+      "aliases": [
+        "Bassendean Railway Museum"
+      ],
+      "category": "museum",
+      "lat": -31.9094637,
+      "lon": 115.9386955,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/593639432",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -31.9100304,
+        "lon": 115.938767,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/593639432"
+      },
+      "address": {
+        "houseNumber": "136",
+        "street": "Railway Parade",
+        "suburb": "Bassendean",
+        "postcode": null,
+        "display": "136 Railway Parade, Bassendean"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 61
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/593639432",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-node-271104530",
+      "name": "Kalamunda History Village",
+      "aliases": [],
+      "category": "museum",
+      "lat": -31.9699631,
+      "lon": 116.0593013,
+      "location": {
+        "kind": "mapped-point",
+        "sourceUrl": "https://www.openstreetmap.org/node/271104530",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 62
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/node/271104530",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-node-1923115731",
+      "name": "Wireless Hill Museum",
+      "aliases": [],
+      "category": "museum",
+      "lat": -32.0304348,
+      "lon": 115.8279842,
+      "location": {
+        "kind": "mapped-point",
+        "sourceUrl": "https://www.openstreetmap.org/node/1923115731",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 63
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/node/1923115731",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-46155215",
+      "name": "Goolugatup Heathcote",
+      "aliases": [
+        "Heathcote Gallery"
+      ],
+      "category": "museum",
+      "lat": -32.0036739,
+      "lon": 115.8422297,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/46155215",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "58",
+        "street": "Duncraig Road",
+        "suburb": null,
+        "postcode": null,
+        "display": "58 Duncraig Road"
+      },
+      "openingHours": {
+        "text": "Tu-Su 10:00-16:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/46155215",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 64
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/46155215",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-4828215",
+      "name": "Karrinyup Shopping Centre",
+      "aliases": [
+        "Karrinyup"
+      ],
+      "category": "shopping",
+      "lat": -31.8773314,
+      "lon": 115.7785439,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/4828215",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.karrinyupcentre.com.au/",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "yes",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 65
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/4828215",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-315587492",
+      "name": "Westfield Carousel",
+      "aliases": [
+        "Carousel"
+      ],
+      "category": "shopping",
+      "lat": -32.0187111,
+      "lon": 115.9379587,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/315587492",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "1382",
+        "street": "Albany Highway",
+        "suburb": "Cannington",
+        "postcode": "6107",
+        "display": "1382 Albany Highway, Cannington, 6107"
+      },
+      "openingHours": {
+        "text": "Mo-We,Fr 09:00-17:30; Th 09:00-21:00; Sa 09:00-17:00; Su 11:00-17:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/315587492",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.westfield.com.au/carousel/",
+        "phone": "+61 8 9458 6344",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "yes",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 66
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/315587492",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-292027300",
+      "name": "Westfield Booragoon",
+      "aliases": [
+        "Garden City Booragoon"
+      ],
+      "category": "shopping",
+      "lat": -32.0338909,
+      "lon": 115.835571,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/292027300",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -32.0346423,
+        "lon": 115.8347373,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/292027300"
+      },
+      "address": {
+        "houseNumber": "125",
+        "street": "Riseley Street",
+        "suburb": "Booragoon",
+        "postcode": "6154",
+        "display": "125 Riseley Street, Booragoon, 6154"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.gardencity.com.au",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 67
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/292027300",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-44963824",
+      "name": "Claremont Quarter",
+      "aliases": [],
+      "category": "shopping",
+      "lat": -31.9821026,
+      "lon": 115.7797056,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/44963824",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -31.9821166,
+        "lon": 115.7799011,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/44963824"
+      },
+      "address": {
+        "houseNumber": "23",
+        "street": "St Quentin Avenue",
+        "suburb": null,
+        "postcode": null,
+        "display": "23 St Quentin Avenue"
+      },
+      "openingHours": {
+        "text": "Mo-We,Fr 09:00-17:30; Th 09:00-21:00; Sa 09:00-17:00; Su 11:00-17:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/44963824",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://claremontquarter.com.au/",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "yes",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 68
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/44963824",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-48535836",
+      "name": "Midland Gate",
+      "aliases": [
+        "Midland Gate Shopping Centre"
+      ],
+      "category": "shopping",
+      "lat": -31.8897344,
+      "lon": 116.0100106,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/48535836",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -31.8895691,
+        "lon": 116.0076736,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/48535836"
+      },
+      "address": {
+        "houseNumber": "274",
+        "street": "Great Eastern Highway",
+        "suburb": null,
+        "postcode": "6056",
+        "display": "274 Great Eastern Highway, 6056"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.midlandgateshopping.com.au/",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 69
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/48535836",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-682186791",
+      "name": "Belmont Forum",
+      "aliases": [],
+      "category": "shopping",
+      "lat": -31.9648914,
+      "lon": 115.9351858,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/682186791",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -31.966319,
+        "lon": 115.934384,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/682186791"
+      },
+      "address": {
+        "houseNumber": "227",
+        "street": "Belmont Avenue",
+        "suburb": "Cloverdale",
+        "postcode": "6105",
+        "display": "227 Belmont Avenue, Cloverdale, 6105"
+      },
+      "openingHours": {
+        "text": "Mo-Fr 08:00-21:00; Sa 08:00-17:00; Su 11:00-17:00; PH 11:00-17:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/682186791",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.belmontforum.com.au",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "yes",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 70
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/682186791",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-98833495",
+      "name": "Cockburn Gateway Shopping City",
+      "aliases": [
+        "Cockburn Gateway"
+      ],
+      "category": "shopping",
+      "lat": -32.1312269,
+      "lon": 115.8573043,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/98833495",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -32.1296097,
+        "lon": 115.8568536,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/98833495"
+      },
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 71
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/98833495",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-210523018",
+      "name": "Galleria",
+      "aliases": [
+        "Morley Galleria"
+      ],
+      "category": "shopping",
+      "lat": -31.896723,
+      "lon": 115.8985361,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/210523018",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "4",
+        "street": "Collier Road",
+        "suburb": null,
+        "postcode": null,
+        "display": "4 Collier Road"
+      },
+      "openingHours": {
+        "text": "Mo-We,Fr 09:00-17:30; Th 09:00-21:00; Sa 09:00-17:00; Su 11:00-17:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/210523018",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.galleriashoppingcentre.com.au/",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": "yes",
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 72
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/210523018",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-634821496",
+      "name": "DFO Perth",
+      "aliases": [
+        "Direct Factory Outlet Perth"
+      ],
+      "category": "shopping",
+      "lat": -31.9376648,
+      "lon": 115.9487107,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/634821496",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "11",
+        "street": "High Street",
+        "suburb": null,
+        "postcode": null,
+        "display": "11 High Street"
+      },
+      "openingHours": {
+        "text": "Mo-Su 10:00-18:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/634821496",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.dfo.com.au/",
+        "phone": "+61 8 6147 9500",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 73
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/634821496",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-184798659",
+      "name": "Ocean Keys Shopping Centre",
+      "aliases": [
+        "Ocean Keys"
+      ],
+      "category": "shopping",
+      "lat": -31.6907803,
+      "lon": 115.7176193,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/184798659",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "36",
+        "street": "Ocean Keys Boulevard",
+        "suburb": "Clarkson",
+        "postcode": "6030",
+        "display": "36 Ocean Keys Boulevard, Clarkson, 6030"
+      },
+      "openingHours": {
+        "text": "Mo-Fr 08:00-21:00; Sa 08:00-17:00; Su 11:00-17:00",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/way/184798659",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.oceankeys.net.au/",
+        "phone": "+61 8 9407 2400",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 74
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/184798659",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-176361463",
+      "name": "Rockingham Centre",
+      "aliases": [
+        "Rockingham Shopping Centre"
+      ],
+      "category": "shopping",
+      "lat": -32.2897612,
+      "lon": 115.7449276,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/176361463",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -32.2887369,
+        "lon": 115.7471462,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/176361463"
+      },
+      "address": {
+        "houseNumber": "1",
+        "street": "Council Avenue",
+        "suburb": "Rockingham",
+        "postcode": "6168",
+        "display": "1 Council Avenue, Rockingham, 6168"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.rockinghamcentre.com.au/",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 75
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/176361463",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-185334369",
+      "name": "Mindarie Marina",
+      "aliases": [],
+      "category": "attraction",
+      "lat": -31.6890305,
+      "lon": 115.7015218,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/185334369",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "33",
+        "street": "Ocean Falls Boulevard",
+        "suburb": "Mindarie",
+        "postcode": null,
+        "display": "33 Ocean Falls Boulevard, Mindarie"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.themarinamindarie.com/",
+        "phone": "+61 8 9305 9305",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 76
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/185334369",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-node-5305391922",
+      "name": "Serpentine National Park",
+      "aliases": [
+        "Serpentine Falls"
+      ],
+      "category": "park",
+      "lat": -32.3692782,
+      "lon": 116.0068944,
+      "location": {
+        "kind": "mapped-point",
+        "sourceUrl": "https://www.openstreetmap.org/node/5305391922",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "100",
+        "street": "Falls Road",
+        "suburb": null,
+        "postcode": "6125",
+        "display": "100 Falls Road, 6125"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 77
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/node/5305391922",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-404705281",
+      "name": "Matagarup Bridge",
+      "aliases": [],
+      "category": "landmark",
+      "lat": -31.9549119,
+      "lon": 115.8844194,
+      "location": {
+        "kind": "mapped-path-point",
+        "sourceUrl": "https://www.openstreetmap.org/way/404705281",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 78
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/404705281",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-148802767",
+      "name": "Forrest Place",
+      "aliases": [],
+      "category": "landmark",
+      "lat": -31.9522452,
+      "lon": 115.859359,
+      "location": {
+        "kind": "mapped-path-point",
+        "sourceUrl": "https://www.openstreetmap.org/way/148802767",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 79
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/148802767",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-25560004",
+      "name": "Perth Town Hall",
+      "aliases": [],
+      "category": "landmark",
+      "lat": -31.9548695,
+      "lon": 115.8604619,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/25560004",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "601",
+        "street": "Hay Street",
+        "suburb": null,
+        "postcode": null,
+        "display": "601 Hay Street"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 80
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/25560004",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-node-5325445471",
+      "name": "Cohunu Koala Park",
+      "aliases": [],
+      "category": "attraction",
+      "lat": -32.230305,
+      "lon": 116.0141507,
+      "location": {
+        "kind": "mapped-point",
+        "sourceUrl": "https://www.openstreetmap.org/node/5325445471",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "68",
+        "street": "Nettleton Road",
+        "suburb": "Byford",
+        "postcode": "6122",
+        "display": "68 Nettleton Road, Byford, 6122"
+      },
+      "openingHours": {
+        "text": "Mo-Su 10:00-16:00; Dec 25 off",
+        "timezone": "Australia/Perth",
+        "sourceUrl": "https://www.openstreetmap.org/node/5325445471",
+        "asOf": "2026-10-23T23:04:02Z",
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://cohunu.com.au/",
+        "phone": "+61 8 9526 2966",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 81
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/node/5325445471",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-393530745",
+      "name": "Swan Valley Cuddly Animal Farm",
+      "aliases": [],
+      "category": "attraction",
+      "lat": -31.798464,
+      "lon": 115.9861437,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/393530745",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "http://www.cuddlyanimalfarm.com.au/",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 82
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/393530745",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-1135349831",
+      "name": "Perth's Outback Splash",
+      "aliases": [
+        "Outback Splash"
+      ],
+      "category": "attraction",
+      "lat": -31.6528775,
+      "lon": 115.9588864,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/1135349831",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": "1635",
+        "street": "Neaves Road",
+        "suburb": "Bullsbrook",
+        "postcode": "6084",
+        "display": "1635 Neaves Road, Bullsbrook, 6084"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.outbacksplash.com.au",
+        "phone": "+61 8 9571 1375",
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 83
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/1135349831",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-47117508",
+      "name": "Fremantle Fishing Boat Harbour",
+      "aliases": [
+        "Fishing Boat Harbour Fremantle",
+        "Fishing Boat Harbour"
+      ],
+      "category": "attraction",
+      "lat": -32.0610686,
+      "lon": 115.7447088,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/47117508",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 84
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/47117508",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "osm-way-242791567",
+      "name": "Westfield Innaloo",
+      "aliases": [
+        "Innaloo Shopping Centre",
+        "Westfield Innaloo Shopping Centre"
+      ],
+      "category": "shopping",
+      "lat": -31.9009683,
+      "lon": 115.799431,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.openstreetmap.org/way/242791567",
+        "entranceConfirmed": false
+      },
+      "navigation": {
+        "lat": -31.9014817,
+        "lon": 115.8008666,
+        "kind": "mapped-entrance",
+        "label": "Mapped entrance",
+        "checkedAt": null,
+        "sourceUrl": "https://www.openstreetmap.org/way/242791567"
+      },
+      "address": {
+        "houseNumber": null,
+        "street": "Ellen Stirling Boulevard",
+        "suburb": "Innaloo",
+        "postcode": "6018",
+        "display": "Ellen Stirling Boulevard, Innaloo, 6018"
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": "https://www.westfield.com.au/innaloo",
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 85
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "OpenStreetMap contributors / Geofabrik",
+          "url": "https://www.openstreetmap.org/way/242791567",
+          "asOf": "2026-10-23T23:04:02Z",
+          "license": "ODbL-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q5363395",
+      "name": "Elizabeth Quay",
+      "aliases": [
+        "EQ Waterfront"
+      ],
+      "category": "landmark",
+      "lat": -31.9575,
+      "lon": 115.857,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q5363395",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 86
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q5363395",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q917524",
+      "name": "The Perth Mint",
+      "aliases": [
+        "Perth Mint"
+      ],
+      "category": "museum",
+      "lat": -31.9572755,
+      "lon": 115.8691753,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q917524",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 87
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q917524",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q4796833",
+      "name": "Art Gallery of Western Australia",
+      "aliases": [
+        "AGWA"
+      ],
+      "category": "museum",
+      "lat": -31.9505883,
+      "lon": 115.8609433,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q4796833",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 88
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q4796833",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q1517021",
+      "name": "University of Western Australia",
+      "aliases": [
+        "UWA"
+      ],
+      "category": "university",
+      "lat": -31.9802778,
+      "lon": 115.8186111,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q1517021",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 89
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q1517021",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q1887921",
+      "name": "University of Notre Dame Australia",
+      "aliases": [
+        "Notre Dame Fremantle"
+      ],
+      "category": "university",
+      "lat": -32.0559179,
+      "lon": 115.7433808,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q1887921",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 90
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q1887921",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q45935",
+      "name": "Perth Airport",
+      "aliases": [],
+      "category": "transport",
+      "lat": -31.94,
+      "lon": 115.965,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q45935",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 91
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q45935",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q1017078",
+      "name": "Crown Perth",
+      "aliases": [
+        "Burswood Casino"
+      ],
+      "category": "venue",
+      "lat": -31.9608306,
+      "lon": 115.8955611,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q1017078",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 92
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q1017078",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q2942506",
+      "name": "St Mary's Cathedral",
+      "aliases": [
+        "St Marys Cathedral Perth"
+      ],
+      "category": "landmark",
+      "lat": -31.9553681,
+      "lon": 115.8664372,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q2942506",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 93
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q2942506",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q7593121",
+      "name": "St George's Cathedral",
+      "aliases": [
+        "St Georges Cathedral Perth"
+      ],
+      "category": "landmark",
+      "lat": -31.9557528,
+      "lon": 115.8612917,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q7593121",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 94
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q7593121",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q1699032",
+      "name": "John Forrest National Park",
+      "aliases": [],
+      "category": "park",
+      "lat": -31.869706,
+      "lon": 116.091161,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q1699032",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 95
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q1699032",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q3593089",
+      "name": "Heirisson Island",
+      "aliases": [],
+      "category": "park",
+      "lat": -31.9657807,
+      "lon": 115.8820498,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q3593089",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 96
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q3593089",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q6479112",
+      "name": "Lakeside Joondalup Shopping City",
+      "aliases": [
+        "Lakeside Joondalup"
+      ],
+      "category": "shopping",
+      "lat": -31.7441119,
+      "lon": 115.7673327,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q6479112",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 97
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q6479112",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q7988780",
+      "name": "Westfield Whitford City",
+      "aliases": [
+        "Whitfords City"
+      ],
+      "category": "shopping",
+      "lat": -31.7965163,
+      "lon": 115.7494009,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q7988780",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 98
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q7988780",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q29025030",
+      "name": "Yagan Square",
+      "aliases": [],
+      "category": "landmark",
+      "lat": -31.9505892,
+      "lon": 115.8585586,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q29025030",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 60,
+      "display": {
+        "enabled": true,
+        "priority": 99
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q29025030",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    },
+    {
+      "id": "wikidata-q6476618",
+      "name": "Lake Leschenaultia",
+      "aliases": [],
+      "category": "park",
+      "lat": -31.8541667,
+      "lon": 116.2505556,
+      "location": {
+        "kind": "area-centre",
+        "sourceUrl": "https://www.wikidata.org/wiki/Q6476618",
+        "entranceConfirmed": false
+      },
+      "navigation": null,
+      "address": {
+        "houseNumber": null,
+        "street": null,
+        "suburb": null,
+        "postcode": null,
+        "display": null
+      },
+      "openingHours": {
+        "text": null,
+        "timezone": "Australia/Perth",
+        "sourceUrl": null,
+        "asOf": null,
+        "verifiedAt": null
+      },
+      "contact": {
+        "website": null,
+        "phone": null,
+        "email": null,
+        "bookingUrl": null,
+        "social": {}
+      },
+      "whatsOn": {
+        "events": [],
+        "sourceUrl": null,
+        "lastCheckedAt": null
+      },
+      "accessibility": {
+        "wheelchair": null,
+        "stepFree": null,
+        "notes": null
+      },
+      "defaultStayMinutes": 90,
+      "display": {
+        "enabled": true,
+        "priority": 100
+      },
+      "editorial": {
+        "summary": null,
+        "lastReviewedAt": null
+      },
+      "pricing": {
+        "description": null,
+        "currency": "AUD",
+        "bookingRequired": null
+      },
+      "sources": [
+        {
+          "name": "Wikidata",
+          "url": "https://www.wikidata.org/wiki/Q6476618",
+          "retrievedAt": "2026-10-27",
+          "license": "CC0-1.0"
+        }
+      ]
+    }
+  ]
+}

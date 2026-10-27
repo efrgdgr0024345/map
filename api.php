@@ -43,6 +43,18 @@ try {
     }
     $action=$_GET['action'] ?? 'status';
     if (!is_string($action)) { throw new InvalidArgumentException('Invalid action.'); }
+    if ($action==='pois') {
+        $result=App\PoiCatalog::load();
+        $download=($_GET['download'] ?? '')==='1';
+        $json=json_encode($result,JSON_THROW_ON_ERROR|JSON_UNESCAPED_SLASHES|JSON_INVALID_UTF8_SUBSTITUTE|($download ? JSON_PRETTY_PRINT : 0));
+        $etag='"'.hash('sha256',$json).'"'; header('Cache-Control: public, max-age=0, must-revalidate'); header('ETag: '.$etag);
+        if ($download) { header('Content-Disposition: attachment; filename="perth-pois.json"'); }
+        if (matchesEtag($etag)) { http_response_code(304); exit; }
+        header('Vary: Accept-Encoding');
+        if (acceptsGzip() && function_exists('gzencode') && !ini_get('zlib.output_compression')) { header('Content-Encoding: gzip'); echo gzencode($json,4); }
+        else { echo $json; }
+        exit;
+    }
     $service=is_file(APP_VAR.'/transit.sqlite') ? new App\Transit() : new App\Demo();
     switch ($action) {
         case 'status':
@@ -117,7 +129,7 @@ try {
         case 'geocode':
             $query=trim((string)($_GET['q'] ?? ''));
             if (strlen($query)<3 || strlen($query)>160) { throw new InvalidArgumentException('Enter an address or place name (3–160 characters).'); }
-            $result=App\Geocoder::search($query);
+            $result=App\Geocoder::search($query,($_GET['addresses'] ?? '')==='1');
             break;
         default:
             throw new InvalidArgumentException('Unknown API action.');

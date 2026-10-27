@@ -3,7 +3,10 @@
 The Day planner opens from the map header on phone and desktop. Saved places
 (Home, Gym, Shops or any name) live in this browser's local storage, not a shared
 server address book. Add an address result or the current map centre, choose a
-place, enter the stay duration, and plan the day. Up to five visits plus a return
+place, enter the stay duration, and plan the day. **Leave now** is the default;
+**Choose a departure time** reveals the Perth date/time picker. A usual stay can
+be saved with each place. **Remember this stay** saves a chosen visit duration,
+and **Edit stay** changes an already-added visit. Up to five visits plus a return
 home are supported. Each leg is calculated in order: the next search begins at
 the preceding arrival plus its stay. There is no visit-order optimiser.
 

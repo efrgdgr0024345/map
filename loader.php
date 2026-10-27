@@ -338,7 +338,7 @@ function pm_application_manifest(): array
     return ['loader.php', 'index.php', 'bootstrap.php', 'api.php', 'calendar.php', 'alerts-sw.js', '.htaccess',
         'src/.htaccess', 'scripts/.htaccess',
         'src/GtfsImporter.php', 'src/Transit.php', 'src/TransferRules.php', 'src/StationMap.php', 'src/Demo.php', 'src/Geo.php', 'src/Geocoder.php', 'src/PlaceAccess.php', 'src/NetworkStyle.php', 'src/RouteCache.php', 'src/VehicleMotion.php', 'src/WalkingRouter.php', 'src/WalkingRouteException.php', 'src/StreetJourneys.php', 'src/Payphones.php', 'src/TransferGuide.php', 'scripts/import-gtfs.php', 'scripts/build-route-cache.php',
-        'src/GoogleCalendar.php', 'assets/planner.js', 'assets/planner.css',
+        'src/GoogleCalendar.php', 'src/PoiCatalog.php', 'assets/perth-pois.json', 'assets/pois.js', 'assets/pois.css', 'assets/planner.js', 'assets/planner.css',
         'assets/app.js', 'assets/style.css', 'assets/black-cat.svg', 'assets/mascot-head.webp', 'assets/mascot-paws.webp',
         'assets/place-access.json', 'assets/station-maps/manifest.json', 'assets/vendor/leaflet/leaflet.js', 'assets/vendor/leaflet/leaflet.css', 'assets/vendor/leaflet/LICENSE'];
 }
@@ -927,6 +927,32 @@ try {
                 try { pm_write_private(PM_LOADER_PRIVATE.'/google-calendar.php',$config); }
                 finally { flock($lock,LOCK_UN); fclose($lock); }
                 $notice='Google Calendar setup saved privately. Users can now connect from the day planner. No Google secret is sent to the map.';
+            } elseif ($action === 'poi-upload' || $action === 'poi-reset') {
+                if (!is_file(PM_LOADER_ROOT.'/src/PoiCatalog.php')) { throw new RuntimeException('Update the application before managing Perth places.'); }
+                require_once PM_LOADER_ROOT.'/bootstrap.php';
+                $target=PM_LOADER_PRIVATE.'/perth-pois.json';
+                $data=null; $encoded=null;
+                if ($action==='poi-upload') {
+                    $upload=$_FILES['poi_json'] ?? [];
+                    if (($upload['error'] ?? UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK || !is_uploaded_file($upload['tmp_name'] ?? '') || ($upload['size'] ?? 0)>\App\PoiCatalog::MAX_BYTES) { throw new RuntimeException('Upload a POI JSON file no larger than 1 MB.'); }
+                    $body=file_get_contents($upload['tmp_name']);
+                    if (strlen($body)>\App\PoiCatalog::MAX_BYTES) { throw new RuntimeException('POI JSON exceeds 1 MB.'); }
+                    try { $data=\App\PoiCatalog::validate(json_decode($body,true,64,JSON_THROW_ON_ERROR)); }
+                    catch (Throwable $e) { throw new RuntimeException('Invalid POI catalogue. '.$e->getMessage()); }
+                    $encoded=json_encode($data,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+                    if (strlen($encoded)>\App\PoiCatalog::MAX_BYTES) { throw new RuntimeException('POI JSON exceeds 1 MB.'); }
+                } elseif (($_POST['confirm_poi_reset'] ?? '')!=='yes') { throw new RuntimeException('Confirm restoring the bundled POI catalogue.'); }
+                $lock=pm_lock();
+                try {
+                    if (is_link($target)) { throw new RuntimeException('The POI catalogue path must not be a symbolic link.'); }
+                    if ($data!==null) {
+                        $temporary=$target.'.'.bin2hex(random_bytes(6)).'.tmp';
+                        if (file_put_contents($temporary,$encoded)===false) { throw new RuntimeException('Cannot write the local POI catalogue.'); }
+                        chmod($temporary,0600);
+                        if (!rename($temporary,$target)) { @unlink($temporary); throw new RuntimeException('Cannot publish the local POI catalogue.'); }
+                    } elseif (is_file($target) && !unlink($target)) { throw new RuntimeException('Cannot restore the bundled POI catalogue.'); }
+                } finally { flock($lock,LOCK_UN); fclose($lock); }
+                $notice=$data!==null ? 'Perth places published: '.count($data['places']).' entries. Your catalogue survives normal application updates. Refresh the map to load it.' : 'The bundled Perth places catalogue is active again.';
             } elseif ($action === 'rotate') {
                 if ($environmentKey) {
                     throw new RuntimeException('Change PERTH_MAP_SETUP_TOKEN in your hosting settings while it is configured.');
@@ -1035,6 +1061,9 @@ php loader.php --refresh</pre><p class="note">Return here afterwards; readiness 
 </section>
 <?php endif; ?>
 <?php if ($installed): ?><section class="card"><h2>Public telephone locations</h2><p class="note">The optional phone layer uses a published location register. Refresh its server cache here if the map reports unavailable data.</p><form method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="phones"><button type="submit">Refresh public phone locations</button></form></section><?php endif; ?>
+<?php if ($installed && is_file(PM_LOADER_ROOT.'/src/PoiCatalog.php')): ?>
+<section class="card"><details><summary>Perth places catalogue</summary><p class="note">The map starts with 100 curated places, sourced from OpenStreetMap and Wikidata. They are an editorial selection, not measured visitor rankings. No automatic external refresh runs. Hours and contacts are source snapshots; current events are empty until supplied.</p><p class="note"><a href="api.php?action=pois&amp;download=1">Download the active JSON catalogue</a>, edit it, then upload it here. Your uploaded <code>var/perth-pois.json</code> is preserved during GitHub updates. The catalogue is public map data. Schema and source notes: <a href="https://github.com/efrgdgr0024345/map/blob/main/docs/poi-catalog.md" target="_blank" rel="noopener">POI catalogue guide</a>.</p><form method="post" enctype="multipart/form-data"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="poi-upload"><label for="poi-json">Updated JSON · up to 1 MB</label><input type="file" id="poi-json" name="poi_json" accept="application/json,.json" required><div class="row"><button type="submit">Validate &amp; publish places</button></div></form><form method="post" style="margin-top:18px"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="poi-reset"><label class="confirm"><input type="checkbox" name="confirm_poi_reset" value="yes" required><span>Remove my uploaded catalogue and use the bundled version.</span></label><button type="submit" class="quiet">Restore bundled places</button></form></details></section>
+<?php endif; ?>
 <?php if ($installed):
     $googleSettings=[];
     try { if (is_file(PM_LOADER_PRIVATE.'/google-calendar.php')) { $googleSettings=pm_read_private(PM_LOADER_PRIVATE.'/google-calendar.php'); } } catch (Throwable) {}

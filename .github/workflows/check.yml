@@ -29,6 +29,7 @@ jobs:
       - run: php tests/approach.php
       - run: php tests/walking.php
       - run: php tests/geocoder.php
+      - run: php tests/poi_catalog.php
       - run: php tests/street_journeys.php
       - run: php tests/arrive_by.php
       - run: php tests/google_calendar.php
@@ -46,8 +47,11 @@ jobs:
       - run: PHP_BINARY=php python3 tests/loader_cli.py
       - run: PHP_BINARY=php python3 tests/loader_progress_http.py
       - run: PHP_BINARY=php python3 tests/calendar_http.py
+      - run: PHP_BINARY=php python3 tests/poi_http.py
       - run: node --check assets/app.js
       - run: node --check assets/planner.js
+      - run: node --check assets/pois.js
+      - run: node --check tests/browser-pois.mjs
       - run: node --check alerts-sw.js
       - run: node --check tests/browser-day-planner.mjs
       - run: node --check tests/browser-station-v6.mjs

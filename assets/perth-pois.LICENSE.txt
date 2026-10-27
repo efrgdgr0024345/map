@@ -1,0 +1,9 @@
+The OpenStreetMap-derived place catalogue and scripts/data/perth-poi-osm-records.json
+contain data © OpenStreetMap contributors, available under the Open Database
+License (ODbL) 1.0. https://www.openstreetmap.org/copyright
+https://opendatacommons.org/licenses/odbl/1-0/
+The Geofabrik extract URL, snapshot date and SHA-256 are recorded in the catalogue.
+Fifteen additional source coordinates are from Wikidata, available under CC0 1.0.
+https://www.wikidata.org/wiki/Wikidata:Licensing
+Sources and attribution are retained per place. Selection is editorial and does
+not represent measured visitor popularity, live opening status or live events.

@@ -1,0 +1,754 @@
+[
+  {
+    "osm": "way/103827714",
+    "name": "Kings Park",
+    "category": "park",
+    "aliases": [
+      "Kings Park and Botanic Garden"
+    ]
+  },
+  {
+    "osm": "way/8046233",
+    "name": "Perth Zoo",
+    "category": "attraction",
+    "aliases": []
+  },
+  {
+    "osm": "node/2269125755",
+    "name": "Fremantle Prison",
+    "category": "attraction",
+    "aliases": []
+  },
+  {
+    "osm": "way/34911431",
+    "name": "Fremantle Markets",
+    "category": "shopping",
+    "aliases": []
+  },
+  {
+    "osm": "way/47121746",
+    "name": "WA Maritime Museum",
+    "category": "museum",
+    "aliases": [
+      "Western Australian Maritime Museum"
+    ]
+  },
+  {
+    "osm": "way/49736345",
+    "name": "WA Shipwrecks Museum",
+    "category": "museum",
+    "aliases": [
+      "Western Australian Museum Shipwrecks"
+    ]
+  },
+  {
+    "osm": "way/563455636",
+    "name": "WA Museum Boola Bardip",
+    "category": "museum",
+    "aliases": [
+      "Western Australian Museum Boola Bardip"
+    ]
+  },
+  {
+    "osm": "node/13155709840",
+    "name": "Scitech",
+    "category": "museum",
+    "aliases": []
+  },
+  {
+    "osm": "way/147704624",
+    "name": "The Bell Tower",
+    "category": "attraction",
+    "aliases": [
+      "Swan Bells"
+    ]
+  },
+  {
+    "osm": "way/695799456",
+    "name": "Perth Stadium",
+    "category": "venue",
+    "aliases": [
+      "Optus Stadium"
+    ]
+  },
+  {
+    "osm": "way/150405797",
+    "name": "RAC Arena",
+    "category": "venue",
+    "aliases": [
+      "Perth Arena"
+    ]
+  },
+  {
+    "osm": "way/44179566",
+    "name": "HBF Park",
+    "category": "venue",
+    "aliases": [
+      "Perth Rectangular Stadium"
+    ]
+  },
+  {
+    "osm": "way/4957468",
+    "name": "WACA Ground",
+    "category": "venue",
+    "aliases": [
+      "WACA"
+    ]
+  },
+  {
+    "osm": "way/29283079",
+    "name": "Cottesloe Beach",
+    "category": "beach",
+    "aliases": []
+  },
+  {
+    "osm": "way/141331765",
+    "name": "Scarborough Beach",
+    "category": "beach",
+    "aliases": []
+  },
+  {
+    "osm": "way/141331767",
+    "name": "City Beach",
+    "category": "beach",
+    "aliases": []
+  },
+  {
+    "osm": "way/25498075",
+    "name": "Trigg Beach",
+    "category": "beach",
+    "aliases": []
+  },
+  {
+    "osm": "way/25498022",
+    "name": "Mettams Pool",
+    "category": "beach",
+    "aliases": [
+      "Mettam's Pool"
+    ]
+  },
+  {
+    "osm": "way/50343032",
+    "name": "South Beach",
+    "category": "beach",
+    "aliases": [
+      "South Beach Fremantle"
+    ]
+  },
+  {
+    "osm": "way/411547974",
+    "name": "Coogee Beach",
+    "category": "beach",
+    "aliases": []
+  },
+  {
+    "osm": "way/219387369",
+    "name": "Hillarys Boat Harbour",
+    "category": "attraction",
+    "aliases": [
+      "Hillarys"
+    ]
+  },
+  {
+    "osm": "way/175944203",
+    "name": "AQWA",
+    "category": "attraction",
+    "aliases": [
+      "Aquarium of Western Australia"
+    ]
+  },
+  {
+    "osm": "way/25803408",
+    "name": "Adventure World",
+    "category": "attraction",
+    "aliases": []
+  },
+  {
+    "osm": "node/3237117857",
+    "name": "Caversham Wildlife Park",
+    "category": "attraction",
+    "aliases": []
+  },
+  {
+    "osm": "way/132746148",
+    "name": "Whiteman Park",
+    "category": "park",
+    "aliases": []
+  },
+  {
+    "osm": "way/30594672",
+    "name": "Araluen Botanic Park",
+    "category": "park",
+    "aliases": []
+  },
+  {
+    "osm": "node/274233154",
+    "name": "Perth Observatory",
+    "category": "attraction",
+    "aliases": []
+  },
+  {
+    "osm": "way/4938194",
+    "name": "Hyde Park",
+    "category": "park",
+    "aliases": [
+      "Hyde Park Perth"
+    ]
+  },
+  {
+    "osm": "way/4938156",
+    "name": "Langley Park",
+    "category": "park",
+    "aliases": []
+  },
+  {
+    "osm": "way/4957469",
+    "name": "Queens Gardens",
+    "category": "park",
+    "aliases": [
+      "Queens Gardens Perth"
+    ]
+  },
+  {
+    "osm": "way/8112592",
+    "name": "Harold Boas Gardens",
+    "category": "park",
+    "aliases": []
+  },
+  {
+    "osm": "way/8112594",
+    "name": "Stirling Gardens",
+    "category": "park",
+    "aliases": []
+  },
+  {
+    "osm": "way/4957439",
+    "name": "Supreme Court Gardens",
+    "category": "park",
+    "aliases": []
+  },
+  {
+    "osm": "way/51138412",
+    "name": "State War Memorial",
+    "category": "landmark",
+    "aliases": [
+      "Kings Park War Memorial"
+    ]
+  },
+  {
+    "osm": "way/1274392791",
+    "name": "DNA Tower",
+    "category": "landmark",
+    "aliases": []
+  },
+  {
+    "osm": "way/624728374",
+    "name": "Lotterywest Federation Walkway",
+    "category": "attraction",
+    "aliases": [
+      "Kings Park Treetop Walk"
+    ]
+  },
+  {
+    "osm": "way/141311052",
+    "name": "Rio Tinto Naturescape Kings Park",
+    "category": "park",
+    "aliases": [
+      "Naturescape"
+    ]
+  },
+  {
+    "osm": "way/151266667",
+    "name": "Western Australian Botanic Garden",
+    "category": "park",
+    "aliases": [
+      "WA Botanic Garden"
+    ]
+  },
+  {
+    "osm": "way/36993401",
+    "name": "Burswood Park",
+    "category": "park",
+    "aliases": []
+  },
+  {
+    "osm": "way/36954975",
+    "name": "Sir James Mitchell Park",
+    "category": "park",
+    "aliases": [
+      "South Perth Foreshore"
+    ]
+  },
+  {
+    "osm": "way/499414405",
+    "name": "Point Walter Reserve",
+    "category": "park",
+    "aliases": [
+      "Point Walter"
+    ]
+  },
+  {
+    "osm": "node/33164509",
+    "name": "Matilda Bay",
+    "category": "park",
+    "aliases": [
+      "Matilda Bay Reserve"
+    ]
+  },
+  {
+    "osm": "way/4956805",
+    "name": "Bold Park",
+    "category": "park",
+    "aliases": []
+  },
+  {
+    "osm": "way/587889456",
+    "name": "Herdsman Lake Regional Park",
+    "category": "park",
+    "aliases": [
+      "Herdsman Lake"
+    ]
+  },
+  {
+    "osm": "way/998689739",
+    "name": "Bibra Lake Regional Playground",
+    "category": "park",
+    "aliases": [
+      "Bibra Lake Playground"
+    ]
+  },
+  {
+    "osm": "way/8031617",
+    "name": "Esplanade Park",
+    "category": "park",
+    "aliases": [
+      "Fremantle Esplanade"
+    ]
+  },
+  {
+    "osm": "way/49965210",
+    "name": "Round House",
+    "category": "landmark",
+    "aliases": [
+      "Fremantle Round House"
+    ]
+  },
+  {
+    "osm": "way/114940034",
+    "name": "Monument Hill Park",
+    "category": "park",
+    "aliases": [
+      "Fremantle War Memorial"
+    ]
+  },
+  {
+    "osm": "way/29283043",
+    "name": "Fremantle Oval",
+    "category": "venue",
+    "aliases": [
+      "Freo Oval"
+    ]
+  },
+  {
+    "osm": "way/147743499",
+    "name": "His Majesty's Theatre",
+    "category": "venue",
+    "aliases": [
+      "His Majestys Theatre"
+    ]
+  },
+  {
+    "osm": "way/147036007",
+    "name": "Perth Concert Hall",
+    "category": "venue",
+    "aliases": []
+  },
+  {
+    "osm": "way/194941644",
+    "name": "State Theatre Centre of WA",
+    "category": "venue",
+    "aliases": [
+      "State Theatre Centre of Western Australia"
+    ]
+  },
+  {
+    "osm": "way/166830279",
+    "name": "Crown Theatre Perth",
+    "category": "venue",
+    "aliases": [
+      "Crown Theatre"
+    ]
+  },
+  {
+    "osm": "way/219386986",
+    "name": "Perth Convention and Exhibition Centre",
+    "category": "venue",
+    "aliases": [
+      "PCEC"
+    ]
+  },
+  {
+    "osm": "way/42506693",
+    "name": "State Library of Western Australia",
+    "category": "library",
+    "aliases": [
+      "State Library WA"
+    ]
+  },
+  {
+    "osm": "way/147657144",
+    "name": "Perth Institute of Contemporary Arts",
+    "category": "museum",
+    "aliases": [
+      "PICA"
+    ]
+  },
+  {
+    "osm": "way/50422388",
+    "name": "Lawrence Wilson Art Gallery",
+    "category": "museum",
+    "aliases": []
+  },
+  {
+    "osm": "way/1285020779",
+    "name": "Aviation Heritage Museum",
+    "category": "museum",
+    "aliases": []
+  },
+  {
+    "osm": "way/123987972",
+    "name": "Motor Museum of Western Australia",
+    "category": "museum",
+    "aliases": [
+      "Motor Museum WA"
+    ]
+  },
+  {
+    "osm": "way/123992161",
+    "name": "Revolutions Transport Museum",
+    "category": "museum",
+    "aliases": [
+      "Revolutions"
+    ]
+  },
+  {
+    "osm": "way/593639432",
+    "name": "Railway Museum",
+    "category": "museum",
+    "aliases": [
+      "Bassendean Railway Museum"
+    ]
+  },
+  {
+    "osm": "node/271104530",
+    "name": "Kalamunda History Village",
+    "category": "museum",
+    "aliases": []
+  },
+  {
+    "osm": "node/1923115731",
+    "name": "Wireless Hill Museum",
+    "category": "museum",
+    "aliases": []
+  },
+  {
+    "osm": "way/46155215",
+    "name": "Goolugatup Heathcote",
+    "category": "museum",
+    "aliases": [
+      "Heathcote Gallery"
+    ]
+  },
+  {
+    "osm": "way/4828215",
+    "name": "Karrinyup Shopping Centre",
+    "category": "shopping",
+    "aliases": [
+      "Karrinyup"
+    ]
+  },
+  {
+    "osm": "way/315587492",
+    "name": "Westfield Carousel",
+    "category": "shopping",
+    "aliases": [
+      "Carousel"
+    ]
+  },
+  {
+    "osm": "way/292027300",
+    "name": "Westfield Booragoon",
+    "category": "shopping",
+    "aliases": [
+      "Garden City Booragoon"
+    ]
+  },
+  {
+    "osm": "way/44963824",
+    "name": "Claremont Quarter",
+    "category": "shopping",
+    "aliases": []
+  },
+  {
+    "osm": "way/48535836",
+    "name": "Midland Gate",
+    "category": "shopping",
+    "aliases": [
+      "Midland Gate Shopping Centre"
+    ]
+  },
+  {
+    "osm": "way/682186791",
+    "name": "Belmont Forum",
+    "category": "shopping",
+    "aliases": []
+  },
+  {
+    "osm": "way/98833495",
+    "name": "Cockburn Gateway Shopping City",
+    "category": "shopping",
+    "aliases": [
+      "Cockburn Gateway"
+    ]
+  },
+  {
+    "osm": "way/210523018",
+    "name": "Galleria",
+    "category": "shopping",
+    "aliases": [
+      "Morley Galleria"
+    ]
+  },
+  {
+    "osm": "way/634821496",
+    "name": "DFO Perth",
+    "category": "shopping",
+    "aliases": [
+      "Direct Factory Outlet Perth"
+    ]
+  },
+  {
+    "osm": "way/184798659",
+    "name": "Ocean Keys Shopping Centre",
+    "category": "shopping",
+    "aliases": [
+      "Ocean Keys"
+    ]
+  },
+  {
+    "osm": "way/176361463",
+    "name": "Rockingham Centre",
+    "category": "shopping",
+    "aliases": [
+      "Rockingham Shopping Centre"
+    ]
+  },
+  {
+    "osm": "way/185334369",
+    "name": "Mindarie Marina",
+    "category": "attraction",
+    "aliases": []
+  },
+  {
+    "osm": "node/5305391922",
+    "name": "Serpentine National Park",
+    "category": "park",
+    "aliases": [
+      "Serpentine Falls"
+    ]
+  },
+  {
+    "osm": "way/404705281",
+    "name": "Matagarup Bridge",
+    "category": "landmark",
+    "aliases": []
+  },
+  {
+    "osm": "way/148802767",
+    "name": "Forrest Place",
+    "category": "landmark",
+    "aliases": []
+  },
+  {
+    "osm": "way/25560004",
+    "name": "Perth Town Hall",
+    "category": "landmark",
+    "aliases": []
+  },
+  {
+    "osm": "node/5325445471",
+    "name": "Cohunu Koala Park",
+    "category": "attraction",
+    "aliases": []
+  },
+  {
+    "osm": "way/393530745",
+    "name": "Swan Valley Cuddly Animal Farm",
+    "category": "attraction",
+    "aliases": []
+  },
+  {
+    "osm": "way/1135349831",
+    "name": "Perth's Outback Splash",
+    "category": "attraction",
+    "aliases": [
+      "Outback Splash"
+    ]
+  },
+  {
+    "osm": "way/47117508",
+    "name": "Fremantle Fishing Boat Harbour",
+    "category": "attraction",
+    "aliases": [
+      "Fishing Boat Harbour Fremantle"
+    ]
+  },
+  {
+    "osm": "way/242791567",
+    "name": "Westfield Innaloo",
+    "category": "shopping",
+    "aliases": [
+      "Innaloo Shopping Centre"
+    ]
+  },
+  {
+    "wikidata": "Q5363395",
+    "name": "Elizabeth Quay",
+    "category": "landmark",
+    "aliases": [
+      "EQ Waterfront"
+    ],
+    "coordinate": "Point(115.857 -31.9575)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q917524",
+    "name": "The Perth Mint",
+    "category": "museum",
+    "aliases": [
+      "Perth Mint"
+    ],
+    "coordinate": "Point(115.869175266 -31.957275524)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q4796833",
+    "name": "Art Gallery of Western Australia",
+    "category": "museum",
+    "aliases": [
+      "AGWA"
+    ],
+    "coordinate": "Point(115.860943334 -31.950588341)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q1517021",
+    "name": "University of Western Australia",
+    "category": "university",
+    "aliases": [
+      "UWA"
+    ],
+    "coordinate": "Point(115.818611111 -31.980277777)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q1887921",
+    "name": "University of Notre Dame Australia",
+    "category": "university",
+    "aliases": [
+      "Notre Dame Fremantle"
+    ],
+    "coordinate": "Point(115.743380825 -32.055917859)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q45935",
+    "name": "Perth Airport",
+    "category": "transport",
+    "aliases": [],
+    "coordinate": "Point(115.965 -31.94)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q1017078",
+    "name": "Crown Perth",
+    "category": "venue",
+    "aliases": [
+      "Burswood Casino"
+    ],
+    "coordinate": "Point(115.895561111 -31.960830555)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q2942506",
+    "name": "St Mary's Cathedral",
+    "category": "landmark",
+    "aliases": [
+      "St Marys Cathedral Perth"
+    ],
+    "coordinate": "Point(115.8664372 -31.95536806)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q7593121",
+    "name": "St George's Cathedral",
+    "category": "landmark",
+    "aliases": [
+      "St Georges Cathedral Perth"
+    ],
+    "coordinate": "Point(115.861291666 -31.955752777)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q1699032",
+    "name": "John Forrest National Park",
+    "category": "park",
+    "aliases": [],
+    "coordinate": "Point(116.091161 -31.869706)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q3593089",
+    "name": "Heirisson Island",
+    "category": "park",
+    "aliases": [],
+    "coordinate": "Point(115.8820498 -31.9657807)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q6479112",
+    "name": "Lakeside Joondalup Shopping City",
+    "category": "shopping",
+    "aliases": [
+      "Lakeside Joondalup"
+    ],
+    "coordinate": "Point(115.767332697 -31.744111896)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q7988780",
+    "name": "Westfield Whitford City",
+    "category": "shopping",
+    "aliases": [
+      "Whitfords City"
+    ],
+    "coordinate": "Point(115.749400882 -31.796516266)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q29025030",
+    "name": "Yagan Square",
+    "category": "landmark",
+    "aliases": [],
+    "coordinate": "Point(115.858558573 -31.950589209)",
+    "retrievedAt": "2026-10-27"
+  },
+  {
+    "wikidata": "Q6476618",
+    "name": "Lake Leschenaultia",
+    "category": "park",
+    "aliases": [],
+    "coordinate": "Point(116.250555555 -31.854166666)",
+    "retrievedAt": "2026-10-27"
+  }
+]

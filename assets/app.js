@@ -51,7 +51,7 @@
     stationBrowse: null, stationBrowseCandidate: null, stationBrowseSuppressed: null,
     stationBrowseController: null, stationBrowseRequest: 0, stationBrowseLayers: null,
     stationBrowseCache: new Map(), stationBrowseTimer: null, stationBrowseReady: false,
-    originUserChosen: false, awaitingGpsOrigin: false, fullJourneyOverview: false
+    originUserChosen: false, awaitingGpsOrigin: false, fullJourneyOverview: false, externalPick: null, pickPlaceName: null
   };
   const perthTime = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Perth', hour: 'numeric', minute: '2-digit', hour12: true });
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -502,9 +502,12 @@
   }
 
   function finishMapPick(point) {
+    if (state.externalPick) { finishExternalPick({ lat: point.lat, lon: point.lng }); return; }
     const field = state.pickField;
     if (!field) return;
-    setPlace(field, { lat: point.lat, lon: point.lng, name: field === 'origin' ? 'Starting point on map' : 'Destination on map' });
+    const name = state.pickPlaceName || (field === 'origin' ? 'Starting point on map' : 'Destination on map');
+    state.pickPlaceName = null;
+    setPlace(field, { lat: point.lat, lon: point.lng, name });
     state.pickerPreviousFollow = null;
     setPanel(true);
     const next = field === 'origin' ? 'destination' : 'origin';
@@ -512,11 +515,32 @@
   }
 
   function cancelMapPick() {
+    if (state.externalPick) { finishExternalPick(null); return; }
+    state.pickPlaceName = null;
     const previousFollow = state.pickerPreviousFollow;
     setMapPick(null);
     state.pickerPreviousFollow = null;
     setPanel(true, true);
     if (state.selected && previousFollow) setFollow(true);
+  }
+
+  function finishExternalPick(point) {
+    const previous = state.externalPick; state.externalPick = null; state.pickPlaceName = null;
+    setMapPick(null); state.pickerPreviousFollow = null; state.field = previous.field;
+    setPanel(previous.panelOpen);
+    if (state.selected && previous.follow) setFollow(true);
+    previous.callback(point);
+  }
+
+  function chooseSearchPlace(field, place) {
+    map.closePopup();
+    if (place.requiresEntrance) {
+      beginMapPick(field); state.pickPlaceName = `${place.name} entrance`;
+      map.setView([place.lat, place.lon], 18, { animate: false });
+      $('map-hint-text').textContent = `Choose the entrance to ${place.name}`;
+      return;
+    }
+    setPlace(field, place, true);
   }
 
   function editAddress(field) {
@@ -1391,7 +1415,7 @@
     if (restore && isMobile()) $('open-panel').focus({ preventScroll: true });
   }
 
-  async function search(field, automatic = false) {
+  async function search(field, automatic = false, addressesOnly = false) {
     clearTimeout(state.searchTimer);
     const query = $(`${field}-input`).value.trim();
     if (query.length < 3) {
@@ -1405,7 +1429,7 @@
     results.replaceChildren(make('div', 'search-note', 'Searching Perth addresses…'));
     results.hidden = false;
     try {
-      const data = await api('geocode', { q: query }, state.searchController.signal);
+      const data = await api('geocode', { q: query, ...(addressesOnly ? { addresses: '1' } : {}) }, state.searchController.signal);
       if (request !== state.searchNumber) return;
       results.replaceChildren();
       if (!data.results || data.results.length === 0) {
@@ -1422,12 +1446,16 @@
         if (parts.length > 2) text.append(make('small', '', parts.slice(2).join(',').trim()));
         button.append(text);
         button.addEventListener('click', () => {
-          setPlace(field, place, true);
+          chooseSearchPlace(field, place);
           message(field === 'destination' ? 'Destination set.' : 'Starting point updated.');
         });
         results.append(button);
       });
-      results.append(make('div', 'search-note search-attribution', 'Address search by Photon · © OpenStreetMap contributors.'));
+      if (data.moreAddresses) {
+        const more = make('button', 'search-result', 'Search other addresses'); more.type = 'button';
+        more.addEventListener('click', () => search(field, false, true)); results.append(more);
+      }
+      results.append(make('div', 'search-note search-attribution', data.attribution || 'Address search by Photon · © OpenStreetMap contributors.'));
     } catch (error) {
       if (error.name === 'AbortError') return;
       if (request !== state.searchNumber) return;
@@ -2205,6 +2233,14 @@
   }
 
   window.Nextstop = {
+    getMap: () => map,
+    choosePlace: place => chooseSearchPlace('destination', place),
+    pickLocation: (point, callback) => {
+      const previous = { callback, field: state.field, panelOpen: state.panelOpen, follow: state.followJourney };
+      beginMapPick('destination'); state.externalPick = previous;
+      map.setView([point.lat, point.lon], 18, { animate: false });
+      $('map-hint-text').textContent = `Choose the entrance to ${point.name || 'this place'}`;
+    },
     getOrigin: () => ({ ...(state.origin || {}) }),
     getMapCenter: () => { const point = map.getCenter(); return { lat: point.lat, lon: point.lng }; },
     showJourney: (journey, from, to) => {

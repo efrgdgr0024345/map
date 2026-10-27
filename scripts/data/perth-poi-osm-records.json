@@ -1,0 +1,1874 @@
+{
+  "source": {
+    "url": "https://download.geofabrik.de/australia-oceania/australia/western-australia-latest.osm.pbf",
+    "updatedAt": "2026-10-23T23:04:02Z",
+    "sha256": "ea33f43b0278ceeeec37fb0d18f54dde17bfddb475eacdceb7fe8a4fc6253412"
+  },
+  "records": [
+    {
+      "id": "node/33164509",
+      "name": "Matilda Bay",
+      "lat": -31.9802798,
+      "lon": 115.8252086,
+      "tags": {
+        "alt_name": "Eliza Bay",
+        "name": "Matilda Bay",
+        "name:etymology:wikidata": "Q112808500",
+        "natural": "bay",
+        "wikidata": "Q1248166",
+        "wikipedia": "en:Matilda Bay"
+      }
+    },
+    {
+      "id": "node/271104530",
+      "name": "Kalamunda History Village",
+      "lat": -31.9699631,
+      "lon": 116.0593013,
+      "tags": {
+        "name": "Kalamunda History Village",
+        "tourism": "museum"
+      }
+    },
+    {
+      "id": "node/274233154",
+      "name": "Perth Observatory",
+      "lat": -32.0077286,
+      "lon": 116.1354448,
+      "tags": {
+        "name": "Perth Observatory",
+        "tourism": "attraction",
+        "wikidata": "Q525762",
+        "wikipedia": "en:Perth Observatory"
+      }
+    },
+    {
+      "id": "node/1923115731",
+      "name": "Wireless Hill Museum",
+      "lat": -32.0304348,
+      "lon": 115.8279842,
+      "tags": {
+        "name": "Wireless Hill Museum",
+        "tourism": "museum",
+        "wikidata": "Q76529991"
+      }
+    },
+    {
+      "id": "node/2269125755",
+      "name": "Fremantle Prison",
+      "lat": -32.0550794,
+      "lon": 115.7527066,
+      "tags": {
+        "barrier": "entrance",
+        "check_date": "2026-06-07",
+        "email": "info@fremantleprison.com.au",
+        "foot": "yes",
+        "motorcar": "yes",
+        "name": "Fremantle Prison",
+        "name:en": "Fremantle Prison",
+        "phone": "+61 8 9336 9200",
+        "tourism": "attraction",
+        "website": "https://fremantleprison.com.au/"
+      }
+    },
+    {
+      "id": "node/3237117857",
+      "name": "Caversham Wildlife Park",
+      "lat": -31.8339049,
+      "lon": 115.9499106,
+      "tags": {
+        "addr:floor": "G",
+        "addr:housenumber": "99",
+        "addr:postcode": "6068",
+        "addr:street": "Lord Street",
+        "check_date": "2026-07-10",
+        "level": "0",
+        "name": "Caversham Wildlife Park",
+        "payment:cash": "yes",
+        "payment:credit_cards": "yes",
+        "payment:debit_cards": "yes",
+        "tourism": "zoo",
+        "wikidata": "Q55606786",
+        "wikipedia": "en:Caversham Wildlife Park"
+      }
+    },
+    {
+      "id": "node/5305391922",
+      "name": "Serpentine National Park",
+      "lat": -32.3692782,
+      "lon": 116.0068944,
+      "tags": {
+        "addr:housenumber": "100",
+        "addr:postcode": "6125",
+        "addr:street": "Falls Road",
+        "name": "Serpentine National Park",
+        "tourism": "attraction"
+      }
+    },
+    {
+      "id": "node/5325445471",
+      "name": "Cohunu Koala Park",
+      "lat": -32.230305,
+      "lon": 116.0141507,
+      "tags": {
+        "addr:housenumber": "68",
+        "addr:postcode": "6122",
+        "addr:state": "WA",
+        "addr:street": "Nettleton Road",
+        "addr:suburb": "Byford",
+        "fee": "yes",
+        "name": "Cohunu Koala Park",
+        "opening_hours": "Mo-Su 10:00-16:00; Dec 25 off",
+        "phone": "+61 8 9526 2966",
+        "tourism": "zoo",
+        "website": "https://cohunu.com.au/",
+        "wikidata": "Q4236423",
+        "wikipedia": "en:Cohunu Koala Park",
+        "zoo": "wildlife_park"
+      }
+    },
+    {
+      "id": "node/13155709840",
+      "name": "Scitech",
+      "lat": -31.9440572,
+      "lon": 115.8467847,
+      "tags": {
+        "addr:housenumber": "102",
+        "addr:postcode": "6005",
+        "addr:state": "WA",
+        "addr:street": "Railway Street",
+        "addr:suburb": "West Perth",
+        "air_conditioning": "yes",
+        "check_date": "2026-07-20",
+        "email": "info@scitech.org.au",
+        "fee": "yes",
+        "museum": "science",
+        "name": "Scitech",
+        "opening_hours": "Mo-Su 09:30-16:00",
+        "operator:ref:abn": "55 009 292 700",
+        "payment:cash": "yes",
+        "payment:debit_cards": "yes",
+        "payment:mastercard": "yes",
+        "payment:visa": "yes",
+        "phone": "+61 8 9215 0700",
+        "tourism": "museum",
+        "website": "https://www.scitech.org.au/",
+        "wheelchair": "yes"
+      }
+    },
+    {
+      "id": "way/4828215",
+      "name": "Karrinyup Shopping Centre",
+      "lat": -31.8773314,
+      "lon": 115.7785439,
+      "tags": {
+        "building": "yes",
+        "building:levels": "4",
+        "layer": "2",
+        "max_level": "2",
+        "min_level": "-2",
+        "name": "Karrinyup Shopping Centre",
+        "shop": "mall",
+        "toilets": "yes",
+        "website": "https://www.karrinyupcentre.com.au/",
+        "wheelchair": "yes"
+      }
+    },
+    {
+      "id": "way/4938156",
+      "name": "Langley Park",
+      "lat": -31.9616629,
+      "lon": 115.8690957,
+      "tags": {
+        "leisure": "park",
+        "name": "Langley Park",
+        "name:etymology": "Thomas W. Langley",
+        "wikidata": "Q14935844",
+        "wikipedia": "en:Langley Park, Perth"
+      }
+    },
+    {
+      "id": "way/4938194",
+      "name": "Hyde Park",
+      "lat": -31.9379753,
+      "lon": 115.86235,
+      "tags": {
+        "leisure": "park",
+        "name": "Hyde Park",
+        "name:en": "Hyde Park",
+        "name:nys": "Boodjamooling",
+        "wikidata": "Q14935818",
+        "wikipedia": "en:Hyde Park, Perth"
+      }
+    },
+    {
+      "id": "way/4956805",
+      "name": "Bold Park",
+      "lat": -31.9323983,
+      "lon": 115.7760049,
+      "tags": {
+        "leisure": "park",
+        "name": "Bold Park",
+        "natural": "wood"
+      }
+    },
+    {
+      "id": "way/4957439",
+      "name": "Supreme Court Gardens",
+      "lat": -31.958092,
+      "lon": 115.8603064,
+      "tags": {
+        "leisure": "park",
+        "name": "Supreme Court Gardens",
+        "wikidata": "Q18165701",
+        "wikipedia": "en:Supreme Court Gardens"
+      }
+    },
+    {
+      "id": "way/4957468",
+      "name": "WACA Ground",
+      "lat": -31.9598528,
+      "lon": 115.8795651,
+      "tags": {
+        "leisure": "stadium",
+        "name": "WACA Ground",
+        "name:etymology:wikidata": "Q7987511",
+        "name:etymology:wikipedia": "en:Western Australian Cricket Association",
+        "sport": "cricket",
+        "start_date": "1893",
+        "wikidata": "Q2738971",
+        "wikimedia_commons": "Category:WACA Ground",
+        "wikipedia": "en:WACA Ground"
+      }
+    },
+    {
+      "id": "way/4957469",
+      "name": "Queens Gardens",
+      "lat": -31.9591048,
+      "lon": 115.8766328,
+      "tags": {
+        "leisure": "park",
+        "name": "Queens Gardens",
+        "wikidata": "Q7270764",
+        "wikipedia": "en:Queens Gardens, Perth"
+      }
+    },
+    {
+      "id": "way/8031617",
+      "name": "Esplanade Park",
+      "lat": -32.0577142,
+      "lon": 115.7449382,
+      "tags": {
+        "dog": "yes",
+        "leisure": "park",
+        "name": "Esplanade Park",
+        "wikidata": "Q5399033",
+        "wikipedia": "en:Esplanade Park, Fremantle"
+      }
+    },
+    {
+      "id": "way/8046233",
+      "name": "Perth Zoo",
+      "lat": -31.9765613,
+      "lon": 115.85513,
+      "tags": {
+        "addr:housename": "Perth Zoo",
+        "addr:housenumber": "20",
+        "addr:postcode": "6151",
+        "addr:street": "Labouchere Road",
+        "addr:suburb": "South Perth",
+        "name": "Perth Zoo",
+        "opening_hours": "Mo-Su,PH 09:00-17:00",
+        "operator": "Western Australia Government",
+        "tourism": "zoo",
+        "website": "https://perthzoo.wa.gov.au/",
+        "wheelchair": "yes",
+        "wikidata": "Q3082583",
+        "wikipedia": "en:Perth Zoo"
+      }
+    },
+    {
+      "id": "way/8112592",
+      "name": "Harold Boas Gardens",
+      "lat": -31.9461445,
+      "lon": 115.8443683,
+      "tags": {
+        "leisure": "park",
+        "name": "Harold Boas Gardens",
+        "name:etymology:wikidata": "Q5660120",
+        "name:etymology:wikipedia": "en:Harold Boas",
+        "wikidata": "Q56053070"
+      }
+    },
+    {
+      "id": "way/8112594",
+      "name": "Stirling Gardens",
+      "lat": -31.9564813,
+      "lon": 115.8599184,
+      "tags": {
+        "leisure": "park",
+        "name": "Stirling Gardens",
+        "name:etymology:wikidata": "Q1360030",
+        "name:etymology:wikipedia": "en:James Stirling (Royal Navy officer)",
+        "wikidata": "Q7617571",
+        "wikipedia": "en:Stirling Gardens"
+      }
+    },
+    {
+      "id": "way/25498022",
+      "name": "Mettams Pool",
+      "lat": -31.8677633,
+      "lon": 115.7523711,
+      "tags": {
+        "name": "Mettams Pool",
+        "natural": "beach"
+      }
+    },
+    {
+      "id": "way/25498075",
+      "name": "Trigg Beach",
+      "lat": -31.8771074,
+      "lon": 115.7517587,
+      "tags": {
+        "name": "Trigg Beach",
+        "natural": "beach",
+        "wikidata": "Q21955616"
+      }
+    },
+    {
+      "id": "way/25560004",
+      "name": "Perth Town Hall",
+      "lat": -31.9548695,
+      "lon": 115.8604619,
+      "tags": {
+        "addr:housenumber": "601",
+        "addr:street": "Hay Street",
+        "amenity": "townhall",
+        "building": "yes",
+        "building:levels": "2",
+        "check_date": "2026-08-08",
+        "layer": "1",
+        "name": "Perth Town Hall",
+        "wikidata": "Q7170899",
+        "wikimedia_commons": "Category:Perth_Town_Hall",
+        "wikipedia": "en:Perth Town Hall"
+      }
+    },
+    {
+      "id": "way/25803408",
+      "name": "Adventure World",
+      "lat": -32.0958901,
+      "lon": 115.8186709,
+      "tags": {
+        "addr:housenumber": "351",
+        "addr:postcode": "6163",
+        "addr:state": "WA",
+        "addr:street": "Progress Drive",
+        "addr:suburb": "Bibra Lake",
+        "contact:email": "feedback@adventureworld.net.au",
+        "name": "Adventure World",
+        "phone": "+61 8 9417 9666",
+        "tourism": "theme_park",
+        "website": "https://adventureworld.net.au",
+        "wikidata": "Q4686555",
+        "wikipedia": "en:Adventure World (amusement park)"
+      }
+    },
+    {
+      "id": "way/29283043",
+      "name": "Fremantle Oval",
+      "lat": -32.0561826,
+      "lon": 115.7512941,
+      "tags": {
+        "leisure": "pitch",
+        "lit": "yes",
+        "name": "Fremantle Oval",
+        "old_name": "Barracks Green Field",
+        "sport": "australian_football",
+        "surface": "grass",
+        "wikidata": "Q5501496",
+        "wikipedia": "en:Fremantle Oval"
+      }
+    },
+    {
+      "id": "way/29283079",
+      "name": "Cottesloe Beach",
+      "lat": -31.9957041,
+      "lon": 115.7510315,
+      "tags": {
+        "name": "Cottesloe Beach",
+        "name:en": "Cottesloe Beach",
+        "name:nys": "Mudurup",
+        "natural": "beach",
+        "wikidata": "Q21955723",
+        "wikimedia_commons": "Category:Cottesloe Beach",
+        "wikipedia": "en:Cottesloe Beach"
+      }
+    },
+    {
+      "id": "way/30594672",
+      "name": "Araluen Botanic Park",
+      "lat": -32.1224433,
+      "lon": 116.1018428,
+      "tags": {
+        "alt_name": "Araluen",
+        "leisure": "park",
+        "name": "Araluen Botanic Park",
+        "wikidata": "Q4783906"
+      },
+      "entrances": [
+        {
+          "lat": -32.1247374,
+          "lon": 116.1000684,
+          "tags": {
+            "entrance": "main"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/34911431",
+      "name": "Fremantle Markets",
+      "lat": -32.0559571,
+      "lon": 115.749483,
+      "tags": {
+        "access": "yes",
+        "addr:street": "South Terrace",
+        "addr:suburb": "Fremantle",
+        "amenity": "marketplace",
+        "building": "retail",
+        "building:levels": "1",
+        "check_date:opening_hours": "2023-06-17",
+        "contact:facebook": "https://www.facebook.com/fremantlemarkets/https://www.facebook.com/fremantlemarkets/",
+        "name": "Fremantle Markets",
+        "opening_hours": "Fr 09:00-20:00; Sa-Su 09:00-18:00",
+        "phone": "+61 8 9335 2515",
+        "roof:levels": "1",
+        "smoking": "no",
+        "website": "https://www.fremantlemarkets.com.au/",
+        "wheelchair": "yes",
+        "wikidata": "Q5501495",
+        "wikipedia": "en:Fremantle Markets"
+      },
+      "entrances": [
+        {
+          "lat": -32.056432,
+          "lon": 115.7491321,
+          "tags": {
+            "access": "yes",
+            "entrance": "main",
+            "wheelchair": "yes"
+          }
+        },
+        {
+          "lat": -32.0557759,
+          "lon": 115.7495334,
+          "tags": {
+            "entrance": "main"
+          }
+        },
+        {
+          "lat": -32.0561488,
+          "lon": 115.7489016,
+          "tags": {
+            "entrance": "yes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/36954975",
+      "name": "Sir James Mitchell Park",
+      "lat": -31.9736441,
+      "lon": 115.87152,
+      "tags": {
+        "leisure": "park",
+        "name": "Sir James Mitchell Park",
+        "name:etymology:wikidata": "Q1680838",
+        "name:etymology:wikipedia": "en:James Mitchell (Australian politician)",
+        "wikidata": "Q7527465"
+      }
+    },
+    {
+      "id": "way/36993401",
+      "name": "Burswood Park",
+      "lat": -31.9621419,
+      "lon": 115.8978971,
+      "tags": {
+        "leisure": "park",
+        "name": "Burswood Park"
+      }
+    },
+    {
+      "id": "way/42506693",
+      "name": "State Library of Western Australia",
+      "lat": -31.9489703,
+      "lon": 115.8606713,
+      "tags": {
+        "addr:housenumber": "25",
+        "addr:street": "Francis Street",
+        "air_conditioning": "yes",
+        "amenity": "library",
+        "building": "civic",
+        "building:levels": "6",
+        "building:name": "Alexander Library Building",
+        "building:name:etymology:wikidata": "Q5494427",
+        "building:name:etymology:wikipedia": "en:Fred Alexander (historian)",
+        "building:wikidata": "Q4719402",
+        "building:wikipedia": "en:Alexander Library Building",
+        "check_date": "2026-07-24",
+        "check_date:opening_hours": "2025-06-24",
+        "contact:email": "info@slwa.wa.gov.au",
+        "internet_access": "wlan",
+        "internet_access:fee": "no",
+        "name": "State Library of Western Australia",
+        "opening_hours": "Mo-Th 09:00-20:00; Fr 09:00-17:30; Sa-Su 10:00-17:30; PH off",
+        "operator:type": "government",
+        "phone": "+61 8 9427 3111",
+        "toilets": "yes",
+        "website": "https://slwa.wa.gov.au",
+        "wheelchair": "yes",
+        "wikidata": "Q7603408",
+        "wikipedia": "en:State Library of Western Australia"
+      },
+      "entrances": [
+        {
+          "lat": -31.9492908,
+          "lon": 115.8607699,
+          "tags": {
+            "door": "sliding",
+            "entrance": "main",
+            "wheelchair": "yes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/44179566",
+      "name": "HBF Park",
+      "lat": -31.9456973,
+      "lon": 115.8698297,
+      "tags": {
+        "addr:housenumber": "310",
+        "addr:postcode": "6000",
+        "addr:street": "Pier Street",
+        "addr:suburb": "Perth",
+        "alt_name": "Perth Oval",
+        "int_name": "Perth Rectangular Stadium",
+        "leisure": "stadium",
+        "name": "HBF Park",
+        "phone": "+61 8 9422 1500",
+        "start_date": "1904",
+        "website": "https://www.nibstadium.com.au/",
+        "wikidata": "Q978904",
+        "wikipedia": "en:Perth Oval"
+      }
+    },
+    {
+      "id": "way/44963824",
+      "name": "Claremont Quarter",
+      "lat": -31.9821026,
+      "lon": 115.7797056,
+      "tags": {
+        "access": "destination",
+        "addr:floor": "B, 1, 2, 2A, 3, 4",
+        "addr:housenumber": "23",
+        "addr:street": "St Quentin Avenue",
+        "air_conditioning": "yes",
+        "building": "commercial",
+        "building:levels": "4",
+        "changing_table": "yes",
+        "check_date": "2026-02-10",
+        "currency:AUD": "yes",
+        "internet_access": "wlan",
+        "internet_access:fee": "no",
+        "layer": "1",
+        "level": "1",
+        "name": "Claremont Quarter",
+        "opening_hours": "Mo-We,Fr 09:00-17:30; Th 09:00-21:00; Sa 09:00-17:00; Su 11:00-17:00",
+        "roof:levels": "0",
+        "roof:shape": "flat",
+        "second_hand": "no",
+        "shop": "mall",
+        "stroller": "yes",
+        "toilets": "yes",
+        "toilets:wheelchair": "yes",
+        "website": "https://claremontquarter.com.au/",
+        "wheelchair": "yes"
+      },
+      "entrances": [
+        {
+          "lat": -31.9821166,
+          "lon": 115.7799011,
+          "tags": {
+            "entrance": "main"
+          }
+        },
+        {
+          "lat": -31.9823316,
+          "lon": 115.7799841,
+          "tags": {
+            "entrance": "main"
+          }
+        },
+        {
+          "lat": -31.9818633,
+          "lon": 115.7811109,
+          "tags": {
+            "entrance": "yes"
+          }
+        },
+        {
+          "lat": -31.9824144,
+          "lon": 115.779748,
+          "tags": {
+            "entrance": "yes"
+          }
+        },
+        {
+          "lat": -31.9829784,
+          "lon": 115.7786816,
+          "tags": {
+            "entrance": "yes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/46155215",
+      "name": "Goolugatup Heathcote",
+      "lat": -32.0036739,
+      "lon": 115.8422297,
+      "tags": {
+        "addr:housenumber": "58",
+        "addr:street": "Duncraig Road",
+        "building": "yes",
+        "layer": "1",
+        "name": "Goolugatup Heathcote",
+        "opening_hours": "Tu-Su 10:00-16:00",
+        "operator": "City of Melville",
+        "tourism": "gallery"
+      }
+    },
+    {
+      "id": "way/47117508",
+      "name": "Fishing Boat Harbour",
+      "lat": -32.0610686,
+      "lon": 115.7447088,
+      "tags": {
+        "leisure": "marina",
+        "name": "Fishing Boat Harbour",
+        "seamark:harbour:category": "marina",
+        "seamark:type": "harbour",
+        "wikidata": "Q5501480",
+        "wikipedia": "en:Fremantle Fishing Boat Harbour"
+      }
+    },
+    {
+      "id": "way/47121746",
+      "name": "Western Australian Maritime Museum",
+      "lat": -32.0546654,
+      "lon": 115.7388957,
+      "tags": {
+        "addr:postcode": "6160",
+        "addr:street": "Victoria Quay",
+        "addr:suburb": "Fremantle",
+        "building": "public",
+        "building:levels": "5",
+        "fee": "yes",
+        "internet_access": "wlan",
+        "internet_access:fee": "no",
+        "name": "Western Australian Maritime Museum",
+        "opening_hours": "Mo-Su 09:30-17:00",
+        "phone": "+61 8 9437 8444",
+        "tourism": "museum",
+        "website": "https://www.museum.wa.gov.au/museums/wa-maritime-museum",
+        "wikidata": "Q3567483",
+        "wikipedia": "en:Western Australian Museum"
+      },
+      "entrances": [
+        {
+          "lat": -32.0546225,
+          "lon": 115.7394655,
+          "tags": {
+            "entrance": "main"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/48535836",
+      "name": "Midland Gate Shopping Centre",
+      "lat": -31.8897344,
+      "lon": 116.0100106,
+      "tags": {
+        "addr:housenumber": "274",
+        "addr:postcode": "6056",
+        "addr:street": "Great Eastern Highway",
+        "building": "yes",
+        "check_date": "2026-09-03",
+        "name": "Midland Gate Shopping Centre",
+        "shop": "mall",
+        "website": "https://www.midlandgateshopping.com.au/",
+        "wikidata": "Q6842344",
+        "wikipedia": "en:Midland Gate"
+      },
+      "entrances": [
+        {
+          "lat": -31.8895691,
+          "lon": 116.0076736,
+          "tags": {
+            "entrance": "yes"
+          }
+        },
+        {
+          "lat": -31.8889927,
+          "lon": 116.0088487,
+          "tags": {
+            "entrance": "yes"
+          }
+        },
+        {
+          "lat": -31.888853,
+          "lon": 116.0103909,
+          "tags": {
+            "entrance": "yes"
+          }
+        },
+        {
+          "lat": -31.8904301,
+          "lon": 116.0123504,
+          "tags": {
+            "entrance": "yes"
+          }
+        },
+        {
+          "lat": -31.8902343,
+          "lon": 116.0105603,
+          "tags": {
+            "entrance": "yes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/49736345",
+      "name": "Western Australian Museum Shipwrecks",
+      "lat": -32.0571694,
+      "lon": 115.7424719,
+      "tags": {
+        "building": "yes",
+        "name": "Western Australian Museum Shipwrecks",
+        "tourism": "museum",
+        "website": "https://www.museum.wa.gov.au/explore/education/wa-shipwrecks-museum"
+      },
+      "entrances": [
+        {
+          "lat": -32.0573058,
+          "lon": 115.7426721,
+          "tags": {
+            "entrance": "yes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/49965210",
+      "name": "Round House",
+      "lat": -32.0561102,
+      "lon": 115.7412832,
+      "tags": {
+        "addr:housenumber": "15",
+        "addr:postcode": "6160",
+        "addr:street": "Captains Lane",
+        "addr:suburb": "Fremantle",
+        "building": "yes",
+        "historic": "archaeological_site",
+        "name": "Round House",
+        "phone": "+61 8 9336 6897",
+        "website": "https://www.fremantleroundhouse.com.au/"
+      }
+    },
+    {
+      "id": "way/50343032",
+      "name": "South Beach",
+      "lat": -32.0766304,
+      "lon": 115.7512064,
+      "tags": {
+        "name": "South Beach",
+        "natural": "beach",
+        "surface": "sand",
+        "wikidata": "Q21961442"
+      }
+    },
+    {
+      "id": "way/50422388",
+      "name": "Lawrence Wilson Art Gallery",
+      "lat": -31.9768949,
+      "lon": 115.8161032,
+      "tags": {
+        "access": "permissive",
+        "building": "yes",
+        "fee": "no",
+        "name": "Lawrence Wilson Art Gallery",
+        "opening_hours": "Tu-Sa 12:00-17:00",
+        "operator": "The University of Western Australia",
+        "operator:type": "university",
+        "roof:colour": "#B57559",
+        "roof:shape": "hipped",
+        "tourism": "gallery",
+        "website": "https://www.uwa.edu.au/lwag/home/",
+        "wikidata": "Q66685222",
+        "wikimedia_commons": "File:Lawrence Wilson Art Gallery, September 2020.jpg",
+        "wikipedia": "en:Lawrence Wilson Art Gallery"
+      }
+    },
+    {
+      "id": "way/51138412",
+      "name": "State War Memorial",
+      "lat": -31.9608252,
+      "lon": 115.8446446,
+      "tags": {
+        "building": "yes",
+        "historic": "memorial",
+        "memorial": "obelisk",
+        "name": "State War Memorial",
+        "website": "https://www.bgpa.wa.gov.au/kings-park/visit/history/state-war-memorial",
+        "wikidata": "Q107340969",
+        "wikimedia_commons": "Category:Kings Park war memorial"
+      }
+    },
+    {
+      "id": "way/98833495",
+      "name": "Cockburn Gateway Shopping City",
+      "lat": -32.1312269,
+      "lon": 115.8573043,
+      "tags": {
+        "building": "yes",
+        "name": "Cockburn Gateway Shopping City",
+        "shop": "mall"
+      },
+      "entrances": [
+        {
+          "lat": -32.1296097,
+          "lon": 115.8568536,
+          "tags": {
+            "entrance": "yes"
+          }
+        },
+        {
+          "lat": -32.1329265,
+          "lon": 115.8571492,
+          "tags": {
+            "entrance": "yes"
+          }
+        },
+        {
+          "lat": -32.1307065,
+          "lon": 115.8565279,
+          "tags": {
+            "entrance": "yes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/103827714",
+      "name": "Kings Park",
+      "lat": -31.8313246,
+      "lon": 115.8855147,
+      "tags": {
+        "leisure": "park",
+        "name": "Kings Park"
+      }
+    },
+    {
+      "id": "way/114940034",
+      "name": "Monument Hill Park",
+      "lat": -32.0163993,
+      "lon": 115.761038,
+      "tags": {
+        "leisure": "park",
+        "name": "Monument Hill Park"
+      }
+    },
+    {
+      "id": "way/123987972",
+      "name": "Motor Museum of Western Australia",
+      "lat": -31.835993,
+      "lon": 115.9486121,
+      "tags": {
+        "building": "yes",
+        "name": "Motor Museum of Western Australia",
+        "tourism": "museum"
+      }
+    },
+    {
+      "id": "way/123992161",
+      "name": "Revolutions",
+      "lat": -31.8339115,
+      "lon": 115.9433968,
+      "tags": {
+        "building": "yes",
+        "layer": "1",
+        "name": "Revolutions",
+        "tourism": "museum",
+        "website": "https://www.whitemanpark.com.au/attractions/revolutions.aspx"
+      }
+    },
+    {
+      "id": "way/132746148",
+      "name": "Whiteman Park",
+      "lat": -31.8661417,
+      "lon": 115.9560141,
+      "tags": {
+        "leisure": "park",
+        "name": "Whiteman Park"
+      }
+    },
+    {
+      "id": "way/141311052",
+      "name": "Rio Tinto Naturescape Kings Park",
+      "lat": -31.9573152,
+      "lon": 115.8400462,
+      "tags": {
+        "leisure": "playground",
+        "name": "Rio Tinto Naturescape Kings Park",
+        "name:etymology:wikidata": "Q821293",
+        "name:etymology:wikipedia": "en:Rio Tinto (corporation)"
+      }
+    },
+    {
+      "id": "way/141331765",
+      "name": "Scarborough Beach",
+      "lat": -31.8957579,
+      "lon": 115.7549633,
+      "tags": {
+        "name": "Scarborough Beach",
+        "natural": "beach",
+        "wikidata": "Q21961444"
+      }
+    },
+    {
+      "id": "way/141331767",
+      "name": "City Beach",
+      "lat": -31.9344391,
+      "lon": 115.7550633,
+      "tags": {
+        "name": "City Beach",
+        "natural": "beach",
+        "tourism": "attraction",
+        "wikidata": "Q21961452"
+      }
+    },
+    {
+      "id": "way/147036007",
+      "name": "Perth Concert Hall",
+      "lat": -31.9581487,
+      "lon": 115.8637049,
+      "tags": {
+        "amenity": "theatre",
+        "building": "commercial",
+        "building:levels": "3",
+        "name": "Perth Concert Hall",
+        "wikidata": "Q7170839",
+        "wikipedia": "en:Perth Concert Hall (Western Australia)"
+      }
+    },
+    {
+      "id": "way/147657144",
+      "name": "Perth Institute of Contemporary Arts",
+      "lat": -31.9498308,
+      "lon": 115.8602637,
+      "tags": {
+        "alt_name": "PICA",
+        "building": "yes",
+        "name": "Perth Institute of Contemporary Arts",
+        "opening_hours": "Tu-Su 12:00-17:00",
+        "toilets": "yes",
+        "tourism": "attraction",
+        "wheelchair": "yes",
+        "wikidata": "Q2072568",
+        "wikipedia": "en:Perth Institute of Contemporary Arts"
+      },
+      "entrances": [
+        {
+          "lat": -31.9496305,
+          "lon": 115.8602452,
+          "tags": {
+            "entrance": "main"
+          }
+        },
+        {
+          "lat": -31.9498365,
+          "lon": 115.8605329,
+          "tags": {
+            "entrance": "main",
+            "wheelchair": "no"
+          }
+        },
+        {
+          "lat": -31.9499096,
+          "lon": 115.8604706,
+          "tags": {
+            "entrance": "main",
+            "wheelchair": "yes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/147704624",
+      "name": "The Bell Tower",
+      "lat": -31.9589478,
+      "lon": 115.8582334,
+      "tags": {
+        "addr:postcode": "6000",
+        "addr:street": "Barrack Square",
+        "alt_name": "Swan Bells",
+        "building": "tower",
+        "description": "Bell tower that rings every half hour",
+        "height": "52.4",
+        "man_made": "tower",
+        "name": "The Bell Tower",
+        "tourism": "attraction",
+        "tower:type": "bell_tower",
+        "website": "https://www.thebelltower.com.au/",
+        "wikidata": "Q7653429",
+        "wikipedia": "en:Swan Bells"
+      }
+    },
+    {
+      "id": "way/147743499",
+      "name": "His Majesty's Theatre",
+      "lat": -31.9530733,
+      "lon": 115.8542598,
+      "tags": {
+        "addr:housenumber": "825",
+        "addr:postcode": "6000",
+        "addr:state": "WA",
+        "addr:street": "Hay Street",
+        "addr:suburb": "Perth",
+        "amenity": "theatre",
+        "building": "yes",
+        "check_date": "2026-07-27",
+        "name": "His Majesty's Theatre",
+        "opening_hours": "Mo-Fr 09:00-17:30",
+        "phone": "+61 8 6212 9292",
+        "website": "https://www.ptt.wa.gov.au/venues/his-majestys-theatre/",
+        "wheelchair": "limited",
+        "wikidata": "Q5772098",
+        "wikipedia": "en:His Majesty's Theatre, Perth"
+      }
+    },
+    {
+      "id": "way/148802767",
+      "name": "Forrest Place",
+      "lat": -31.9522452,
+      "lon": 115.859359,
+      "tags": {
+        "area": "yes",
+        "highway": "pedestrian",
+        "name": "Forrest Place",
+        "name:etymology:wikidata": "Q921617",
+        "name:etymology:wikipedia": "en:John Forrest",
+        "smoothness": "excellent",
+        "surface": "paving_stones",
+        "wikidata": "Q5470501",
+        "wikipedia": "en:Forrest Place"
+      }
+    },
+    {
+      "id": "way/150405797",
+      "name": "RAC Arena",
+      "lat": -31.9484036,
+      "lon": 115.8519049,
+      "tags": {
+        "addr:housenumber": "700",
+        "addr:postcode": "6000",
+        "addr:state": "WA",
+        "addr:street": "Wellington Street",
+        "addr:suburb": "Perth",
+        "building": "stadium",
+        "building:levels": "8",
+        "capacity": "15,500",
+        "description": "RAC Arena is an entertainment and sporting arena in the city centre of Perth, Western Australia.",
+        "height": "50 m",
+        "leisure": "stadium",
+        "name": "RAC Arena",
+        "name:etymology:wikidata": "Q7373777",
+        "name:etymology:wikipedia": "en:Royal Automobile Club of Western Australia",
+        "old_name": "Perth Arena",
+        "operator": "AEG Ogden",
+        "owner": "VenuesWest",
+        "sport": "basketball;tennis",
+        "website": "https://www.racarena.com.au/",
+        "wikidata": "Q2035401",
+        "wikipedia": "en:Perth Arena"
+      }
+    },
+    {
+      "id": "way/151266667",
+      "name": "Western Australian Botanic Garden",
+      "lat": -31.9637866,
+      "lon": 115.8397353,
+      "tags": {
+        "leisure": "park",
+        "name": "Western Australian Botanic Garden",
+        "website": "https://www.bgpa.wa.gov.au/western-australian-botanic-garden",
+        "wikidata": "Q68885137",
+        "wikipedia": "en:Western Australian Botanic Garden"
+      }
+    },
+    {
+      "id": "way/166830279",
+      "name": "Crown Theatre, Perth",
+      "lat": -31.9596369,
+      "lon": 115.8951971,
+      "tags": {
+        "addr:street": "Crown Perth, Great Eastern Hwy, Burswood",
+        "amenity": "theatre",
+        "building": "yes",
+        "name": "Crown Theatre, Perth"
+      }
+    },
+    {
+      "id": "way/175944203",
+      "name": "AQWA – The Aquarium of Western Australia",
+      "lat": -31.8267422,
+      "lon": 115.7377406,
+      "tags": {
+        "addr:housenumber": "91",
+        "addr:postcode": "6025",
+        "addr:street": "Southside Drive",
+        "addr:suburb": "Hillarys",
+        "building": "yes",
+        "name": "AQWA – The Aquarium of Western Australia",
+        "old_name": "Underwater World",
+        "phone": "+61 8 9447 7500",
+        "tourism": "aquarium",
+        "website": "https://www.aqwa.com.au/",
+        "wikidata": "Q296366",
+        "wikipedia": "en:Aquarium of Western Australia"
+      },
+      "entrances": [
+        {
+          "lat": -31.8265178,
+          "lon": 115.7377271,
+          "tags": {
+            "entrance": "yes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/176361463",
+      "name": "Rockingham Centre",
+      "lat": -32.2897612,
+      "lon": 115.7449276,
+      "tags": {
+        "addr:housename": "Rockingham Centre",
+        "addr:housenumber": "1",
+        "addr:postcode": "6168",
+        "addr:street": "Council Avenue",
+        "addr:suburb": "Rockingham",
+        "building": "retail",
+        "name": "Rockingham Centre",
+        "shop": "mall",
+        "website": "https://www.rockinghamcentre.com.au/",
+        "wikidata": "Q7355403",
+        "wikipedia": "en:Rockingham Centre"
+      },
+      "entrances": [
+        {
+          "lat": -32.2887369,
+          "lon": 115.7471462,
+          "tags": {
+            "door": "automatic",
+            "entrance": "main"
+          }
+        },
+        {
+          "lat": -32.2891119,
+          "lon": 115.745451,
+          "tags": {
+            "door": "automatic",
+            "entrance": "main"
+          }
+        },
+        {
+          "lat": -32.2899116,
+          "lon": 115.7423395,
+          "tags": {
+            "door": "automatic",
+            "entrance": "main"
+          }
+        },
+        {
+          "lat": -32.2905089,
+          "lon": 115.7418011,
+          "tags": {
+            "door": "automatic",
+            "entrance": "main"
+          }
+        },
+        {
+          "lat": -32.2906302,
+          "lon": 115.7432508,
+          "tags": {
+            "door": "automatic",
+            "entrance": "main"
+          }
+        },
+        {
+          "lat": -32.2902625,
+          "lon": 115.7444324,
+          "tags": {
+            "door": "automatic",
+            "entrance": "main"
+          }
+        },
+        {
+          "lat": -32.2899039,
+          "lon": 115.7467955,
+          "tags": {
+            "door": "automatic",
+            "entrance": "main",
+            "wheelchair": "yes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/184798659",
+      "name": "Ocean Keys Shopping Centre",
+      "lat": -31.6907803,
+      "lon": 115.7176193,
+      "tags": {
+        "access": "customers",
+        "addr:housenumber": "36",
+        "addr:postcode": "6030",
+        "addr:street": "Ocean Keys Boulevard",
+        "addr:suburb": "Clarkson",
+        "building": "yes",
+        "check_date": "2026-07-23",
+        "name": "Ocean Keys Shopping Centre",
+        "opening_hours": "Mo-Fr 08:00-21:00; Sa 08:00-17:00; Su 11:00-17:00",
+        "phone": "+61 8 9407 2400",
+        "shop": "mall",
+        "website": "https://www.oceankeys.net.au/"
+      }
+    },
+    {
+      "id": "way/185334369",
+      "name": "Mindarie Marina",
+      "lat": -31.6890305,
+      "lon": 115.7015218,
+      "tags": {
+        "addr:housenumber": "33",
+        "addr:street": "Ocean Falls Boulevard",
+        "addr:suburb": "Mindarie",
+        "alt_name": "The Marina, Mindarie",
+        "leisure": "marina",
+        "name": "Mindarie Marina",
+        "old_name": "Mindarie Keys",
+        "phone": "+61 8 9305 9305",
+        "seamark:harbour:category": "marina",
+        "seamark:type": "harbour",
+        "website": "https://www.themarinamindarie.com/"
+      }
+    },
+    {
+      "id": "way/194941644",
+      "name": "State Theatre Centre of Western Australia",
+      "lat": -31.9498195,
+      "lon": 115.8594791,
+      "tags": {
+        "addr:housenumber": "174-176",
+        "addr:postcode": "6000",
+        "addr:street": "William Street",
+        "addr:suburb": "Perth",
+        "amenity": "theatre",
+        "building": "yes",
+        "building:levels": "2",
+        "contact:facebook": "https://www.facebook.com/statetheatrecentreofwa",
+        "name": "State Theatre Centre of Western Australia",
+        "operator": "Perth Theatre Trust",
+        "phone": "+61 8 6212 9200",
+        "website": "https://www.ptt.wa.gov.au/",
+        "wikidata": "Q14935912",
+        "wikipedia": "en:State Theatre Centre of Western Australia"
+      }
+    },
+    {
+      "id": "way/210523018",
+      "name": "Galleria",
+      "lat": -31.896723,
+      "lon": 115.8985361,
+      "tags": {
+        "addr:housenumber": "4",
+        "addr:street": "Collier Road",
+        "air_conditioning": "yes",
+        "changing_table": "yes",
+        "check_date": "2026-09-20",
+        "internet_access": "wlan",
+        "internet_access:fee": "no",
+        "landuse": "retail",
+        "name": "Galleria",
+        "opening_hours": "Mo-We,Fr 09:00-17:30; Th 09:00-21:00; Sa 09:00-17:00; Su 11:00-17:00",
+        "shop": "mall",
+        "toilets": "yes",
+        "toilets:wheelchair": "yes",
+        "url:map": "https://www.galleriashoppingcentre.com.au/directions/centre-map",
+        "website": "https://www.galleriashoppingcentre.com.au/",
+        "wheelchair": "yes"
+      }
+    },
+    {
+      "id": "way/219386986",
+      "name": "Perth Convention & Exhibition Centre",
+      "lat": -31.9569071,
+      "lon": 115.8532521,
+      "tags": {
+        "addr:housenumber": "21",
+        "addr:postcode": "6000",
+        "addr:street": "Mounts Bay Road",
+        "air_conditioning": "yes",
+        "amenity": "exhibition_centre",
+        "building": "ex",
+        "building:levels": "4",
+        "check_date": "2026-08-01",
+        "description": "Weekends or public holidays may open during special events.",
+        "ele": "4.69",
+        "email": "info@pcec.com.au",
+        "height": "22.822",
+        "internet_access": "wlan",
+        "internet_access:fee": "no",
+        "layer": "1",
+        "name": "Perth Convention & Exhibition Centre",
+        "opening_hours": "Mo-Fr 08:00-16:30",
+        "operator": "Spotless",
+        "operator:type": "private",
+        "payment:cash": "yes",
+        "payment:debit_cards": "yes",
+        "payment:mastercard": "yes",
+        "payment:visa": "yes",
+        "phone": "+61 8 9475 3301",
+        "roof:colour": "white",
+        "roof:levels": "0",
+        "roof:shape": "round_gabled",
+        "smoking": "no",
+        "website": "https://www.pcec.com.au/",
+        "wheelchair": "yes",
+        "wikidata": "Q7170842",
+        "wikipedia": "en:Perth Convention and Exhibition Centre"
+      }
+    },
+    {
+      "id": "way/219387369",
+      "name": "Hillarys Boat Harbour",
+      "lat": -31.8237271,
+      "lon": 115.7377636,
+      "tags": {
+        "addr:housename": "Hillarys Boat Harbour",
+        "addr:housenumber": "86",
+        "addr:postcode": "6025",
+        "addr:street": "Southside Drive",
+        "addr:suburb": "Hillarys",
+        "harbour": "yes",
+        "leisure": "marina",
+        "name": "Hillarys Boat Harbour",
+        "seamark:harbour:category": "marina",
+        "seamark:name": "Hillarys Boat Harbor",
+        "seamark:type": "harbour",
+        "website": "https://hillarysboatharbour.com.au/",
+        "wikidata": "Q5762611",
+        "wikipedia": "en:Hillarys Boat Harbour"
+      }
+    },
+    {
+      "id": "way/242791567",
+      "name": "Westfield Innaloo Shopping Centre",
+      "lat": -31.9009683,
+      "lon": 115.799431,
+      "tags": {
+        "addr:postcode": "6018",
+        "addr:state": "WA",
+        "addr:street": "Ellen Stirling Boulevard",
+        "addr:suburb": "Innaloo",
+        "brand": "Westfield",
+        "brand:wikidata": "Q106623253",
+        "building": "retail",
+        "building:levels": "1",
+        "layer": "1",
+        "name": "Westfield Innaloo Shopping Centre",
+        "operator": "Scentre Group",
+        "operator:wikidata": "Q18378048",
+        "shop": "mall",
+        "website": "https://www.westfield.com.au/innaloo",
+        "website:map": "https://www.westfield.com.au/innaloo/centre-map"
+      },
+      "entrances": [
+        {
+          "lat": -31.9014817,
+          "lon": 115.8008666,
+          "tags": {
+            "entrance": "yes"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/292027300",
+      "name": "Westfield Booragoon",
+      "lat": -32.0338909,
+      "lon": 115.835571,
+      "tags": {
+        "addr:housenumber": "125",
+        "addr:postcode": "6154",
+        "addr:state": "WA",
+        "addr:street": "Riseley Street",
+        "addr:suburb": "Booragoon",
+        "alt_name": "Garden City Shopping Centre",
+        "brand": "Westfield",
+        "brand:wikidata": "Q106623253",
+        "building": "yes",
+        "name": "Westfield Booragoon",
+        "old_name": "Garden City Booragoon",
+        "operator": "Scentre Group",
+        "operator:wikidata": "Q18378048",
+        "operator:wikipedia": "en:Scentre Group",
+        "shop": "mall",
+        "website": "https://www.gardencity.com.au"
+      },
+      "entrances": [
+        {
+          "lat": -32.0346423,
+          "lon": 115.8347373,
+          "tags": {
+            "door": "automatic",
+            "entrance": "yes",
+            "level": "0",
+            "wheelchair": "yes"
+          }
+        },
+        {
+          "lat": -32.0351149,
+          "lon": 115.8361181,
+          "tags": {
+            "entrance": "yes"
+          }
+        },
+        {
+          "lat": -32.0352025,
+          "lon": 115.8365476,
+          "tags": {
+            "entrance": "yes",
+            "level": "0"
+          }
+        },
+        {
+          "lat": -32.0327552,
+          "lon": 115.8350952,
+          "tags": {
+            "entrance": "yes"
+          }
+        },
+        {
+          "lat": -32.0336231,
+          "lon": 115.8340388,
+          "tags": {
+            "entrance": "yes",
+            "level": "0"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/315587492",
+      "name": "Westfield Carousel",
+      "lat": -32.0187111,
+      "lon": 115.9379587,
+      "tags": {
+        "addr:floor": "G",
+        "addr:housenumber": "1382",
+        "addr:postcode": "6107",
+        "addr:street": "Albany Highway",
+        "addr:suburb": "Cannington",
+        "brand": "Westfield",
+        "brand:wikidata": "Q106623253",
+        "check_date": "2026-07-13",
+        "internet_access": "wlan",
+        "internet_access:fee": "no",
+        "landuse": "retail",
+        "level": "0",
+        "name": "Westfield Carousel",
+        "opening_hours": "Mo-We,Fr 09:00-17:30; Th 09:00-21:00; Sa 09:00-17:00; Su 11:00-17:00",
+        "operator": "Scentre Group",
+        "operator:wikidata": "Q18378048",
+        "operator:wikipedia": "en:Scentre Group",
+        "phone": "+61 8 9458 6344",
+        "shop": "mall",
+        "website": "https://www.westfield.com.au/carousel/",
+        "wheelchair": "yes",
+        "wikidata": "Q14935931",
+        "wikipedia": "en:Westfield Carousel"
+      }
+    },
+    {
+      "id": "way/393530745",
+      "name": "Swan Valley Cuddly Animal Farm",
+      "lat": -31.798464,
+      "lon": 115.9861437,
+      "tags": {
+        "name": "Swan Valley Cuddly Animal Farm",
+        "tourism": "zoo",
+        "website": "http://www.cuddlyanimalfarm.com.au/",
+        "zoo": "petting_zoo"
+      }
+    },
+    {
+      "id": "way/404705281",
+      "name": "Matagarup Bridge",
+      "lat": -31.9549119,
+      "lon": 115.8844194,
+      "tags": {
+        "bicycle": "yes",
+        "bridge": "yes",
+        "foot": "designated",
+        "highway": "path",
+        "layer": "1",
+        "length": "400 m",
+        "motor_vehicle": "private",
+        "name": "Matagarup Bridge",
+        "note": "http://www.perthstadium.com.au/transport/swan-river-pedestrian-bridge",
+        "old_name": "Swan River Pedestrian Bridge",
+        "surface": "paved",
+        "width": "9 m",
+        "wikidata": "Q20861555",
+        "wikipedia": "en:Matagarup Bridge"
+      }
+    },
+    {
+      "id": "way/411547974",
+      "name": "Coogee Beach",
+      "lat": -32.1196136,
+      "lon": 115.7590969,
+      "tags": {
+        "dog": "no",
+        "name": "Coogee Beach",
+        "natural": "beach",
+        "surface": "sand"
+      }
+    },
+    {
+      "id": "way/499414405",
+      "name": "Point Walter Reserve",
+      "lat": -32.0132915,
+      "lon": 115.7893777,
+      "tags": {
+        "leisure": "park",
+        "name": "Point Walter Reserve",
+        "name:etymology:wikidata": "Q7208187",
+        "name:etymology:wikipedia": "en:Point Walter"
+      }
+    },
+    {
+      "id": "way/563455636",
+      "name": "Western Australian Museum Boola Bardip",
+      "lat": -31.94958,
+      "lon": 115.8618696,
+      "tags": {
+        "addr:housenumber": "40",
+        "addr:street": "James Street Mall",
+        "air_conditioning": "yes",
+        "check_date": "2026-10-16",
+        "check_date:opening_hours": "2026-06-07",
+        "contact:facebook": "wamuseum",
+        "contact:instagram": "wamuseum",
+        "email": "reception@museum.wa.gov.au",
+        "internet_access": "wlan",
+        "level": "0;1;2;3",
+        "name": "Western Australian Museum Boola Bardip",
+        "opening_hours": "Mo-Su 09:30-17:00",
+        "operator": "Western Australian Museum",
+        "operator:ref:abn": "95 249 517 733",
+        "operator:type": "state_government",
+        "payment:cash": "yes",
+        "payment:credit_cards": "yes",
+        "payment:debit_cards": "yes",
+        "payment:mastercard": "yes",
+        "payment:visa": "yes",
+        "phone": "+61 8 9431 8413",
+        "phone:AU": "1300 134 081",
+        "tourism": "museum",
+        "website": "https://museum.wa.gov.au/",
+        "wheelchair": "yes",
+        "wikidata": "Q3567483",
+        "wikimedia_commons": "Category:Western Australian Museum",
+        "wikipedia": "en:Western Australian Museum"
+      }
+    },
+    {
+      "id": "way/587889456",
+      "name": "Herdsman Lake Regional Park",
+      "lat": -31.9202571,
+      "lon": 115.8043147,
+      "tags": {
+        "communication:amateur_radio:pota": "AU-8543",
+        "leisure": "nature_reserve",
+        "name": "Herdsman Lake Regional Park"
+      }
+    },
+    {
+      "id": "way/593639432",
+      "name": "Railway Museum",
+      "lat": -31.9094637,
+      "lon": 115.9386955,
+      "tags": {
+        "addr:housenumber": "136",
+        "addr:street": "Railway Parade",
+        "addr:suburb": "Bassendean",
+        "landuse": "industrial",
+        "name": "Railway Museum",
+        "tourism": "museum",
+        "wikidata": "Q7987539",
+        "wikipedia": "en:Western Australian Rail Transport Museum"
+      },
+      "entrances": [
+        {
+          "lat": -31.9100304,
+          "lon": 115.938767,
+          "tags": {
+            "entrance": "main"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/624728374",
+      "name": "Lotterywest Federation Walkway",
+      "lat": -31.964625,
+      "lon": 115.8392995,
+      "tags": {
+        "bicycle": "no",
+        "bridge": "yes",
+        "highway": "footway",
+        "layer": "1",
+        "length": "52 m",
+        "name": "Lotterywest Federation Walkway",
+        "opening_hours": "Mo-Su 09:00-17:00",
+        "surface": "metal",
+        "tourism": "attraction"
+      }
+    },
+    {
+      "id": "way/634821496",
+      "name": "DFO Perth",
+      "lat": -31.9376648,
+      "lon": 115.9487107,
+      "tags": {
+        "addr:housenumber": "11",
+        "addr:street": "High Street",
+        "brand": "Vicinity Centres",
+        "brand:wikidata": "Q1054327",
+        "brand:wikipedia": "en:Direct Factory Outlet",
+        "building": "retail",
+        "long_name": "Direct Factory Outlet (Perth)",
+        "name": "DFO Perth",
+        "opening_hours": "Mo-Su 10:00-18:00",
+        "operator": "Vicinity Centres",
+        "payment:android_pay": "yes",
+        "payment:apple_pay": "yes",
+        "payment:cards": "yes",
+        "payment:cash": "yes",
+        "phone": "+61 8 6147 9500",
+        "shop": "mall",
+        "short_name": "DFO",
+        "website": "https://www.dfo.com.au/"
+      }
+    },
+    {
+      "id": "way/682186791",
+      "name": "Belmont Forum",
+      "lat": -31.9648914,
+      "lon": 115.9351858,
+      "tags": {
+        "addr:floor": "G",
+        "addr:housenumber": "227",
+        "addr:postcode": "6105",
+        "addr:state": "WA",
+        "addr:street": "Belmont Avenue",
+        "addr:suburb": "Cloverdale",
+        "air_conditioning": "yes",
+        "building": "yes",
+        "check_date": "2026-01-21",
+        "level": "0",
+        "name": "Belmont Forum",
+        "opening_hours": "Mo-Fr 08:00-21:00; Sa 08:00-17:00; Su 11:00-17:00; PH 11:00-17:00",
+        "shop": "mall",
+        "toilets": "yes",
+        "toilets:wheelchair": "yes",
+        "website": "https://www.belmontforum.com.au",
+        "wheelchair": "yes"
+      },
+      "entrances": [
+        {
+          "lat": -31.966319,
+          "lon": 115.934384,
+          "tags": {
+            "entrance": "yes",
+            "level": "0"
+          }
+        },
+        {
+          "lat": -31.9650386,
+          "lon": 115.9358256,
+          "tags": {
+            "entrance": "yes",
+            "level": "0"
+          }
+        },
+        {
+          "lat": -31.9640284,
+          "lon": 115.9363172,
+          "tags": {
+            "entrance": "yes",
+            "level": "0"
+          }
+        },
+        {
+          "lat": -31.9636381,
+          "lon": 115.935866,
+          "tags": {
+            "entrance": "yes",
+            "level": "0"
+          }
+        },
+        {
+          "lat": -31.964178,
+          "lon": 115.934876,
+          "tags": {
+            "entrance": "yes",
+            "level": "0"
+          }
+        },
+        {
+          "lat": -31.964995,
+          "lon": 115.9343153,
+          "tags": {
+            "entrance": "yes",
+            "level": "1"
+          }
+        },
+        {
+          "lat": -31.9652477,
+          "lon": 115.9346105,
+          "tags": {
+            "entrance": "yes",
+            "level": "0"
+          }
+        },
+        {
+          "lat": -31.9658937,
+          "lon": 115.9343884,
+          "tags": {
+            "entrance": "yes",
+            "level": "0"
+          }
+        }
+      ]
+    },
+    {
+      "id": "way/695799456",
+      "name": "Perth Stadium",
+      "lat": -31.9510756,
+      "lon": 115.8893145,
+      "tags": {
+        "addr:housenumber": "333",
+        "addr:state": "WA",
+        "addr:street": "Victoria Park Drive",
+        "addr:suburb": "Burswood",
+        "leisure": "stadium",
+        "name": "Perth Stadium",
+        "official_name": "Optus Stadium",
+        "operator": "VenuesLive",
+        "sport": "australian_football;cricket;soccer;baseball;athletics;running;multi",
+        "website": "https://optusstadium.com.au/",
+        "wikidata": "Q7170896",
+        "wikimedia_commons": "Category:Perth Stadium",
+        "wikipedia": "en:Perth Stadium"
+      }
+    },
+    {
+      "id": "way/998689739",
+      "name": "Bibra Lake Regional Playground",
+      "lat": -32.0875706,
+      "lon": 115.8224376,
+      "tags": {
+        "leisure": "playground",
+        "name": "Bibra Lake Regional Playground",
+        "playground:theme": "adventure"
+      }
+    },
+    {
+      "id": "way/1135349831",
+      "name": "Perth's Outback Splash",
+      "lat": -31.6528775,
+      "lon": 115.9588864,
+      "tags": {
+        "addr:housenumber": "1635",
+        "addr:postcode": "6084",
+        "addr:state": "WA",
+        "addr:street": "Neaves Road",
+        "addr:suburb": "Bullsbrook",
+        "alt_name": "The Maze",
+        "name": "Perth's Outback Splash",
+        "phone": "+61 8 9571 1375",
+        "tourism": "theme_park",
+        "website": "https://www.outbacksplash.com.au"
+      }
+    },
+    {
+      "id": "way/1274392791",
+      "name": "DNA Tower",
+      "lat": -31.9642647,
+      "lon": 115.8362202,
+      "tags": {
+        "building": "yes",
+        "height": "15 m",
+        "man_made": "tower",
+        "name": "DNA Tower",
+        "name:etymology:wikidata": "Q7430",
+        "name:etymology:wikipedia": "en:DNA",
+        "tourism": "viewpoint",
+        "tower:type": "observation"
+      }
+    },
+    {
+      "id": "way/1285020779",
+      "name": "Aviation Heritage Museum",
+      "lat": -32.0492069,
+      "lon": 115.8589534,
+      "tags": {
+        "access": "customers",
+        "addr:postcode": "6149",
+        "addr:state": "WA",
+        "addr:street": "Bull Creek Drive",
+        "addr:suburb": "Bull Creek",
+        "check_date": "2026-05-02",
+        "fee": "yes",
+        "name": "Aviation Heritage Museum",
+        "opening_hours": "Mo-Su,PH 10:00-16:00",
+        "payment:cash": "yes",
+        "payment:credit_cards": "yes",
+        "payment:debit_cards": "yes",
+        "phone": "+61 8 9311 4470",
+        "tourism": "museum",
+        "website": "https://www.raafawa.org.au",
+        "wheelchair": "yes",
+        "wikidata": "Q4828636",
+        "wikipedia": "en:Aviation Heritage Museum (Western Australia)"
+      }
+    }
+  ]
+}

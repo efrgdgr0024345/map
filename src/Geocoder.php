@@ -7,8 +7,13 @@ use RuntimeException;
 final class Geocoder
 {
     private const CACHE_PREFIX='geocode-v2-';
-    public static function search(string $query): array
+    public static function search(string $query,bool $addressesOnly=false): array
     {
+        if (!$addressesOnly) {
+            try { $local=PoiCatalog::search($query); }
+            catch (\Throwable) { $local=[]; }
+            if ($local) { return ['results'=>$local,'localCatalog'=>true,'moreAddresses'=>true,'attribution'=>'Perth places · OpenStreetMap contributors / Wikidata. Locally curated; not visitor rankings.']; }
+        }
         $cache=APP_VAR.'/'.self::CACHE_PREFIX.hash('sha256',strtolower($query)).'.php';
         if (is_file($cache) && !is_link($cache) && filesize($cache)<2*1024*1024 && filemtime($cache)>time()-86400) {
             $text=file_get_contents($cache);

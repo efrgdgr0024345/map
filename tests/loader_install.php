@@ -108,7 +108,8 @@ try {
     mkdir($site . '/.git', 0700);
     file_put_contents($site . '/.git/HEAD', "ref: refs/heads/local-fixture\n");
     file_put_contents($site . '/var/transit.sqlite', 'existing database sentinel');
-    $preserved = ['config.php', '.env', '.git/HEAD', 'var/transit.sqlite', 'var/maintenance.php'];
+    file_put_contents($site . '/var/perth-pois.json', '{"fixture":"owner catalogue preserved"}');
+    $preserved = ['var/perth-pois.json', 'config.php', '.env', '.git/HEAD', 'var/transit.sqlite', 'var/maintenance.php'];
     $beforePreserved = li_snapshot($site, $preserved);
 
     $files = li_source_files($project);
@@ -119,6 +120,7 @@ try {
     $files['.env'] = 'REPLACEMENT=forbidden';
     $files['var/transit.sqlite'] = 'replacement forbidden';
     $files['var/maintenance.php'] = 'replacement forbidden';
+    $files['var/perth-pois.json'] = 'replacement forbidden';
     $files['.git/HEAD'] = 'replacement forbidden';
     $package = $temporary . '/release-one.zip';
     li_package($package, $files);
