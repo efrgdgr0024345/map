@@ -522,11 +522,12 @@ function pm_install_archive(): array
     }
 }
 
-/** Inspect installed files and the actual timetable, without executing application code. */
-function pm_readiness(): array
+/** Lightweight installed-data check. The importer checks full integrity before publication. */
+function pm_readiness(?callable $progress = null): array
 {
     $result = ['ready' => false, 'application' => false, 'timetable' => false,
         'message' => 'Upload only loader.php, unlock maintenance, and choose Install & set up.'];
+    if ($progress) { $progress('Checking installed application files','Checking the required PHP, map and interface files.'); }
     foreach (pm_application_manifest() as $file) {
         $path = PM_LOADER_ROOT . '/' . $file;
         if (!is_file($path) || is_link($path) || filesize($path) === 0) {
@@ -541,11 +542,9 @@ function pm_readiness(): array
         return $result;
     }
     try {
-        $db = new PDO('sqlite:' . $database, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
-        $db->exec('PRAGMA query_only=ON');
-        if ($db->query('PRAGMA quick_check')->fetchColumn() !== 'ok') {
-            throw new RuntimeException('The timetable database failed its integrity check.');
-        }
+        if ($progress) { $progress('Checking existing timetable metadata','Reading service dates; a full database scan is not needed for this check.'); }
+        $db = new PDO('sqlite:' . $database, null, null, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION, PDO::ATTR_TIMEOUT => 2]);
+        $db->exec('PRAGMA query_only=ON; PRAGMA busy_timeout=2000;');
         $meta = $db->query('SELECT key,value FROM meta')->fetchAll(PDO::FETCH_KEY_PAIR);
         $today = (new DateTimeImmutable('now', new DateTimeZone('Australia/Perth')))->format('Ymd');
         $start = (string) ($meta['start_date'] ?? '');
@@ -558,6 +557,7 @@ function pm_readiness(): array
         if ($start > $today || $end < $today) {
             throw new RuntimeException('The timetable does not cover today in Perth. Refresh it to complete setup.');
         }
+        if ($progress) { $progress('Checking timetable records and today\'s services','Checking required tables and services operating today in Perth.'); }
         foreach (['stops', 'routes', 'trips', 'stop_times', 'connections'] as $table) {
             if (!$db->query('SELECT 1 FROM ' . $table . ' LIMIT 1')->fetchColumn()) {
                 throw new RuntimeException('The timetable has no ' . $table . '.');
@@ -587,7 +587,8 @@ function pm_run_setup(bool $downloadApplication = true): array
 {
     @set_time_limit(600);
     pm_progress_report(['stage'=>'hosting','label'=>'Checking hosting and installed data','message'=>'Checking PHP requirements and existing timetable readiness.','percent'=>2,'_force'=>true]);
-    $result = ['complete' => false, 'startedAt' => gmdate(DATE_ATOM), 'steps' => [], 'readiness' => pm_readiness()];
+    $result = ['complete' => false, 'startedAt' => gmdate(DATE_ATOM), 'steps' => [],
+        'readiness' => ['ready'=>false,'application'=>false,'timetable'=>false,'message'=>'Installation checks have not completed.']];
     $save = static function () use (&$result): void {
         pm_write_private(PM_LOADER_PRIVATE . '/setup-status.php', $result);
     };
@@ -599,6 +600,9 @@ function pm_run_setup(bool $downloadApplication = true): array
             throw new RuntimeException('Hosting requirements are missing: ' . implode(', ', $missing) . '. Enable these in cPanel and retry.');
         }
         $result['steps'][] = ['step' => 'Hosting and private storage', 'status' => 'passed', 'message' => 'Required PHP extensions and writable protected storage verified.'];
+        $result['readiness'] = pm_readiness(static function (string $label,string $message): void {
+            pm_progress_report(['stage'=>'hosting','label'=>$label,'message'=>$message,'percent'=>3,'_force'=>true]);
+        });
         $save();
         if ($downloadApplication) {
             $installed = pm_install_archive();
@@ -618,7 +622,7 @@ function pm_run_setup(bool $downloadApplication = true): array
         $import = (new \App\GtfsImporter())->import(null,'pm_import_progress');
         $result['steps'][count($result['steps']) - 1] = ['step' => 'Import official Perth timetable', 'status' => 'passed', 'message' => 'Official timetable imported. ' . json_encode($import, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)];
         $save();
-        pm_progress_report(['stage'=>'verify','label'=>'Verifying the completed installation','message'=>'Checking timetable integrity, service dates and application files.','percent'=>96,'_force'=>true]);
+        pm_progress_report(['stage'=>'verify','label'=>'Verifying the completed installation','message'=>'Confirming application files and active service dates after import validation.','percent'=>96,'_force'=>true]);
         $result['readiness'] = pm_readiness();
         if (!$result['readiness']['ready']) {
             throw new RuntimeException($result['readiness']['message']);

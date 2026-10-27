@@ -97,6 +97,8 @@ php -d memory_limit=512M loader.php --refresh-phones
 
 Installation and refresh print live task details to Terminal on stderr: package bytes, file counts, timetable rows, index creation and validation. Stdout remains one final JSON result for scripts. The authenticated browser loader shows the same stages in a progress bar, with elapsed time, time since the last report and recent task history. Percentages describe stages rather than time remaining; database indexing can remain on one stage for a while.
 
+Initial checks report application files, timetable metadata and active services separately. These lightweight checks do not repeatedly scan the entire installed database. The importer still runs its full SQLite integrity check on the new staging database before publication. A locked existing database has a two-second lock wait rather than an indefinite wait.
+
 `php loader.php --status` reads the current operation without starting another update. `running: true` means an OS maintenance lock is held; `interrupted: true` means the last operation stopped before reporting completion and its lock is now free. Otherwise inspect `progress.status` (`complete` or `failed`) and the message. Lock files normally remain on disk after completion: never delete one to force an update. Status contains no maintenance key. An older already-running loader keeps its original output until the next invocation; upload the refreshed single loader first if progress is needed immediately.
 
 Setup also warms the optional public-phone cache. Its failure does not discard a valid timetable or prevent using the map; use `--refresh-phones` or the authenticated loader button to retry the download independently.

@@ -138,6 +138,17 @@ try {
     li_database($site . '/var/transit.sqlite');
     $ready = pm_readiness();
     li_check($ready['ready'] === true && $ready['application'] === true && $ready['timetable'] === true && $ready['validUntil'] >= date('Ymd'), 'readiness requires a usable current timetable and complete application');
+    $events=[];
+    $beforeReadiness=hash_file('sha256',$site.'/var/transit.sqlite');
+    $reported=pm_readiness(static function(string $label,string $message) use (&$events): void { $events[]=[$label,$message]; });
+    li_check($reported['ready'] && count($events)===3 && str_contains($events[1][0],'metadata') && str_contains($events[2][0],"today's services"), 'initial readiness identifies file, metadata and active-service checks in progress');
+    li_check(hash_file('sha256',$site.'/var/transit.sqlite')===$beforeReadiness, 'lightweight readiness does not modify the installed timetable');
+    $held=new PDO('sqlite:'.$site.'/var/transit.sqlite',null,null,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION]);
+    $held->exec('BEGIN EXCLUSIVE');
+    $started=hrtime(true); $busy=pm_readiness(); $wait=(hrtime(true)-$started)/1_000_000_000;
+    $held->exec('ROLLBACK'); $held=null;
+    li_check(!$busy['ready'] && str_contains(strtolower($busy['message']),'locked') && $wait<5, 'a locked timetable reports unavailable within a bounded wait instead of hanging');
+    li_check(pm_readiness()['ready'] && hash_file('sha256',$site.'/var/transit.sqlite')===$beforeReadiness, 'readiness recovers after the competing database lock is released');
     li_database($site . '/var/transit.sqlite', true);
     li_check(pm_readiness()['ready'] === false, 'expired timetable cannot be reported as ready');
     li_database($site . '/var/transit.sqlite', false, false);
