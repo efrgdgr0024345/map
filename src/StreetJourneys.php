@@ -19,7 +19,7 @@ final class StreetJourneys
      * The injected provider/monotonic clock are local dependencies, never HTTP inputs.
      * Street paths containing personal endpoints are memoized only in this request.
      */
-    public static function plan(object $service, array $from, array $to, int $now, ?callable $router = null, ?callable $clock = null): array
+    public static function plan(object $service, array $from, array $to, int $now, ?callable $router = null, ?callable $clock = null, ?int $arriveBy = null, int $startDelaySeconds = 0): array
     {
         if ($service instanceof Demo) {
             $response=$service->plan($from,$to,$now);
@@ -39,9 +39,11 @@ final class StreetJourneys
         for ($round=0;$round<self::MAX_ROUNDS;$round++) {
             $remaining=self::MAX_SECONDS-((float)$clock()-$started);
             if ($remaining<=0 || ($round>0 && $remaining<max(1.0,$lastPlanSeconds))) { $limited=true; break; }
-            $planningNow=$now+max(0,(int)floor((float)$clock()-$started));
+            $planningNow=$now+max(0,(int)floor((float)$clock()-$started)-max(0,$startDelaySeconds));
             $planStarted=(float)$clock();
-            $response=$service->plan($from,$to,$planningNow,$durations);
+            $response=$arriveBy!==null && $service instanceof Transit
+                ? $service->planArrivingBy($from,$to,$planningNow,$arriveBy,$durations)
+                : $service->plan($from,$to,$planningNow,$durations);
             $lastPlanSeconds=max(0.0,(float)$clock()-$planStarted);
             $candidates=array_slice(is_array($response['journeys'] ?? null) ? $response['journeys'] : [],0,2);
             if (!$candidates) { break; }
@@ -89,20 +91,23 @@ final class StreetJourneys
             if (!$changed) {
                 // No corrected duration requires another metro-wide scan
                 // while an already verified boarding remains valid.
-                $readyNow=$now+max(0,(int)floor((float)$clock()-$started));
+                $readyNow=$now+max(0,(int)floor((float)$clock()-$started)-max(0,$startDelaySeconds));
                 foreach ($candidates as $candidate) {
-                    if (self::finish($candidate,$paths,$readyNow,$service)!==null) { break 2; }
+                    $finished=self::finish($candidate,$paths,$arriveBy===null ? $readyNow : max($readyNow,strtotime($candidate['departure'])),$service);
+                    if ($finished!==null && ($arriveBy===null || strtotime($finished['arrival'])<=$arriveBy)) { break 2; }
                 }
             }
         }
         $verified=[];
-        $readyNow=$now+max(0,(int)floor((float)$clock()-$started));
+        $readyNow=$now+max(0,(int)floor((float)$clock()-$started)-max(0,$startDelaySeconds));
         foreach ($pool as $journey) {
-            $ready=self::finish($journey,$paths,$readyNow,$service);
-            if ($ready!==null) { $verified[self::candidateKey($ready)]=$ready; }
+            $ready=self::finish($journey,$paths,$arriveBy===null ? $readyNow : max($readyNow,strtotime($journey['departure'])),$service);
+            if ($ready!==null && ($arriveBy===null || strtotime($ready['arrival'])<=$arriveBy)) { $verified[self::candidateKey($ready)]=$ready; }
         }
         $verified=array_values($verified);
-        usort($verified,static fn($a,$b)=>strtotime($a['arrival'])<=>strtotime($b['arrival']));
+        usort($verified,$arriveBy!==null
+            ? static fn($a,$b)=>strtotime($b['leaveAt'] ?? $b['departure'])<=>strtotime($a['leaveAt'] ?? $a['departure'])
+            : static fn($a,$b)=>strtotime($a['arrival'])<=>strtotime($b['arrival']));
         $response['journeys']=array_slice($verified,0,2);
         $response['walkRouting']=$verified ? 'street' : 'unavailable';
         if ($verified) {

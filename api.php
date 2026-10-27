@@ -78,7 +78,17 @@ try {
         case 'plan':
             $from=point((string)($_GET['from'] ?? '')); $to=point((string)($_GET['to'] ?? ''));
             $from['name']='Your starting point'; $to['name']='Your destination';
-            $result=App\StreetJourneys::plan($service,$from,$to,time());
+            $now=time(); $at=$now; $deadline=null;
+            foreach (['at','arriveBy'] as $field) {
+                if (!isset($_GET[$field])) { continue; }
+                $value=$_GET[$field];
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:Z|[+-]\d{2}:\d{2})$/D',$value)) { throw new InvalidArgumentException('Choose a valid planning date and time.'); }
+                $timestamp=App\GoogleCalendar::dateTime($value);
+                if ($timestamp<$now-120 || $timestamp>$now+14*86400) { throw new InvalidArgumentException('Plan between now and fourteen days ahead.'); }
+                if ($field==='at') { $at=max($now,$timestamp); } else { $deadline=$timestamp; }
+            }
+            if ($deadline!==null && $deadline<=$at) { throw new InvalidArgumentException('Arrival must be after departure.'); }
+            $result=App\StreetJourneys::plan($service,$from,$to,$at,null,null,$deadline,max(0,$at-$now));
             break;
         case 'phones':
             $parts=explode(',',(string)($_GET['bbox'] ?? '115.65,-32.2,116.1,-31.7'));

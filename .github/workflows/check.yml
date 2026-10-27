@@ -30,6 +30,8 @@ jobs:
       - run: php tests/walking.php
       - run: php tests/geocoder.php
       - run: php tests/street_journeys.php
+      - run: php tests/arrive_by.php
+      - run: php tests/google_calendar.php
       - run: php tests/transfer.php
       - run: php tests/station_metadata.php
       - run: php tests/import_progress.php
@@ -43,7 +45,11 @@ jobs:
       - run: PHP_BINARY=php python3 tests/loader_http.py
       - run: PHP_BINARY=php python3 tests/loader_cli.py
       - run: PHP_BINARY=php python3 tests/loader_progress_http.py
+      - run: PHP_BINARY=php python3 tests/calendar_http.py
       - run: node --check assets/app.js
+      - run: node --check assets/planner.js
+      - run: node --check alerts-sw.js
+      - run: node --check tests/browser-day-planner.mjs
       - run: node --check tests/browser-station-v6.mjs
       - run: node --check tests/browser-loader-progress.mjs
       - run: node --check tests/browser-station-browse.mjs

@@ -1,6 +1,7 @@
 /* Nextstop: open maps, Perth address search, and clearly labelled timetable estimates. */
 (() => {
   'use strict';
+  const STREET_ZOOM = 16;
 
   const $ = id => document.getElementById(id);
   const make = (tag, className, text) => {
@@ -50,7 +51,7 @@
     stationBrowse: null, stationBrowseCandidate: null, stationBrowseSuppressed: null,
     stationBrowseController: null, stationBrowseRequest: 0, stationBrowseLayers: null,
     stationBrowseCache: new Map(), stationBrowseTimer: null, stationBrowseReady: false,
-    originUserChosen: false, awaitingGpsOrigin: false
+    originUserChosen: false, awaitingGpsOrigin: false, fullJourneyOverview: false
   };
   const perthTime = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Perth', hour: 'numeric', minute: '2-digit', hour12: true });
   const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -262,6 +263,9 @@
 
   function drawNetworkLines() {
     if (!map || !networkLayers) return;
+    if (map.getZoom() < STREET_ZOOM) {
+      networkLayers.clearLayers(); state.renderedNetworkKey = 'zoomed-out'; $('map').dataset.networkLines = '0'; return;
+    }
     if (state.stationBrowse) {
       if (state.renderedNetworkKey !== 'station-browse') networkLayers.clearLayers();
       state.renderedNetworkKey = 'station-browse';
@@ -599,6 +603,7 @@
   }
 
   function setFollow(enabled) {
+    if (enabled) state.fullJourneyOverview = false;
     if (enabled && state.firstWalkFocus) {
       state.firstWalkFocus = false;
       document.body.classList.remove('walk-to-stop-active');
@@ -799,6 +804,7 @@
   }
 
   function renderApproachVehicle() {
+    if (map.getZoom() < STREET_ZOOM) return;
     const vehicle = approachVehicle();
     if (!vehicle) return;
     // One highlighted marker per selected service, regardless of which request
@@ -832,6 +838,7 @@
   }
 
   async function fetchApproach() {
+    if (!map || map.getZoom() < STREET_ZOOM) { clearApproach(); return; }
     const leg = nextLeg();
     if (!leg || !leg.from || !leg.from.id || timeValue(leg.departure) <= Date.now()) { clearApproach(); return; }
     const key = `${leg.tripId}:${leg.serviceDate || ''}:${leg.from.id}:${leg.departure || ''}`;
@@ -1502,6 +1509,7 @@
     if (state.guidance) exitStationGuidance(false);
     clearApproach();
     state.selected = journey;
+    state.fullJourneyOverview = false;
     state.firstWalkFocus = false;
     document.body.classList.remove('walk-to-stop-active');
     state.firstWalkLayers.clearLayers();
@@ -1607,10 +1615,37 @@
     state.viewTimer = setTimeout(() => { state.programmaticView = false; }, 850);
   }
 
+  function fitCurrentLeg(journey, force) {
+    const now = Date.now(), ride = nextLeg(), legs = journey.legs || [];
+    const moving = ride && timeValue(ride.departure) <= now;
+    const vehicle = approachVehicle() || state.vehicles.find(item => ride && String(item.tripId) === String(ride.tripId));
+    let leg = legs.find(item => timeValue(item.arrival) >= now) || legs[legs.length - 1];
+    if (ride && !moving) {
+      const index = legs.indexOf(ride);
+      leg = [...legs.slice(0, index)].reverse().find(item => item.mode === 'walk') || ride;
+    }
+    if (!leg) return;
+    let point = moving && vehicle ? vehicle : leg.from;
+    if ((!moving || leg.mode === 'walk') && state.userLocation && point && map.distance([point.lat, point.lon], [state.userLocation.lat, state.userLocation.lon]) < 3000) point = state.userLocation;
+    if (!point) return;
+    const previous = state.lastFollowFit, key = `${leg.mode}:${leg.tripId || legs.indexOf(leg)}`;
+    if (!force && previous && previous.leg === key && now - previous.at < 8000) return;
+    const mobile = isMobile(), size = map.getSize(), panel = $('journey-panel').getBoundingClientRect();
+    const left = !mobile && getComputedStyle($('journey-panel')).display !== 'none' ? panel.right + 20 : 25;
+    const top = mobile ? 155 : 110, bottom = mobile ? 200 : 100;
+    const zoom = leg.mode === 'walk' ? 17 : STREET_ZOOM;
+    const center = map.unproject(map.project([point.lat, point.lon], zoom).add(L.point((size.x - left - 70) / 2 + left - size.x / 2, (size.y - top - bottom) / 2 + top - size.y / 2).multiplyBy(-1)), zoom);
+    state.lastFollowFit = { center, at: now, leg: key, zoom };
+    state.programmaticView = true; clearTimeout(state.viewTimer); map.stop();
+    map.setView(center, zoom, { animate: !force && !reducedMotion, duration: .7 });
+    state.viewTimer = setTimeout(() => { state.programmaticView = false; }, 850);
+  }
+
   function fitJourneyBounds(journey, force = true) {
     if (!state.followJourney || !journey || !map || state.pickField || state.guidance) return;
     if (state.zooming) { state.fitAfterZoom = true; return; }
     if (state.firstWalkFocus) { fitFirstWalkBounds(journey, force); return; }
+    if (!state.fullJourneyOverview) { fitCurrentLeg(journey, force); return; }
     const bounds = L.latLngBounds([]);
     const vehicle = approachVehicle() || state.vehicles.find(item => state.nextTrip && String(item.tripId) === state.nextTrip);
     const now = Date.now();
@@ -1855,6 +1890,13 @@
   }
 
   function renderVehicles(data) {
+    if (map.getZoom() < STREET_ZOOM) {
+      if (state.approachLayers) state.approachLayers.clearLayers();
+      state.markers.forEach(marker => { if (marker.nextstopAnimation) cancelAnimationFrame(marker.nextstopAnimation); map.removeLayer(marker); });
+      state.markers.clear(); state.vehicles = []; stopLayers.clearLayers();
+      if (state.approachMarker) { if (state.approachMarker.nextstopAnimation) cancelAnimationFrame(state.approachMarker.nextstopAnimation); map.removeLayer(state.approachMarker); state.approachMarker = null; }
+      $('network-count').textContent = 'Zoom in to see services'; $('network-detail').textContent = 'Street view shows buses and trains'; return;
+    }
     state.vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
     updateNextService();
     if (state.selected && state.needsJourneyFit) {
@@ -1919,6 +1961,7 @@
     if (state.vehicleController) state.vehicleController.abort();
     state.vehicleController = new AbortController();
     const request = ++state.requestNumber;
+    if (map.getZoom() < STREET_ZOOM) { renderVehicles({ vehicles: [], stops: [], lines: [] }); return; }
     if (state.selected && transitLegs().length === 0 && !state.wholeNetwork) {
       renderVehicles({ vehicles: [], stops: [], lines: [] });
       return;
@@ -1945,9 +1988,9 @@
       $('network-count').textContent = 'Connection needed';
       return;
     }
-    map = L.map('map', { zoomControl: false, center: [-31.952, 115.878], zoom: 13, minZoom: 9, maxZoom: 19, zoomAnimation: !reducedMotion, preferCanvas: true });
+    map = L.map('map', { zoomControl: false, center: [state.origin.lat, state.origin.lon], zoom: STREET_ZOOM, minZoom: 9, maxZoom: 19, zoomAnimation: !reducedMotion, preferCanvas: true });
     if (isMobile()) {
-      map.setView([state.origin.lat, state.origin.lon], 13, { animate: false });
+      map.setView([state.origin.lat, state.origin.lon], STREET_ZOOM, { animate: false });
       map.panBy([0, Math.round(window.innerHeight * .25)], { animate: false });
     }
     const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors' }).addTo(map);
@@ -1989,6 +2032,10 @@
     });
     map.on('moveend', () => {
       drawNetworkLines(); clearTimeout(moveTimer); moveTimer = setTimeout(fetchVehicles, 350);
+      if (map.getZoom() >= STREET_ZOOM) {
+        if (state.approachData && nextLeg()) { renderApproachVehicle(); drawApproach(state.approachData, nextLeg()); }
+        fetchApproach();
+      }
       scheduleStationBrowse();
       if (state.phonesEnabled) { clearTimeout(state.phonesMoveTimer); state.phonesMoveTimer = setTimeout(() => fetchPhones(false), 450); }
     });
@@ -2102,13 +2149,17 @@
     $('cancel-map-pick').addEventListener('click', cancelMapPick);
     $('use-map-center').addEventListener('click', () => finishMapPick(map.getCenter()));
     $('clear-journey').addEventListener('click', () => clearJourney());
+    $('overview-journey').addEventListener('click', () => { setFollow(true); state.fullJourneyOverview = true; fitJourneyBounds(state.selected); });
     $('network-toggle').addEventListener('click', () => {
       state.wholeNetwork = !state.wholeNetwork;
       $('network-toggle').setAttribute('aria-pressed', String(state.wholeNetwork));
       drawNetworkLines();
       fetchVehicles();
     });
-    $('follow-journey').addEventListener('click', () => setFollow(true));
+    $('follow-journey').addEventListener('click', () => {
+      if (state.firstWalkFocus) { setFollow(true); state.fullJourneyOverview = true; fitJourneyBounds(state.selected); $('follow-journey').querySelector('span').textContent = 'Follow current leg'; }
+      else setFollow(true);
+    });
     $('leave-widget').addEventListener('click', focusFirstWalk);
     $('map-zoom-in').addEventListener('click', () => { pauseMapFollowing(); map.zoomIn(); });
     $('map-zoom-out').addEventListener('click', () => { pauseMapFollowing(); map.zoomOut(); });
@@ -2153,5 +2204,15 @@
     setInterval(() => { if (!document.hidden) refreshRouteCatalog(); }, 300000);
   }
 
+  window.Nextstop = {
+    getOrigin: () => ({ ...(state.origin || {}) }),
+    getMapCenter: () => { const point = map.getCenter(); return { lat: point.lat, lon: point.lng }; },
+    showJourney: (journey, from, to) => {
+      cancelPendingPlan(); state.origin = { ...from }; state.destination = { ...to }; state.originUserChosen = true;
+      $('origin-input').value = from.name; $('destination-input').value = to.name;
+      updatePlaceMarker('origin'); updatePlaceMarker('destination'); state.journeys = [journey]; renderJourneyOptions();
+      $('journey-results').hidden = false; $('journey-panel').classList.add('has-journey'); selectJourney(journey); setPanel(false);
+    }
+  };
   init();
 })();

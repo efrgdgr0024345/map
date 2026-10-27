@@ -335,9 +335,10 @@ function pm_download_archive(string $target): void
 
 function pm_application_manifest(): array
 {
-    return ['loader.php', 'index.php', 'bootstrap.php', 'api.php', '.htaccess',
+    return ['loader.php', 'index.php', 'bootstrap.php', 'api.php', 'calendar.php', 'alerts-sw.js', '.htaccess',
         'src/.htaccess', 'scripts/.htaccess',
         'src/GtfsImporter.php', 'src/Transit.php', 'src/TransferRules.php', 'src/StationMap.php', 'src/Demo.php', 'src/Geo.php', 'src/Geocoder.php', 'src/PlaceAccess.php', 'src/NetworkStyle.php', 'src/RouteCache.php', 'src/VehicleMotion.php', 'src/WalkingRouter.php', 'src/WalkingRouteException.php', 'src/StreetJourneys.php', 'src/Payphones.php', 'src/TransferGuide.php', 'scripts/import-gtfs.php', 'scripts/build-route-cache.php',
+        'src/GoogleCalendar.php', 'assets/planner.js', 'assets/planner.css',
         'assets/app.js', 'assets/style.css', 'assets/black-cat.svg', 'assets/mascot-head.webp', 'assets/mascot-paws.webp',
         'assets/place-access.json', 'assets/station-maps/manifest.json', 'assets/vendor/leaflet/leaflet.js', 'assets/vendor/leaflet/leaflet.css', 'assets/vendor/leaflet/LICENSE'];
 }
@@ -913,6 +914,19 @@ try {
             } elseif ($action === 'prepare') {
                 pm_prepare_private();
                 $notice = 'Private storage is prepared. Choose Install & set up to download the application and prepare its timetable automatically.';
+            } elseif ($action === 'google-calendar') {
+                if (!is_file(PM_LOADER_ROOT.'/src/GoogleCalendar.php')) { throw new RuntimeException('Install the application before configuring Google Calendar.'); }
+                require_once PM_LOADER_ROOT.'/bootstrap.php';
+                $old=\App\GoogleCalendar::loadConfig();
+                $secret=is_string($_POST['google_secret'] ?? null) ? trim($_POST['google_secret']) : '';
+                $config=['clientId'=>is_string($_POST['google_client'] ?? null) ? trim($_POST['google_client']) : '',
+                    'clientSecret'=>$secret!=='' ? $secret : ($old['clientSecret'] ?? ''),
+                    'redirectUri'=>is_string($_POST['google_redirect'] ?? null) ? trim($_POST['google_redirect']) : ''];
+                \App\GoogleCalendar::validateConfig($config);
+                $lock=pm_lock();
+                try { pm_write_private(PM_LOADER_PRIVATE.'/google-calendar.php',$config); }
+                finally { flock($lock,LOCK_UN); fclose($lock); }
+                $notice='Google Calendar setup saved privately. Users can now connect from the day planner. No Google secret is sent to the map.';
             } elseif ($action === 'rotate') {
                 if ($environmentKey) {
                     throw new RuntimeException('Change PERTH_MAP_SETUP_TOKEN in your hosting settings while it is configured.');
@@ -1021,6 +1035,13 @@ php loader.php --refresh</pre><p class="note">Return here afterwards; readiness 
 </section>
 <?php endif; ?>
 <?php if ($installed): ?><section class="card"><h2>Public telephone locations</h2><p class="note">The optional phone layer uses a published location register. Refresh its server cache here if the map reports unavailable data.</p><form method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="phones"><button type="submit">Refresh public phone locations</button></form></section><?php endif; ?>
+<?php if ($installed):
+    $googleSettings=[];
+    try { if (is_file(PM_LOADER_PRIVATE.'/google-calendar.php')) { $googleSettings=pm_read_private(PM_LOADER_PRIVATE.'/google-calendar.php'); } } catch (Throwable) {}
+?>
+<section class="card"><details><summary>Google Calendar connection</summary><p class="note">Enable Google Calendar API in Google Cloud, configure an External OAuth consent screen, and create a Web application OAuth client. Add your exact HTTPS callback, for example <code>https://easyai.com.au/bus/calendar.php</code>, as an authorised redirect URI. While Google verification is pending, add the Google accounts you want to test under Test users. Request only <code>calendar.events.readonly</code> and <code>calendar.app.created</code>. Public access may require Google's app verification.</p><p class="note">Nextstop reads the user's primary calendar when requested. Confirmed travel reminders go to a separate Nextstop Trips calendar. Client credentials are stored in protected <code>var/</code> and preserved through updates.</p>
+<form method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="google-calendar"><label for="google-client">Google OAuth client ID</label><input id="google-client" name="google_client" required maxlength="256" value="<?= pm_escape((string)($googleSettings['clientId'] ?? '')) ?>"><label for="google-secret">Client secret · leave blank to keep the saved secret</label><input id="google-secret" name="google_secret" type="password" maxlength="512" autocomplete="new-password"><label for="google-redirect">Authorised HTTPS redirect URI</label><input id="google-redirect" type="url" name="google_redirect" required value="<?= pm_escape((string)($googleSettings['redirectUri'] ?? '')) ?>" placeholder="https://easyai.com.au/bus/calendar.php"><div class="row"><button type="submit">Save Google Calendar setup</button></div></form></details></section>
+<?php endif; ?>
 <section class="card"><details><summary>Maintenance key & storage</summary><p class="note">Keep <code>var</code> private and writable by your PHP user. Do not grant world-write permissions. Download a backup through cPanel File Manager before clearing old backups. Authenticated access expires after one hour of inactivity.</p>
 <?php if (!$environmentKey): ?><form method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="rotate"><label for="new-key">New maintenance key · at least 20 characters</label><input id="new-key" type="password" name="new_key" required minlength="20" maxlength="512" autocomplete="new-password"><div class="row"><button class="quiet" type="submit">Change key</button></div></form><?php else: ?><p class="note">Change your key through the <code>PERTH_MAP_SETUP_TOKEN</code> hosting setting.</p><?php endif; ?>
 </details><div class="divider"></div><form method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="logout"><button type="submit" class="quiet">Lock maintenance</button></form></section>

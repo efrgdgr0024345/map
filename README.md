@@ -6,6 +6,7 @@ A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and 
 
 - Phone GPS with permission, searchable start/destination addresses with suggestions, or map clicks and draggable pins. Selecting a location field opens a clear map picker; confirming a point returns to the form. With both locations selected, the ride search starts automatically. GPS keeps watching for better high-accuracy fixes before a journey is selected; stale cached fixes do not freeze the location. The compact accuracy indicator/circle reflects the device's reported uncertainty.
 - Map-area vehicle and stop updates every 15 seconds.
+- Phone and laptop start at street zoom 16. Zooming out hides the general fleet and network lines and stops their vehicle requests. Follow mode stays at a local zoom around the current walking/vehicle leg; **Overview** fits the full journey.
 - Official rail, CAT and bus route colours, clear vehicle symbols and directional arrows.
 - Focused journey view, walking legs, transfers, boarding countdown and a later service alternative when found. Follow mode fits the remaining journey, selected service, consented GPS position and destination; exploring the map pauses following until you recenter.
 - In-app departure boards and full stop-by-stop service timetables, including service-day and after-midnight times. Tap a stop, vehicle, itinerary action or **View timetable** on your next-service card.
@@ -18,6 +19,7 @@ A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and 
 - Official static GTFS import into SQLite, with calendar exceptions, after-midnight services and route shapes.
 - Persistent server and browser route caches: geometry redraws locally when panning; public vehicle positions refresh independently.
 - A protected root-level `loader.php` for cPanel setup, timetable refresh and GitHub updates with backups.
+- A day planner with device-saved Home/Gym/Shops, stay durations, chained journeys and a return home. Selected Google appointments use arrival-by planning; confirmed travel blocks can be added to a separate Nextstop Trips calendar. Google OAuth needs owner credentials entered privately in the loader. Calendar-file downloads work without Google setup. Phone notifications depend on calendar sync; browser-only alerts require the page to stay open. See [docs/day-planner.md](docs/day-planner.md).
 - Black-cat branding using a lightweight portrait derived from the supplied mascot, with lime-eye accents and clear black/white controls. A compact cat peeks over the search launcher: its head rises before its paws land. Tap the cat to tuck it away; reduced-motion preferences are respected.
 
 **Honest movement:** the app does not have an actual vehicle GPS feed. After importing GTFS, positions are interpolated between scheduled stops along route shapes. Delays, cancellations, capacity and early/late running are unknown. Before import, the app explicitly shows an illustrative **DEMO** network with invented times; those journeys must not be used for travel. Phone GPS identifies the user, not the buses.

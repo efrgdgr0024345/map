@@ -19,14 +19,17 @@ function assetUrl(string $path): string
   <link rel="icon" type="image/svg+xml" href="<?= assetUrl('assets/black-cat.svg') ?>">
   <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=">
   <link rel="stylesheet" href="<?= assetUrl('assets/style.css') ?>">
+  <link rel="stylesheet" href="<?= assetUrl('assets/planner.css') ?>">
   <script src="assets/vendor/leaflet/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" defer></script>
   <script src="<?= assetUrl('assets/app.js') ?>" data-station-catalog="<?= assetUrl('assets/station-maps/manifest.json') ?>" defer></script>
+  <script src="<?= assetUrl('assets/planner.js') ?>" defer></script>
 </head>
 <body class="mascot-visible">
   <div id="map" aria-label="Interactive Perth public transport map"></div>
 
   <header class="topbar">
     <a class="brand" href="./" aria-label="Nextstop home"><img class="brand-cat" src="<?= assetUrl(is_file(__DIR__ . '/assets/mascot-head.webp') ? 'assets/mascot-head.webp' : 'assets/black-cat.svg') ?>" alt="" width="46" height="46"><span>nextstop<span class="brand-dot">.</span></span></a>
+    <button type="button" id="open-day-planner" class="day-planner-launch" aria-haspopup="dialog">Day planner</button>
     <div class="topbar-right"><span class="city-label"><span class="city-dot"></span>PERTH, WA</span><span class="clock" id="perth-clock">--:--</span></div>
   </header>
 
@@ -70,7 +73,7 @@ function assetUrl(string $path): string
 
     <div class="message" id="message" role="status" aria-live="polite" hidden></div>
     <div id="journey-results" hidden>
-      <div class="results-heading"><h2>Your journey</h2><button type="button" id="clear-journey" class="text-button">Clear <span aria-hidden="true">×</span></button></div>
+      <div class="results-heading"><h2>Your journey</h2><button type="button" id="overview-journey" class="text-button">Overview</button><button type="button" id="clear-journey" class="text-button">Clear <span aria-hidden="true">×</span></button></div>
       <div id="journey-options" class="journey-options"></div>
       <div id="next-service" class="next-service" hidden></div>
       <div id="itinerary" class="itinerary"></div>
@@ -103,5 +106,31 @@ function assetUrl(string $path): string
     <p class="timetable-disclaimer">Timetable estimates, not live vehicle tracking. All times are shown in Perth time.</p>
   </dialog>
   <noscript><div class="noscript">Enable JavaScript to use the map and plan a journey.</div></noscript>
+  <dialog id="day-planner" class="day-planner" aria-labelledby="day-planner-title">
+    <header class="planner-heading"><div><span class="planner-eyebrow">MAKE TIME FOR YOUR DAY</span><h2 id="day-planner-title">A plan that gets you home.</h2></div><button type="button" id="close-day-planner" class="planner-close" aria-label="Close day planner">×</button></header>
+    <nav class="planner-tabs" aria-label="Day planner sections"><button type="button" data-planner-tab="day" aria-pressed="true">My day</button><button type="button" data-planner-tab="places" aria-pressed="false">Saved places</button><button type="button" data-planner-tab="calendar" aria-pressed="false">Google Calendar</button></nav>
+    <p id="planner-message" class="planner-message" role="status" hidden></p>
+    <section id="planner-day" class="planner-section">
+      <div class="planner-row"><label>Start from<select id="planner-origin"></select></label><label>Leave no earlier than <span>(Perth time)</span><input type="datetime-local" id="planner-start" required></label></div>
+      <h3>Where are you heading?</h3><div id="planner-place-chips" class="planner-place-chips"></div><p id="planner-empty-places" class="planner-help">Save Home, Gym or Shops to build your day.</p>
+      <ol id="planner-stops" class="planner-stops"></ol>
+      <label class="planner-check"><input type="checkbox" id="planner-return" checked><span id="planner-return-label">Return home after my last stop</span></label>
+      <button type="button" id="planner-build" class="planner-primary">Plan my day</button>
+      <div id="planner-results" class="planner-results" hidden></div>
+      <div id="planner-reminder-actions" class="planner-actions" hidden><button type="button" id="planner-download">Download phone calendar reminders</button><button type="button" id="planner-google-preview">Add travel to Google Calendar</button><button type="button" id="planner-alerts">Enable alerts while this page is open</button></div>
+      <p class="planner-help">Trips use the timetable. Phone reminders depend on calendar sync and notification settings.</p>
+    </section>
+    <section id="planner-places" class="planner-section" hidden>
+      <h3>Your regular places</h3><p class="planner-help">Saved on this device. Add the entrance you normally use.</p><div id="planner-saved-list"></div>
+      <form id="planner-place-form"><label>Place name<input id="saved-place-name" maxlength="60" placeholder="Home, Gym, Shops…" required></label><label>Address<input id="saved-place-address" maxlength="160" placeholder="Search a Perth address or place" autocomplete="off"></label><div class="planner-actions"><button type="button" id="saved-place-search">Search address</button><button type="button" id="saved-place-map">Use map centre</button></div><div id="saved-place-results" class="planner-search-results"></div><p id="saved-place-selected" class="planner-help"></p><button type="submit" id="saved-place-save" class="planner-primary" disabled>Save place</button></form>
+    </section>
+    <section id="planner-calendar" class="planner-section" hidden>
+      <h3>Your events, your choice</h3><p class="planner-help">Select an event to plan its travel. Nothing is planned or added automatically.</p><p id="calendar-state" role="status"></p><div class="planner-actions"><button type="button" id="calendar-connect">Connect Google Calendar</button><button type="button" id="calendar-disconnect" hidden>Disconnect</button></div>
+      <div id="calendar-browser" hidden><label>Calendar day <span>(Perth time)</span><input type="date" id="calendar-date"></label><button type="button" id="calendar-load">Load events</button><div id="calendar-events"></div></div>
+      <div id="calendar-event-choice" hidden><h3 id="calendar-event-title"></h3><p id="calendar-event-time" class="planner-help"></p><label>Event entrance / address<input id="calendar-event-address" maxlength="160" autocomplete="off"></label><button type="button" id="calendar-event-search">Find event location</button><div id="calendar-event-results" class="planner-search-results"></div><p id="calendar-event-place" class="planner-help"></p><label class="planner-check"><input id="calendar-event-consent" type="checkbox"> Plan public transport for this selected event</label><button type="button" id="calendar-event-add" class="planner-primary" disabled>Add this event to my day</button></div>
+    </section>
+    <section id="planner-reminder-preview" class="planner-section" hidden><h3>Review your travel reminders</h3><p class="planner-help">These travel blocks go into a separate Nextstop Trips calendar. Your appointments stay as they are. Reminders are set for ten minutes before leaving and at departure.</p><div id="planner-reminder-list"></div><label class="planner-check"><input type="checkbox" id="planner-reminder-consent"> I agree to add these selected travel reminders to Google Calendar</label><button type="button" id="planner-reminder-save" class="planner-primary" disabled>Add confirmed reminders</button><button type="button" id="planner-reminder-back">Back to my day</button></section>
+  </dialog>
+  <dialog id="planner-stay" class="planner-stay" aria-labelledby="planner-stay-title"><form id="planner-stay-form"><h2 id="planner-stay-title">How long will you stay?</h2><label>Stay for <span>(minutes)</span><input id="planner-stay-minutes" type="number" min="5" max="720" step="5" value="60" required></label><div class="planner-actions"><button type="button" data-stay="30">30 min</button><button type="button" data-stay="60">1 hour</button><button type="button" data-stay="120">2 hours</button></div><div class="planner-actions"><button type="button" id="planner-stay-cancel">Cancel</button><button type="submit" class="planner-primary">Add to my day</button></div></form></dialog>
 </body>
 </html>

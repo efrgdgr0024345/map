@@ -370,6 +370,122 @@ final class Transit
         return $this->transferRules->between($fromId,$toId,$context);
     }
 
+    /** Latest feasible departure for an appointment; pedestrian times are refined by StreetJourneys. */
+    public function planArrivingBy(array $from,array $to,int $now,int $deadline,array $walkDurations=[]): array
+    {
+        $this->activeGuard(); $this->walkDurations=$walkDurations;
+        $journeys=[]; $first=$this->scanArrivingBy($from,$to,$now,$deadline);
+        if ($first) {
+            $journeys[]=$first;
+            foreach ($first['legs'] as $leg) {
+                if ($leg['mode']==='walk') { continue; }
+                $other=$this->scanArrivingBy($from,$to,$now,$deadline,$leg['tripId']);
+                if ($other && $other['id']!==$first['id']) { $journeys[]=$other; }
+                break;
+            }
+        }
+        return ['journeys'=>$journeys,'mode'=>'timetable','message'=>$journeys ? '' : 'No feasible arrival found in the three hours before your appointment. Try an earlier arrival or a nearby public entrance.'];
+    }
+
+    private function scanArrivingBy(array $from,array $to,int $now,int $deadline,string $skipTrip=''): ?array
+    {
+        $earliest=max($now,$deadline-10800); $queries=[]; $args=[];
+        foreach ($this->serviceDays($earliest,max(0,$deadline-$earliest)) as $day) {
+            $marks=implode(',',array_fill(0,count($day['ids']),'?'));
+            $queries[]="SELECT c.*,c.departure+? dep,c.arrival+? arr,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type,? || '-' || t.id AS service_key
+                FROM connections c JOIN trips t ON t.id=c.trip_id JOIN routes r ON r.id=t.route_id
+                WHERE t.service_id IN ($marks) AND c.departure>=? AND c.arrival<=? AND t.id<>?";
+            $args=array_merge($args,[$day['base'],$day['base'],$day['date']],$day['ids'],[$earliest-$day['base'],$deadline-$day['base'],$skipTrip]);
+        }
+        if (!$queries) { return null; }
+        $q=$this->db->prepare(implode(' UNION ALL ',$queries).' ORDER BY dep DESC,seq DESC'); $q->execute($args);
+        $nodes=[]; $labels=[]; $onboard=[]; $near=[]; $directDepartures=[];
+        $origins=[];
+        foreach ($this->nearby($from) as $stop) { $origins[$stop['id']]=$stop; }
+        $direct=$this->walkingSeconds($from,$to); $best=$direct<=2400 ? $deadline-$direct : PHP_INT_MIN;
+        $chosen=null; $access=null;
+        $qualified=$this->transferRules->hasQualifiedRules();
+        $label=static function(string $id,array $node,?int $index=null) use (&$nodes,&$labels,$qualified): void {
+            $ride=$node['nextRide'] ?? null;
+            // Preserve following-trip context: forbidden and qualified transfers
+            // cannot be dominated by a later but incompatible departure.
+            $key=$node['boardings'].':'.($ride ? ($qualified ? $ride['tripId'].':' : '').$ride['stopId'] : 'destination');
+            $old=$labels[$id][$key] ?? null;
+            if ($old!==null && $nodes[$old]['time']>=$node['time']) { return; }
+            $index ??= count($nodes); $nodes[$index]=$node; $labels[$id][$key]=$index;
+        };
+        foreach ($this->nearby($to,1500,true) as $stop) {
+            $time=$deadline-$stop['walk'];
+            $label($stop['id'],['time'=>$time,'next'=>null,'boardings'=>0,'nextRide'=>null,
+                'leg'=>$stop['walk'] ? Demo::walk($stop,$to,$time,$deadline) : null]);
+        }
+        foreach ($q as $c) {
+            // Every earlier connection departs before our best complete origin
+            // departure, so none can produce a later feasible start.
+            if ($c['dep']<$best) { break; }
+            $next=$onboard[$c['service_key']] ?? null; $alighting=false;
+            if ($next===null && (int)$c['dropoff']===0) {
+                foreach ($labels[$c['to_id']] ?? [] as $candidate) {
+                    $node=$nodes[$candidate]; if ($node['boardings']>=4) { continue; }
+                    $limit=$node['time']; $following=$node['nextRide'];
+                    if ($following) {
+                        $rule=$this->transferRule($c['to_id'],$following['stopId'],['fromTripId'=>$c['trip_id'],'fromRouteId'=>$c['route_id'],'toTripId'=>$following['tripId'],'toRouteId'=>$following['routeId']]);
+                        if (!$rule['allowed']) { continue; }
+                        $limit=min($limit-120,$following['departure']-$rule['minimumSeconds']);
+                    }
+                    if ($c['arr']>$limit) { continue; }
+                    if ($next===null || $nodes[$next]['boardings']>$node['boardings']) { $next=$candidate; $alighting=true; }
+                }
+            }
+            if ($next===null) { continue; }
+            $a=$this->stop($c['from_id']); $b=$this->stop($c['to_id']); $index=count($nodes);
+            $node=['time'=>(int)$c['dep'],'next'=>$next,'boardings'=>$nodes[$next]['boardings']+($alighting ? 1 : 0),
+                'nextRide'=>['tripId'=>$c['trip_id'],'routeId'=>$c['route_id'],'stopId'=>$a['id'],'departure'=>(int)$c['dep']],
+                'leg'=>array_merge(['mode'=>self::mode((int)$c['type']),'tripId'=>$c['trip_id'],'routeId'=>$c['route_id'],'routeName'=>$c['route_name'],
+                    'headsign'=>$c['headsign'],'shapeId'=>$c['shape_id'],'serviceDate'=>substr($c['service_key'],0,8),'from'=>$a,'to'=>$b,
+                    'departure'=>date(DATE_ATOM,(int)$c['dep']),'arrival'=>date(DATE_ATOM,(int)$c['arr'])],$this->routeStyle($c['route_id'],$c['route_name'],(int)$c['type']))];
+            $nodes[$index]=$node; $onboard[$c['service_key']]=$index;
+            if ((int)$c['pickup']!==0) { continue; }
+            if (isset($origins[$a['id']])) {
+                $stop=$origins[$a['id']]; $leave=$node['time']-$stop['walk']-($stop['walk'] ? 120 : 0);
+                if ($leave>=$now && $leave>$best) { $best=$leave; $chosen=$index; $access=$stop; }
+            }
+            $label($a['id'],$node,$index);
+            if (!$qualified) {
+                $key=$a['id'].':'.$node['boardings'];
+                if (isset($directDepartures[$key]) && $directDepartures[$key]>=$node['time']) { continue; }
+                $directDepartures[$key]=$node['time'];
+            }
+            $near[$a['id']] ??= $this->nearby($a,250,true);
+            foreach ($near[$a['id']] as $stop) {
+                if ($stop['id']===$a['id']) { continue; }
+                $time=$node['time']-$stop['walk'];
+                $label($stop['id'],['time'=>$time,'next'=>$index,'boardings'=>$node['boardings'],'nextRide'=>$node['nextRide'],
+                    'leg'=>Demo::walk($stop,$a,$time,$node['time'])]);
+            }
+        }
+        if ($best<$now) { return null; }
+        $legs=[];
+        if ($chosen===null) { $legs[]=Demo::walk($from,$to,$best,$deadline); }
+        else {
+            if ($access['walk']) { $legs[]=Demo::walk($from,$access,$best,$best+$access['walk']); }
+            for ($index=$chosen;$index!==null;$index=$nodes[$index]['next']) { if ($nodes[$index]['leg']) { $legs[]=$nodes[$index]['leg']; } }
+        }
+        $merged=[];
+        foreach ($legs as $leg) {
+            $last=count($merged)-1;
+            if ($last>=0 && $leg['mode']!=='walk' && ($merged[$last]['tripId'] ?? '')===($leg['tripId'] ?? '')) { $merged[$last]['to']=$leg['to']; $merged[$last]['arrival']=$leg['arrival']; }
+            else { $merged[]=$leg; }
+        }
+        $rides=0; $walk=0; $ids=[];
+        foreach ($merged as &$leg) {
+            if ($leg['mode']==='walk') { $walk+=strtotime($leg['arrival'])-strtotime($leg['departure']); }
+            else { $rides++; $ids[]=$leg['tripId']; $leg['geometry']=Geo::slice($this->shape($leg['shapeId']),$leg['from'],$leg['to']); unset($leg['shapeId']); }
+        } unset($leg);
+        return ['id'=>substr(hash('sha256',implode('|',$ids).'-'.$best),0,16),'departure'=>date(DATE_ATOM,$best),'arrival'=>end($merged)['arrival'],
+            'duration'=>strtotime(end($merged)['arrival'])-$best,'walkMinutes'=>(int)ceil($walk/60),'transfers'=>max(0,$rides-1),'legs'=>$merged,'arriveBy'=>date(DATE_ATOM,$deadline)];
+    }
+
     private function boardingReady(array $node,string $stopId,array $next=[]): ?int
     {
         if ($node['initial']) { return $node['time']+($node['boardingBuffer'] ?? 0); }
