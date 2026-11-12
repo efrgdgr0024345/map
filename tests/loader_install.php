@@ -168,6 +168,55 @@ try {
     li_check(str_contains(file_get_contents($site . '/index.php'), 'app version two') && str_contains(file_get_contents($site . '/loader.php'), 'loader version two'), 'subsequent update replaces both application and loader');
     li_check(file_get_contents($site . '/' . $updated['backup'] . '/index.php') === $oldIndex && file_get_contents($site . '/' . $updated['backup'] . '/loader.php') === $oldLoader, 'update backs up every overwritten application and loader version exactly');
     li_check(li_snapshot($site, $preserved) === $beforePreserved && pm_readiness()['ready'] === true, 'update preserves a working timetable, configuration, maintenance authentication and Git metadata');
+    $unchangedInode=fileinode($site.'/assets/app.js');
+    $repeat=pm_apply_archive($temporary.'/release-two.zip');
+    clearstatcache();
+    li_check($repeat['files']===0 && $repeat['unchanged']>10 && fileinode($site.'/assets/app.js')===$unchangedInode, 'identical update replaces no files and leaves existing files untouched');
+    li_check(!is_file($site.'/'.$repeat['backup'].'/index.php'), 'unchanged files do not consume backup space');
+
+    $delta=$versionTwo;
+    $delta['index.php'].="\n<!-- changed fixture -->";
+    $delta['assets/app.js'].="\n// changed fixture";
+    $tree=['sha'=>str_repeat('a',40),'truncated'=>false,'tree'=>[]];
+    foreach ($delta as $path=>$content) {
+        if (pm_preserved($path)) { continue; }
+        $tree['tree'][]=['path'=>$path,'type'=>'blob','mode'=>'100644','size'=>strlen($content),'sha'=>sha1('blob '.strlen($content)."\0".$content)];
+    }
+    $fetched=[];
+    $fetch=static function(string $path,array $entry) use (&$fetched,$delta): string { $fetched[]=$path; return $delta[$path]; };
+    $stats=pm_incremental_package($tree,$temporary.'/delta.zip',$fetch);
+    sort($fetched);
+    li_check($stats['downloaded']===2 && $fetched===['assets/app.js','index.php'], 'incremental update downloads only changed files and reuses verified local files');
+    $applied=pm_apply_archive($temporary.'/delta.zip');
+    li_check($applied['files']===2 && file_get_contents($site.'/index.php')===$delta['index.php'], 'incremental package uses the backed-up archive publisher for only changed files');
+    unlink($site.'/assets/app.js');
+    $fetched=[];
+    pm_incremental_package($tree,$temporary.'/repair.zip',$fetch);
+    li_check($fetched===['assets/app.js'], 'missing local file is downloaded even when the release is unchanged');
+    pm_apply_archive($temporary.'/repair.zip');
+    file_put_contents($site.'/assets/app.js','local modification');
+    $badRejected=false;
+    try { pm_incremental_package($tree,$temporary.'/bad-download.zip',static fn()=> 'corrupt response'); }
+    catch (RuntimeException) { $badRejected=true; }
+    li_check($badRejected && file_get_contents($site.'/assets/app.js')==='local modification', 'corrupt download fails verification without changing installed files');
+    $fetched=[];
+    pm_incremental_package($tree,$temporary.'/repair-edited.zip',$fetch);
+    li_check($fetched===['assets/app.js'], 'local edits are detected by content rather than saved revision');
+    pm_apply_archive($temporary.'/repair-edited.zip');
+    $fetched=[];
+    $same=pm_incremental_package($tree,$temporary.'/same.zip',$fetch);
+    li_check($same['downloaded']===0 && $same['downloadBytes']===0 && $fetched===[], 'unchanged release downloads no application bytes');
+    foreach (['../escape.php','assets/evil-link'] as $unsafe) {
+        $unsafeTree=$tree;
+        $unsafeTree['tree'][]=['path'=>$unsafe,'type'=>'blob','mode'=>'120000','size'=>1,'sha'=>str_repeat('b',40)];
+        $rejected=false; $fetched=[];
+        try { pm_incremental_package($unsafeTree,$temporary.'/unsafe.zip',$fetch); } catch (RuntimeException) { $rejected=true; }
+        li_check($rejected && !$fetched, 'unsafe incremental path or symlink is rejected before downloads');
+    }
+    $badTree=$tree; $badTree['truncated']=true;
+    $badRejected=false;
+    try { pm_incremental_package($badTree,$temporary.'/truncated.zip',$fetch); } catch (RuntimeException) { $badRejected=true; }
+    li_check($badRejected, 'truncated GitHub tree is rejected before any update');
     $names = array_keys($files);
 
     $missing = $versionTwo;

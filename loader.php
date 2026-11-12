@@ -333,6 +333,82 @@ function pm_download_archive(string $target): void
     }
 }
 
+/** Bounded verified HTTPS reads from fixed GitHub hosts only. */
+function pm_github_read(string $url, int $limit): string
+{
+    if (!preg_match('~^https://(?:api\.github\.com|raw\.githubusercontent\.com)/~', $url)) {
+        throw new RuntimeException('Unexpected update download host.');
+    }
+    $body='';
+    $curl=curl_init($url);
+    curl_setopt_array($curl,[CURLOPT_CONNECTTIMEOUT=>20,CURLOPT_TIMEOUT=>120,
+        CURLOPT_FOLLOWLOCATION=>false,CURLOPT_PROTOCOLS=>CURLPROTO_HTTPS,
+        CURLOPT_SSL_VERIFYPEER=>true,CURLOPT_SSL_VERIFYHOST=>2,
+        CURLOPT_USERAGENT=>'PerthMap-cPanel-Loader/2.0',
+        CURLOPT_HTTPHEADER=>['Accept: application/vnd.github+json'],
+        CURLOPT_WRITEFUNCTION=>static function($handle,string $chunk) use (&$body,$limit): int {
+            if (strlen($body)+strlen($chunk)>$limit) { return 0; }
+            $body.=$chunk; return strlen($chunk);
+        }]);
+    $ok=curl_exec($curl); $status=curl_getinfo($curl,CURLINFO_RESPONSE_CODE); $error=curl_error($curl);
+    if ($ok===false || $status!==200) {
+        throw new RuntimeException('GitHub incremental download failed (HTTP '.$status.'). '.$error.' Retry later; no application files were changed.');
+    }
+    return $body;
+}
+
+/** Compare actual local Git blob hashes, so interrupted updates and missing files repair on retry. */
+function pm_incremental_package(array $tree, string $archive, callable $download): array
+{
+    if (!empty($tree['truncated']) || !isset($tree['tree']) || !is_array($tree['tree'])
+        || !preg_match('/^[a-f0-9]{40}$/D',(string)($tree['sha'] ?? '')) || count($tree['tree'])>10000) {
+        throw new RuntimeException('GitHub returned an incomplete or invalid file list. No application files were changed.');
+    }
+    $files=[]; $total=0;
+    foreach ($tree['tree'] as $entry) {
+        $path=(string)($entry['path'] ?? '');
+        if (!pm_safe_relative($path)) { throw new RuntimeException('Unsafe GitHub file path.'); }
+        if (pm_preserved($path)) { continue; }
+        if (($entry['type'] ?? '')==='tree') { continue; }
+        if (($entry['type'] ?? '')!=='blob' || !in_array($entry['mode'] ?? '',['100644','100755'],true)
+            || !preg_match('/^[a-f0-9]{40}$/D',(string)($entry['sha'] ?? ''))
+            || !is_int($entry['size'] ?? null) || $entry['size']<0 || $entry['size']>10*1024*1024 || isset($files[$path])) {
+            throw new RuntimeException('Invalid or unsupported GitHub file entry.');
+        }
+        $total+=$entry['size'];
+        if ($total>200*1024*1024) { throw new RuntimeException('GitHub application is too large.'); }
+        pm_assert_destination($path);
+        $files[$path]=$entry;
+    }
+    foreach (pm_application_manifest() as $required) {
+        if (empty($files[$required]['size'])) { throw new RuntimeException('GitHub file list is missing required application files.'); }
+    }
+    $zip=new ZipArchive();
+    if ($zip->open($archive,ZipArchive::CREATE | ZipArchive::EXCL)!==true) { throw new RuntimeException('Cannot stage incremental update.'); }
+    $downloaded=0; $reused=0; $bytes=0;
+    try {
+        foreach ($files as $path=>$entry) {
+            $local=PM_LOADER_ROOT.'/'.$path;
+            $content=is_file($local) && filesize($local)===$entry['size'] ? file_get_contents($local) : false;
+            if (is_string($content) && hash('sha1','blob '.strlen($content)."\0".$content)===$entry['sha']) {
+                $reused++;
+            } else {
+                $content=$download($path,$entry);
+                if (!is_string($content) || strlen($content)!==$entry['size']
+                    || hash('sha1','blob '.strlen($content)."\0".$content)!==$entry['sha']) {
+                    throw new RuntimeException('GitHub file verification failed: '.$path.'. No application files were changed.');
+                }
+                $downloaded++; $bytes+=strlen($content);
+            }
+            if (!$zip->addFromString('map-update/'.$path,$content)) { throw new RuntimeException('Cannot stage GitHub file.'); }
+            pm_progress_report(['stage'=>'app-download','label'=>'Downloading changed files','message'=>$path,
+                'completed'=>$downloaded+$reused,'total'=>count($files),'unit'=>'files','percent'=>5+10*($downloaded+$reused)/count($files)]);
+        }
+        if (!$zip->close()) { throw new RuntimeException('Cannot finish update staging.'); }
+    } catch (Throwable $error) { @$zip->close(); @unlink($archive); throw $error; }
+    return ['downloaded'=>$downloaded,'reused'=>$reused,'downloadBytes'=>$bytes,'revision'=>$tree['sha']];
+}
+
 function pm_application_manifest(): array
 {
     return ['loader.php', 'index.php', 'bootstrap.php', 'api.php', 'calendar.php', 'alerts-sw.js', '.htaccess',
@@ -436,6 +512,14 @@ function pm_apply_archive(string $archive): array
         }
         $zip->close();
         $opened = false;
+        // Identical files retain their inode, permissions and modification time.
+        $unchanged=0;
+        foreach ($files as $relative=>$index) {
+            $destination=PM_LOADER_ROOT.'/'.$relative;
+            if (is_file($destination) && hash_file('sha256',$destination)===hash_file('sha256',$workspace.'/staged/'.$relative)) {
+                unset($files[$relative]); $unchanged++;
+            }
+        }
         // Back up every overwritten file before the first application write.
         $done=0;
         pm_progress_report(['stage'=>'app-backup','label'=>'Backing up existing files','message'=>'Saving the current application before replacement.','percent'=>22,'_force'=>true]);
@@ -479,7 +563,7 @@ function pm_apply_archive(string $archive): array
         }
         pm_write_private($backup . '/backup-info.php', ['created_at' => gmdate(DATE_ATOM), 'source' => PM_LOADER_ARCHIVE, 'overwritten' => $changed, 'new' => $created]);
         pm_write_private(PM_LOADER_PRIVATE . '/last-update.php', ['updated_at' => gmdate(DATE_ATOM), 'source' => PM_LOADER_ARCHIVE, 'backup' => 'var/backups/' . $id, 'files' => count($files)]);
-        return ['files' => count($files), 'backup' => 'var/backups/' . $id, 'message' => 'Installed ' . count($files) . ' files, including the latest loader.php. Previous files are backed up in var/backups/' . $id . '. Your database, configuration, and maintenance credentials were preserved.'];
+        return ['files' => count($files), 'unchanged'=>$unchanged, 'backup' => 'var/backups/' . $id, 'message' => 'Updated ' . count($files) . ' files; kept '.$unchanged.' unchanged files. The loader is updated when changed. Previous files are backed up in var/backups/' . $id . '. Your database, configuration, and maintenance credentials were preserved.'];
     } catch (Throwable $exception) {
         $rollbackFailed = false;
         foreach ($changed as $relative) {
@@ -514,6 +598,21 @@ function pm_install_archive(): array
     }
     $archive = PM_LOADER_PRIVATE . '/download-' . bin2hex(random_bytes(8)) . '.zip';
     try {
+        if (is_file(PM_LOADER_ROOT.'/bootstrap.php')) {
+            pm_progress_report(['stage'=>'app-download','label'=>'Checking GitHub for changes','message'=>'Comparing installed files with main.','percent'=>5,'_force'=>true]);
+            $commit=json_decode(pm_github_read('https://api.github.com/repos/efrgdgr0024345/map/commits/main',8*1024*1024),true,64,JSON_THROW_ON_ERROR);
+            $revision=(string)($commit['sha'] ?? '');
+            if (!preg_match('/^[a-f0-9]{40}$/D',$revision)) { throw new RuntimeException('Invalid GitHub release revision.'); }
+            $tree=json_decode(pm_github_read('https://api.github.com/repos/efrgdgr0024345/map/git/trees/'.$revision.'?recursive=1',8*1024*1024),true,64,JSON_THROW_ON_ERROR);
+            $stats=pm_incremental_package($tree,$archive,static function(string $path,array $entry) use ($revision): string {
+                $encoded=implode('/',array_map('rawurlencode',explode('/',$path)));
+                return pm_github_read('https://raw.githubusercontent.com/efrgdgr0024345/map/'.$revision.'/'.$encoded,10*1024*1024);
+            });
+            $stats['revision']=$revision;
+            $result=pm_apply_archive($archive);
+            $result['message'].=' Downloaded '.$stats['downloaded'].' changed or missing files ('.$stats['downloadBytes'].' bytes); reused '.$stats['reused'].' local files.';
+            return array_merge($result,$stats);
+        }
         pm_download_archive($archive);
         return pm_apply_archive($archive);
     } finally {
@@ -615,14 +714,19 @@ function pm_run_setup(bool $downloadApplication = true): array
         if (!$readiness['application']) {
             throw new RuntimeException('Application files are incomplete. Use Install & set up before retrying the timetable.');
         }
-        $result['steps'][] = ['step' => 'Import official Perth timetable', 'status' => 'running', 'message' => 'Downloading and importing the official schedule. If hosting terminates this request, retry the timetable stage.'];
-        $save();
-        @set_time_limit(600);
-        require_once PM_LOADER_ROOT . '/bootstrap.php';
-        pm_progress_report(['stage'=>'timetable-start','label'=>'Preparing the Perth timetable','message'=>'Downloading and importing the official schedule.','percent'=>30,'_force'=>true]);
-        $import = (new \App\GtfsImporter())->import(null,'pm_import_progress');
-        $result['steps'][count($result['steps']) - 1] = ['step' => 'Import official Perth timetable', 'status' => 'passed', 'message' => 'Official timetable imported. ' . json_encode($import, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)];
-        $save();
+        if ($downloadApplication && $readiness['timetable']) {
+            $result['steps'][]=['step'=>'Keep current Perth timetable','status'=>'passed','message'=>'The installed timetable is current. Use Refresh timetable to download a newer feed.'];
+            $save();
+        } else {
+            $result['steps'][] = ['step' => 'Import official Perth timetable', 'status' => 'running', 'message' => 'Downloading and importing the official schedule. If hosting terminates this request, retry the timetable stage.'];
+            $save();
+            @set_time_limit(600);
+            require_once PM_LOADER_ROOT . '/bootstrap.php';
+            pm_progress_report(['stage'=>'timetable-start','label'=>'Preparing the Perth timetable','message'=>'Downloading and importing the official schedule.','percent'=>30,'_force'=>true]);
+            $import = (new \App\GtfsImporter())->import(null,'pm_import_progress');
+            $result['steps'][count($result['steps']) - 1] = ['step' => 'Import official Perth timetable', 'status' => 'passed', 'message' => 'Official timetable imported. ' . json_encode($import, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR)];
+            $save();
+        }
         pm_progress_report(['stage'=>'verify','label'=>'Verifying the completed installation','message'=>'Confirming application files and active service dates after import validation.','percent'=>96,'_force'=>true]);
         $result['readiness'] = pm_readiness();
         if (!$result['readiness']['ready']) {
@@ -687,7 +791,7 @@ Usage: php loader.php <command>
   --show-setup-token  Show the initial browser maintenance key in this terminal.
                       Available only before maintenance has been configured.
   --install           Download the app and loader, then import and verify the timetable.
-  --update            Back up and update the app and loader, then refresh the timetable.
+  --update            Download changed app files; keep the timetable when current.
   --refresh           Import and verify the timetable without downloading application files.
   --refresh-phones    Download and cache published public telephone locations.
 
@@ -1040,7 +1144,7 @@ $maintenance=$authenticated ? pm_status() : null;
 <details><summary>Recent progress</summary><ol id="progress-history" class="progress-history"></ol></details>
 <a id="progress-reload" class="button quiet progress-reload" href="loader.php" hidden>Reload verified setup status</a>
 </section>
-<section class="card"><span class="status"><?= $setupComplete ? 'Map ready · current timetable verified' : ($installed ? 'Setup incomplete · timetable needs attention' : 'Ready to install from one file') ?></span><h2 style="margin-top:16px"><?= $installed ? 'Update the complete system' : 'Install & set up your map' ?></h2><p><?= $installed ? 'Back up and update the map and loader together, then automatically refresh the official Perth timetable.' : 'This one action downloads all project files, sets up protected storage, and imports the official Perth timetable. You do not need to upload the application separately.' ?></p><p class="note">Code comes from <a href="https://github.com/efrgdgr0024345/map" rel="noreferrer">efrgdgr0024345/map</a>, branch <code>main</code>, over verified HTTPS. Your database, local <code>config.php</code>, environment files, and maintenance credentials are preserved. Replaced files, including the loader, are backed up before installation.</p><p class="note">The application code must already be published to that GitHub repository. A README-only repository is refused without changing application files. Your hosting needs outbound HTTPS access to <code>codeload.github.com</code> and the official Transperth feed.</p>
+<section class="card"><span class="status"><?= $setupComplete ? 'Map ready · current timetable verified' : ($installed ? 'Setup incomplete · timetable needs attention' : 'Ready to install from one file') ?></span><h2 style="margin-top:16px"><?= $installed ? 'Update the complete system' : 'Install & set up your map' ?></h2><p><?= $installed ? 'Download only changed or missing app files, backing up replaced files. Keep the current timetable; refresh it separately when needed.' : 'This one action downloads all project files, sets up protected storage, and imports the official Perth timetable. You do not need to upload the application separately.' ?></p><p class="note">Code comes from <a href="https://github.com/efrgdgr0024345/map" rel="noreferrer">efrgdgr0024345/map</a>, branch <code>main</code>, over verified HTTPS. Your database, local <code>config.php</code>, environment files, and maintenance credentials are preserved. Replaced files, including the loader, are backed up before installation.</p><p class="note">The application code must already be published to that GitHub repository. A README-only repository is refused without changing application files. Your hosting needs outbound HTTPS access to <code>api.github.com</code>, <code>raw.githubusercontent.com</code>, <code>codeload.github.com</code> and the official Transperth feed.</p>
 <form method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="install"><label class="confirm"><input type="checkbox" name="confirm" value="yes" required><span>Install the published GitHub version of the app and loader, with a backup of replaced files. I have saved any local code changes separately.</span></label><div class="row"><button type="submit" class="primary"><?= $installed ? 'Back up, update & set up' : 'Install & set up' ?> ↗</button><?php if ($setupComplete): ?><a class="button quiet" href="./">Open map</a><?php endif; ?></div></form>
 </section>
 <?php if (is_array($setupResult) && !empty($setupResult['steps'])): ?>
