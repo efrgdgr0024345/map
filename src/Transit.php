@@ -213,6 +213,58 @@ final class Transit
         return array_slice($out,0,30);
     }
 
+    /** GPS is request-local. Pick an actual nearby boarding stop, never a guessed road side. */
+    public function nearbyBus(array $point, ?int $now=null, string $stopId=''): array
+    {
+        $this->activeGuard(); $now ??= time();
+        $radius=100.0;
+        $q=$this->db->prepare('SELECT s.id,s.name,s.lat,s.lon FROM stops s
+            WHERE s.lat BETWEEN ? AND ? AND s.lon BETWEEN ? AND ?
+            AND EXISTS (SELECT 1 FROM stop_times st JOIN trips t ON t.id=st.trip_id JOIN routes r ON r.id=t.route_id
+                WHERE st.stop_id=s.id AND st.pickup<>1 AND (r.type=3 OR r.type BETWEEN 700 AND 799)
+                AND EXISTS (SELECT 1 FROM stop_times later WHERE later.trip_id=t.id AND later.seq>st.seq))');
+        $q->execute([$point['lat']-.001,$point['lat']+.001,$point['lon']-.002,$point['lon']+.002]);
+        $nearby=[];
+        foreach ($q as $row) {
+            $row['lat']=(float)$row['lat']; $row['lon']=(float)$row['lon'];
+            $row['distance']=Geo::distance($point,$row);
+            if ($row['distance']<=$radius) { $nearby[]=$row; }
+        }
+        usort($nearby,static fn($a,$b)=>($a['distance']<=>$b['distance']) ?: strcmp($a['id'],$b['id']));
+        $nearby=array_slice($nearby,0,12);
+        $result=['stop'=>null,'nearbyStops'=>$nearby,'departure'=>null,'geometry'=>[],'vehicle'=>null,
+            'generatedAt'=>date(DATE_ATOM,$now),'estimated'=>true,'message'=>'No bus boarding stop within 100 metres.'];
+        if (!$nearby) { return $result; }
+        $stop=$nearby[0];
+        foreach ($nearby as $candidate) { if ($candidate['id']===$stopId) { $stop=$candidate; break; } }
+        $result['stop']=$stop;
+        $departures=[];
+        foreach ($this->serviceDays($now,21600) as $day) {
+            $marks=implode(',',array_fill(0,count($day['ids']),'?'));
+            $q=$this->db->prepare("SELECT t.id trip_id,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type,st.arrival,st.departure,st.pickup
+                FROM stop_times st JOIN trips t ON t.id=st.trip_id JOIN routes r ON r.id=t.route_id
+                WHERE st.stop_id=? AND st.pickup<>1 AND (r.type=3 OR r.type BETWEEN 700 AND 799)
+                AND t.service_id IN ($marks) AND st.departure>=? AND st.departure<=?
+                AND EXISTS (SELECT 1 FROM stop_times later WHERE later.trip_id=t.id AND later.seq>st.seq)
+                ORDER BY st.departure,t.id LIMIT 1");
+            $q->execute(array_merge([$stop['id']],$day['ids'],[$now-$day['base'],$now+21600-$day['base']]));
+            if ($row=$q->fetch()) { $departures[]=array_merge($row,['base'=>$day['base'],'date'=>$day['date']]); }
+        }
+        usort($departures,static fn($a,$b)=>($a['base']+$a['departure'])<=>($b['base']+$b['departure']));
+        if (!$departures) { $result['message']='No scheduled buses from this stop in the next six hours.'; return $result; }
+        $trip=$departures[0];
+        $departure=array_merge(['tripId'=>$trip['trip_id'],'routeId'=>$trip['route_id'],'routeName'=>$trip['route_name'],
+            'headsign'=>$trip['headsign'],'mode'=>'bus','serviceDate'=>$trip['date'],'stopId'=>$stop['id'],'stopName'=>$stop['name'],
+            'arrival'=>date(DATE_ATOM,$trip['base']+(int)$trip['arrival']),
+            'departure'=>date(DATE_ATOM,$trip['base']+(int)$trip['departure']),'pickupType'=>(int)$trip['pickup']],
+            $this->routeStyle($trip['route_id'],$trip['route_name'],(int)$trip['type']));
+        $result['departure']=$departure;
+        $result['geometry']=$this->shape($trip['shape_id']);
+        $result['vehicle']=$this->approach($trip['trip_id'],$stop['id'],$now,$trip['date'],$departure['departure']);
+        $result['message']='Scheduled arrival and route. Delays and cancellations are unknown.';
+        return $result;
+    }
+
     /** In-app scheduled departures or the full stop-by-stop timetable of a trip. */
     public function timetable(string $stopId='', string $tripId='', ?int $now=null, ?string $serviceDate=null): array
     {

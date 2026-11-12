@@ -209,6 +209,21 @@ try {
         check(count(array_filter($fleet['vehicles'], static fn($v) => $v['tripId'] === 'ferry-current' && $v['mode'] === 'ferry')) >= 1, 'ferry survives overview, focused journey, and empty route filters');
     }
 
+    $nearby=$transit->nearbyBus(['lat'=>-31.95,'lon'=>115.85],$noon);
+    check($nearby['stop']['id']==='A' && $nearby['departure']['tripId']==='slow', 'nearby preview chooses the next operating bus at the nearest boarding stop');
+    check($nearby['departure']['mode']==='bus' && $nearby['vehicle']['tripId']==='slow' && $nearby['vehicle']['phase']==='not-started', 'nearby preview supplies a scheduled vehicle at its origin before departure');
+    check(count($nearby['geometry'])>=2 && $nearby['geometry'][0]===[-31.95,115.85] && end($nearby['geometry'])===[-31.95,115.95], 'nearby preview returns the exact full trip shape through its destination');
+    $terminal=$transit->nearbyBus(['lat'=>-31.95,'lon'=>116.05],$now);
+    check($terminal['stop']===null, 'terminal-only stops do not offer an unboardable incoming bus');
+    $farAway=$transit->nearbyBus(['lat'=>-31.95,'lon'=>116.02],$now);
+    check($farAway['stop']===null && $farAway['vehicle']===null, 'nearby preview never expands its 100 metre radius to invent a nearby stop');
+    $atFarStop=$transit->nearbyBus(['lat'=>-31.95,'lon'=>116.0],$now);
+    check($atFarStop['stop']['id']==='D' && $atFarStop['departure']['tripId']==='upcoming' && $atFarStop['departure']['mode']==='bus', 'nearby preview excludes departed buses and train and ferry services');
+    $afterLast=$transit->nearbyBus(['lat'=>-31.95,'lon'=>115.85],$noon+4000);
+    check($afterLast['stop']['id']==='A' && $afterLast['departure']===null && $afterLast['geometry']===[], 'nearby stop with no remaining departures gives an honest empty result');
+    $outsideChoice=$transit->nearbyBus(['lat'=>-31.95,'lon'=>115.85],$noon,'D');
+    check($outsideChoice['stop']['id']==='A', 'manual stop selection cannot bypass the proximity radius');
+
     $publishedHash = hash_file('sha256', APP_VAR . '/transit.sqlite');
     $expired = $files;
     $expired['calendar.txt'] = csv($calendarHeader, [['DAILY', 1, 1, 1, 1, 1, 1, 1, date('Ymd', $midnight - 30 * 86400), $yesterday]]);

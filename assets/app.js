@@ -51,6 +51,7 @@
     stationBrowse: null, stationBrowseCandidate: null, stationBrowseSuppressed: null,
     stationBrowseController: null, stationBrowseRequest: 0, stationBrowseLayers: null,
     stationBrowseCache: new Map(), stationBrowseTimer: null, stationBrowseReady: false,
+    nearbyBusData: null, nearbyBusLayers: null, nearbyBusMarker: null, nearbyBusController: null, nearbyBusRequest: 0, nearbyBusFetched: 0, nearbyBusPoint: null, nearbyBusStop: '', nearbyGpsRefresh: false,
     originUserChosen: false, awaitingGpsOrigin: false, fullJourneyOverview: false, externalPick: null, pickPlaceName: null
   };
   const perthTime = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Perth', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -543,6 +544,120 @@
     input.setAttribute('enterkeyhint', 'search');
   }
 
+  function nearbyBusEnabled() {
+    const p = state.userLocation;
+    return !state.selected && state.locationConsent && p && p.accuracy !== null && p.accuracy <= 80
+      && Date.now() - p.timestamp < 60000;
+  }
+
+  function clearNearbyBus() {
+    if (state.nearbyBusController) state.nearbyBusController.abort();
+    state.nearbyBusController = null;
+    state.nearbyBusRequest++;
+    state.nearbyBusData = null;
+    if (state.nearbyBusLayers) state.nearbyBusLayers.clearLayers();
+    if (state.nearbyBusMarker) {
+      if (state.nearbyBusMarker.nextstopAnimation) cancelAnimationFrame(state.nearbyBusMarker.nextstopAnimation);
+      map.removeLayer(state.nearbyBusMarker); state.nearbyBusMarker = null;
+    }
+    $('nearby-bus').hidden = true;
+    document.body.classList.remove('has-nearby-bus');
+  }
+
+  function renderNearbyBus(data) {
+    if (!nearbyBusEnabled() || !data.stop || map.distance([state.userLocation.lat, state.userLocation.lon], [data.stop.lat, data.stop.lon]) > 100) { clearNearbyBus(); return; }
+    state.nearbyBusData = data;
+    if (!map.getPane('nearbyBusRoutes')) { map.createPane('nearbyBusRoutes'); map.getPane('nearbyBusRoutes').style.zIndex = '450'; map.getPane('nearbyBusRoutes').style.pointerEvents = 'none'; }
+    if (!state.nearbyBusLayers) state.nearbyBusLayers = L.layerGroup().addTo(map);
+    state.nearbyBusLayers.clearLayers();
+    if (state.nearbyBusMarker) {
+      if (state.nearbyBusMarker.nextstopAnimation) cancelAnimationFrame(state.nearbyBusMarker.nextstopAnimation);
+      map.removeLayer(state.nearbyBusMarker); state.nearbyBusMarker = null;
+    }
+    const card = $('nearby-bus'); card.replaceChildren(); card.hidden = false;
+    document.body.classList.add('has-nearby-bus');
+    card.append(make('small', 'nearby-stop', `${data.stop.name} · ${Math.round(data.stop.distance)} m away`));
+    const bus = data.departure;
+    if (bus) {
+      styleRoute(card, bus);
+      const main = make('div', 'nearby-main');
+      main.append(make('strong', 'next-route', bus.routeName), make('strong', 'nearby-destination', bus.headsign || 'Next scheduled bus'));
+      card.append(main, make('div', 'nearby-countdown'));
+      card.append(timetableButton('View all stops', tripQuery(bus), 'nearby-action'));
+      if (Array.isArray(data.geometry) && data.geometry.length > 1) {
+        L.polyline(data.geometry, { pane: 'nearbyBusRoutes', color: '#fff', weight: 9, opacity: .95, interactive: false }).addTo(state.nearbyBusLayers);
+        L.polyline(data.geometry, { pane: 'nearbyBusRoutes', color: routeColor(bus), weight: 5, opacity: 1, interactive: false }).addTo(state.nearbyBusLayers);
+        const show = make('button', 'nearby-action', 'Show full route'); show.type = 'button';
+        show.addEventListener('click', () => {
+          pauseMapFollowing();
+          const cardTop = card.getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top;
+          const bottom = Math.max(100, Math.min(map.getSize().y * .65, map.getSize().y - cardTop + 16));
+          map.fitBounds(L.latLngBounds(data.geometry), { paddingTopLeft: [isMobile() ? 25 : 420, 90], paddingBottomRight: [80, bottom], maxZoom: 16 });
+        });
+        card.append(show);
+      } else card.append(make('small', '', 'Route geometry unavailable'));
+      const vehicle = data.vehicle;
+      if (vehicle && vehicle.position && Number.isFinite(vehicle.position.lat) && Number.isFinite(vehicle.position.lon)) {
+        const marker = L.marker([vehicle.position.lat, vehicle.position.lon], { icon: vehicleIcon(vehicle, true), zIndexOffset: 3500, bubblingMouseEvents: false }).addTo(map);
+        marker.bindPopup(servicePopup(vehicle, true));
+        state.nearbyBusMarker = marker;
+        moveMarker(marker, { ...vehicle, ...vehicle.position }, vehicle.generatedAt);
+        const duplicate = state.markers.get(String(vehicle.id));
+        if (duplicate) { if (duplicate.nextstopAnimation) cancelAnimationFrame(duplicate.nextstopAnimation); map.removeLayer(duplicate); state.markers.delete(String(vehicle.id)); }
+      }
+      if ([2, 3].includes(Number(bus.pickupType))) card.append(make('small', '', 'Booking or driver arrangement may be required'));
+    } else card.append(make('strong', '', data.message));
+    card.append(make('small', 'nearby-note', 'Timetable estimate · delays and cancellations unknown'));
+    if (data.nearbyStops.length > 1) {
+      const label = make('label', 'nearby-stop-switch', 'Nearby stop ');
+      const select = make('select');
+      for (const stop of data.nearbyStops) {
+        const option = make('option', '', `${stop.name} (${Math.round(stop.distance)} m)`); option.value = stop.id; option.selected = stop.id === data.stop.id; select.append(option);
+      }
+      select.addEventListener('change', () => { state.nearbyBusStop = select.value; fetchNearbyBus(true); });
+      label.append(select); card.append(label);
+    }
+    updateNearbyBusCountdown();
+  }
+
+  function updateNearbyBusCountdown() {
+    const data = state.nearbyBusData;
+    if (!data) return;
+    if (!nearbyBusEnabled() || Date.now() - timeValue(data.generatedAt) > 45000) { clearNearbyBus(); return; }
+    const bus = data.departure;
+    const node = $('nearby-bus').querySelector('.nearby-countdown');
+    if (!bus || !node) return;
+    const seconds = Math.max(0, Math.ceil((timeValue(bus.arrival) - Date.now()) / 1000));
+    node.textContent = seconds > 0 ? `Next bus in ${Math.ceil(seconds / 60)} min · scheduled ${clock(bus.arrival)}` : `Scheduled at stop · departs ${clock(bus.departure)}`;
+    if (timeValue(bus.departure) < Date.now()) { clearNearbyBus(); if (!document.hidden) fetchNearbyBus(true); }
+  }
+
+  async function fetchNearbyBus(force = false) {
+    if (!map || document.hidden) return;
+    if (!state.selected && state.locationConsent && state.userLocation && Date.now() - state.userLocation.timestamp > 45000 && navigator.geolocation && !state.nearbyGpsRefresh) {
+      state.nearbyGpsRefresh = true;
+      navigator.geolocation.getCurrentPosition(position => { state.nearbyGpsRefresh = false; updateUserLocation(position); }, error => { state.nearbyGpsRefresh = false; handleLocationError(error); }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+    }
+    if (!nearbyBusEnabled()) { clearNearbyBus(); return; }
+    const p = state.userLocation;
+    const moved = !state.nearbyBusPoint || map.distance([p.lat, p.lon], [state.nearbyBusPoint.lat, state.nearbyBusPoint.lon]) > 25;
+    if (state.nearbyBusData?.stop && map.distance([p.lat, p.lon], [state.nearbyBusData.stop.lat, state.nearbyBusData.stop.lon]) > 100) { clearNearbyBus(); state.nearbyBusStop = ''; }
+    if (!force && !moved && Date.now() - state.nearbyBusFetched < 14000) return;
+    if (state.nearbyBusController) state.nearbyBusController.abort();
+    const controller = new AbortController(); state.nearbyBusController = controller;
+    const request = ++state.nearbyBusRequest;
+    state.nearbyBusFetched = Date.now(); state.nearbyBusPoint = p;
+    try {
+      const data = await api('nearby-bus', { at: `${p.lat},${p.lon}`, stop: state.nearbyBusStop }, controller.signal);
+      if (request !== state.nearbyBusRequest || !nearbyBusEnabled()) return;
+      if (map.distance([p.lat, p.lon], [state.userLocation.lat, state.userLocation.lon]) > 25) return;
+      renderNearbyBus(data);
+    } catch (error) {
+      if (error.name === 'AbortError' || request !== state.nearbyBusRequest) return;
+      clearNearbyBus();
+    } finally { if (state.nearbyBusController === controller) state.nearbyBusController = null; }
+  }
+
   function updateUserLocation(position) {
     const accuracy = Number(position.coords.accuracy);
     const point = { lat: Number(position.coords.latitude), lon: Number(position.coords.longitude), accuracy: Number.isFinite(accuracy) && accuracy > 0 ? accuracy : null, timestamp: Number(position.timestamp) || Date.now() };
@@ -579,6 +694,7 @@
     if (state.guidance) fitStationGuidance(false);
     else if (state.selected && state.followJourney && !state.pickField) fitJourneyBounds(state.selected, false);
     maybeAutoGuidance();
+    fetchNearbyBus(!previous || previous.accuracy === null || previous.accuracy > 80 || Date.now() - previous.timestamp >= 60000);
     return true;
   }
 
@@ -593,6 +709,7 @@
     $('gps-status').hidden = false;
     if (error.code === 1) {
       state.locationConsent = false;
+      clearNearbyBus();
       stopLocationWatch();
       $('gps-status').textContent = 'GPS blocked';
       mapToast('Location is blocked. Enable it in your browser.', true, { label: 'Retry', run: locate });
@@ -1523,6 +1640,7 @@
     clearStationBrowse(false);
     if (state.guidance) exitStationGuidance(false);
     clearApproach();
+    clearNearbyBus();
     state.selected = journey;
     state.fullJourneyOverview = false;
     state.firstWalkFocus = false;
@@ -1810,7 +1928,7 @@
     $('plan-button').disabled = false;
     $('plan-button').firstElementChild.textContent = 'Find my next ride';
     if (showMessage) message('Back to the network. Choose a destination to plan another journey.');
-    if (map) fetchVehicles();
+    if (map) { fetchVehicles(); fetchNearbyBus(true); }
     drawNetworkLines();
     updateLauncher();
     scheduleStationBrowse();
@@ -1915,6 +2033,7 @@
     state.vehicles.forEach(vehicle => {
       if (!Number.isFinite(Number(vehicle.lat)) || !Number.isFinite(Number(vehicle.lon))) return;
       const id = String(vehicle.id || vehicle.tripId);
+      if (state.nearbyBusMarker && state.nearbyBusData?.vehicle && String(state.nearbyBusData.vehicle.id) === id) return;
       const incoming = approachVehicle();
       if (incoming && state.approachMarker && String(incoming.id) === id) return;
       retained.add(id);
@@ -2167,10 +2286,10 @@
     $('map-zoom-out').addEventListener('click', () => { pauseMapFollowing(); map.zoomOut(); });
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        fetchVehicles(); loadStatus(); startLocationWatch(); fetchApproach();
+        fetchVehicles(); loadStatus(); startLocationWatch(); fetchApproach(); fetchNearbyBus(true);
         if (!state.routeCatalog) { state.routeRetryCount = 0; refreshRouteCatalog(); }
       } else {
-        stopLocationWatch(); clearTimeout(state.routeRetryTimer);
+        stopLocationWatch(); clearNearbyBus(); clearTimeout(state.routeRetryTimer);
         state.markers.forEach(marker => { if (marker.nextstopAnimation) cancelAnimationFrame(marker.nextstopAnimation); });
       }
     });
@@ -2184,15 +2303,15 @@
       navigator.permissions.query({ name: 'geolocation' }).then(permission => {
         const apply = () => {
           if (permission.state === 'granted') { state.locationConsent = true; state.awaitingGpsOrigin = !state.originUserChosen; startLocationWatch(); }
-          else if (permission.state === 'denied') { state.locationConsent = false; stopLocationWatch(); }
+          else if (permission.state === 'denied') { state.locationConsent = false; clearNearbyBus(); stopLocationWatch(); }
         };
         apply();
         if (permission.addEventListener) permission.addEventListener('change', apply);
       }).catch(() => {});
     }
-    setInterval(() => { updateClock(); updateNextService(); updateLauncher(); if (!document.hidden) { fetchVehicles(); fetchApproach(); } }, 15000);
+    setInterval(() => { updateClock(); updateNextService(); updateLauncher(); if (!document.hidden) { fetchVehicles(); fetchApproach(); fetchNearbyBus(); } }, 15000);
     setInterval(() => {
-      updateLeaveWidget(); updateBoardingCountdown();
+      updateLeaveWidget(); updateBoardingCountdown(); updateNearbyBusCountdown();
       updateGuidanceTarget();
       if (!document.hidden) maybeAutoGuidance();
       if (state.approachData) {

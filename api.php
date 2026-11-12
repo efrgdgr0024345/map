@@ -107,6 +107,13 @@ try {
             if (count($parts)!==4 || count(array_filter($parts,'is_numeric'))!==4) { throw new InvalidArgumentException('Invalid map bounds.'); }
             $result=App\Payphones::inBounds(array_map('floatval',$parts));
             break;
+        case 'nearby-bus':
+            $location=point((string)($_GET['at'] ?? ''));
+            $stop=trim((string)($_GET['stop'] ?? ''));
+            if (strlen($stop)>200) { throw new InvalidArgumentException('Invalid stop.'); }
+            $result=$service instanceof App\Transit ? $service->nearbyBus($location,null,$stop)
+                : ['stop'=>null,'nearbyStops'=>[],'departure'=>null,'geometry'=>[],'vehicle'=>null,'message'=>'Import the official timetable to find nearby buses.'];
+            break;
         case 'approach':
             $trip=trim((string)($_GET['trip'] ?? '')); $stop=trim((string)($_GET['stop'] ?? ''));
             if (strlen($trip)>200 || strlen($stop)>200) { throw new InvalidArgumentException('Invalid stop or service.'); }
