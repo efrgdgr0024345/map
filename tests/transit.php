@@ -89,7 +89,7 @@ try {
         ['D', 'Far stop', -31.95, 116.00],
         ['E', 'Farther stop', -31.95, 116.05],
     ];
-    $routes = [['FAST', 'Fast', 3], ['SLOW', 'Slow', 3], ['SECOND', 'Second', 3], ['NETWORK', 'Network', 3], ['RAIL', 'Rail', 2]];
+    $routes = [['FAST', 'Fast', 3], ['SLOW', 'Slow', 3], ['SECOND', 'Second', 3], ['NETWORK', 'Network', 3], ['RAIL', 'Rail', 2], ['FERRY', 'Ferry', 4]];
     $trips = [];
     $times = [];
     $addTrip = static function (string $id, string $route, string $service, array $events, string $shape = '') use (&$trips, &$times): void {
@@ -111,6 +111,7 @@ try {
     $addTrip('other-current', 'NETWORK', 'DAILY', [['D', max(0, $liveSeconds - 400)], ['E', $liveSeconds + 400]], 'DE');
     $addTrip('upcoming', 'NETWORK', 'DAILY', [['D', $liveSeconds + 600], ['E', $liveSeconds + 1200]], 'DE');
     $addTrip('train-current', 'RAIL', 'DAILY', [['D', $liveStart], ['E', $liveEnd]], 'DE');
+    $addTrip('ferry-current', 'FERRY', 'DAILY', [['D', $liveStart], ['E', $liveEnd]], 'DE');
 
     $calendarHeader = ['service_id', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday', 'start_date', 'end_date'];
     $shapeRows = [
@@ -136,7 +137,7 @@ try {
     $feed = $isolated . '/fixture.zip';
     archive($feed, $files);
     $imported = (new GtfsImporter())->import($feed);
-    check($imported['counts']['stops'] === 5 && $imported['counts']['trips'] === 11 && $imported['counts']['stop_times'] === 22, 'synthetic GTFS imported with expected record counts');
+    check($imported['counts']['stops'] === 5 && $imported['counts']['trips'] === 12 && $imported['counts']['stop_times'] === 24, 'synthetic GTFS imported with expected record counts');
     check($imported['validUntil'] === $end && is_file(APP_VAR . '/transit.sqlite'), 'validated timetable published to isolated database');
 
     $transit = new Transit();
@@ -198,11 +199,15 @@ try {
     check(count(array_filter($all['vehicles'], static fn($v) => $v['tripId'] === 'train-current' && $v['mode'] === 'train')) >= 1, 'network view includes an operating train with the correct mode');
 
     $railOnly = $transit->vehicles($bbox, ['NETWORK'], '', false, 'only');
-    check(count($railOnly['vehicles']) >= 1 && count(array_filter($railOnly['vehicles'], static fn($v) => $v['mode'] !== 'train')) === 0, 'overview request includes trains and excludes buses even with a focused route filter');
+    check(count($railOnly['vehicles']) >= 1 && count(array_filter($railOnly['vehicles'], static fn($v) => !in_array($v['mode'], ['train', 'ferry'], true))) === 0, 'overview request includes trains and ferries and excludes buses even with a focused route filter');
     $withRail = $transit->vehicles($bbox, ['NETWORK'], '', false, 'always');
     check(count(array_filter($withRail['vehicles'], static fn($v) => $v['tripId'] === 'train-current')) >= 1 && count(array_filter($withRail['vehicles'], static fn($v) => $v['tripId'] === 'current')) >= 1, 'focused journey request retains both its buses and other train lines');
     $walkingRail = $transit->vehicles($bbox, ['missing-route'], '', false, 'always');
-    check(count($walkingRail['vehicles']) >= 1 && count(array_filter($walkingRail['vehicles'], static fn($v) => $v['mode'] !== 'train')) === 0, 'trains remain available when selected routes have no services');
+    check(count($walkingRail['vehicles']) >= 1 && count(array_filter($walkingRail['vehicles'], static fn($v) => !in_array($v['mode'], ['train', 'ferry'], true))) === 0, 'trains and ferries remain available when selected routes have no services');
+
+    foreach ([$railOnly, $withRail, $walkingRail] as $fleet) {
+        check(count(array_filter($fleet['vehicles'], static fn($v) => $v['tripId'] === 'ferry-current' && $v['mode'] === 'ferry')) >= 1, 'ferry survives overview, focused journey, and empty route filters');
+    }
 
     $publishedHash = hash_file('sha256', APP_VAR . '/transit.sqlite');
     $expired = $files;
@@ -239,6 +244,10 @@ try {
     usort($expectedShapes, static fn($a, $b) => [$a[0], $a[3]] <=> [$b[0], $b[3]]);
     check($spacedResult['counts']['shapes'] === count($shapeRows) && $actualShapes === $expectedShapes, 'official whitespace-padded shapes headers preserve every latitude, longitude and sequence');
     $shapeDb = null;
+    foreach ([$railOnly, $withRail, $walkingRail] as $fleet) {
+        check(count(array_filter($fleet['vehicles'], static fn($v) => $v['tripId'] === 'ferry-current' && $v['mode'] === 'ferry')) >= 1, 'ferry survives overview, focused journey, and empty route filters');
+    }
+
     $publishedHash = hash_file('sha256', APP_VAR . '/transit.sqlite');
 
     $missingColumn = $spaced;

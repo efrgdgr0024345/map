@@ -1,12 +1,12 @@
 # Nextstop — Perth in motion
 
-A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and OpenStreetMap. Your selected bus/train has a bright **YOUR NEXT BUS / TRAIN** marker. Other vehicles on the same line stay visible, so you can see the service behind it. Unrelated bus lines disappear when you select a journey; train lines remain visible; a switch brings back the network.
+A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and OpenStreetMap. Your selected bus/train has a bright **YOUR NEXT BUS / TRAIN** marker. Other vehicles on the same line stay visible, so you can see the service behind it. Unrelated bus lines disappear when you select a journey; train and ferry lines remain visible; a switch brings back the network.
 
 ## What works
 
 - Phone GPS with permission, searchable start/destination addresses with suggestions, or map clicks and draggable pins. Selecting a location field opens a clear map picker; confirming a point returns to the form. With both locations selected, the ride search starts automatically. GPS keeps watching for better high-accuracy fixes before a journey is selected; stale cached fixes do not freeze the location. The compact accuracy indicator/circle reflects the device's reported uncertainty.
 - Map-area vehicle and stop updates every 15 seconds.
-- Phone and laptop start at street zoom 16. Train lines and estimated train positions stay visible at every zoom, including journey and station views. Zooming out hides buses and other general network lines; train requests continue every 15 seconds. Follow mode stays at a local zoom around the current walking/vehicle leg; **Overview** fits the full journey.
+- Phone and laptop start at street zoom 16. Train and ferry lines and estimated positions stay visible at every zoom, including journey and station views. Zooming out hides buses and other general network lines; train and ferry requests continue every 15 seconds. Follow mode stays at a local zoom around the current walking/vehicle leg; **Overview** fits the full journey.
 - Official rail, CAT and bus route colours, clear vehicle symbols and directional arrows.
 - Focused journey view, walking legs, transfers, boarding countdown and a later service alternative when found. Follow mode fits the remaining journey, selected service, consented GPS position and destination; exploring the map pauses following until you recenter.
 - In-app departure boards and full stop-by-stop service timetables, including service-day and after-midnight times. Tap a stop, vehicle, itinerary action or **View timetable** on your next-service card.

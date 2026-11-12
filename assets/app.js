@@ -263,13 +263,13 @@
 
   function drawNetworkLines() {
     if (!map || !networkLayers) return;
-    const trainsOnly = map.getZoom() < STREET_ZOOM || state.stationBrowse || (state.selected && !state.wholeNetwork);
+    const trainsAndFerriesOnly = map.getZoom() < STREET_ZOOM || state.stationBrowse || (state.selected && !state.wholeNetwork);
     const catalog = state.routeCatalog || state.fallbackLines;
     if (!catalog.length) return;
     const bounds = map.getBounds().pad(.15);
     const visible = [];
     catalog.forEach((line, index) => {
-      if (trainsOnly && line.mode !== 'train') return;
+      if (trainsAndFerriesOnly && !['train', 'ferry'].includes(line.mode)) return;
       const bbox = line.bbox;
       if (Array.isArray(bbox) && bbox.length === 4 && (bbox[2] < bounds.getWest() || bbox[0] > bounds.getEast() || bbox[3] < bounds.getSouth() || bbox[1] > bounds.getNorth())) return;
       if (Array.isArray(line.geometry) && line.geometry.length > 1) visible.push([line, index]);
@@ -816,7 +816,7 @@
 
   function renderApproachVehicle() {
     const vehicle = approachVehicle();
-    if (map.getZoom() < STREET_ZOOM && vehicle?.mode !== 'train') return;
+    if (map.getZoom() < STREET_ZOOM && !['train', 'ferry'].includes(vehicle?.mode)) return;
     if (!vehicle) return;
     // One highlighted marker per selected service, regardless of which request
     // finishes first or whether the larger fleet request succeeds.
@@ -1960,7 +1960,7 @@
     const count = state.vehicles.length;
     const demo = state.status && state.status.mode === 'demo';
     $('network-count').textContent = `${count}${data.truncated ? '+' : ''} ${count === 1 ? 'service' : 'services'} ${demo ? 'in demo' : 'scheduled now'}`;
-    $('network-detail').textContent = data.truncated ? 'Zoom in to see all services in an area' : state.selected && !state.wholeNetwork ? 'Your selected lines and trains · updates every 15 sec' : 'In this map area · updates every 15 sec';
+    $('network-detail').textContent = data.truncated ? 'Zoom in to see all services in an area' : state.selected && !state.wholeNetwork ? 'Your selected lines, trains and ferries · updates every 15 sec' : 'In this map area · updates every 15 sec';
   }
 
   async function fetchVehicles() {

@@ -15,7 +15,7 @@ final class Demo
     public function __construct()
     {
         foreach ($this->lines as &$line) {
-            $style=NetworkStyle::forRoute($line['routeName'],$line['mode']==='train' ? 2 : 3);
+            $style=NetworkStyle::forRoute($line['routeName'],match ($line['mode']) { 'train'=>2, 'ferry'=>4, default=>3 });
             $line+=['routeColor'=>$style['color'],'routeTextColor'=>$style['textColor'],'lineName'=>$style['lineName'],'colorSource'=>$style['colorSource']];
         }
         unset($line);
@@ -30,8 +30,8 @@ final class Demo
     {
         $vehicles=[]; $stops=[]; $lines=[];
         foreach ($this->lines as $line) {
-            if ($rail==='only' && $line['mode']!=='train') { continue; }
-            if ($routes && !in_array($line['routeId'], $routes, true) && !($rail==='always' && $line['mode']==='train')) { continue; }
+            if ($rail==='only' && !in_array($line['mode'],['train','ferry'],true)) { continue; }
+            if ($routes && !in_array($line['routeId'], $routes, true) && !($rail==='always' && in_array($line['mode'],['train','ferry'],true))) { continue; }
             if ($includeLines) { $lines[]=$line; }
             for ($i=0; $i<5; $i++) {
                 $progress=fmod(time()/2400+$i/5,1);
