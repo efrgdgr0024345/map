@@ -98,7 +98,7 @@ final class Transit
         return $this->stops[$id]=$r;
     }
 
-    public function vehicles(array $bbox,array $routes=[],string $selected='',bool $includeLines=true): array
+    public function vehicles(array $bbox,array $routes=[],string $selected='',bool $includeLines=true,string $rail=''): array
     {
         $this->activeGuard();
         $now=time(); $vehicles=[]; $lines=[]; $truncated=false;
@@ -106,10 +106,16 @@ final class Transit
             $marks=implode(',',array_fill(0,count($day['ids']),'?'));
             $sql="SELECT t.*,r.name route_name,r.type FROM trips t JOIN routes r ON r.id=t.route_id WHERE t.service_id IN ($marks) AND ((t.start<=? AND t.end>=?) OR t.id=?)";
             $args=array_merge($day['ids'],[$now-$day['base'],$now-$day['base'],$selected]);
-            if ($routes) { $sql.=' AND t.route_id IN ('.implode(',',array_fill(0,count($routes),'?')).')'; $args=array_merge($args,$routes); }
+            if ($rail==='only') { $sql.=' AND r.type=2'; }
+            elseif ($routes) {
+                $sql.=' AND (t.route_id IN ('.implode(',',array_fill(0,count($routes),'?')).')'.($rail==='always' ? ' OR r.type=2' : '').')';
+                $args=array_merge($args,$routes);
+            }
+            // Rail is never dropped by the general fleet cap.
+            $sql.=' ORDER BY CASE WHEN r.type=2 THEN 0 ELSE 1 END,t.id';
             $q=$this->db->prepare($sql); $q->execute($args);
             foreach ($q as $trip) {
-                if (count($vehicles)>=700 && $trip['id']!==$selected) { $truncated=true; continue; }
+                if (count($vehicles)>=700 && (int)$trip['type']!==2 && $trip['id']!==$selected) { $truncated=true; continue; }
                 $seconds=$now-$day['base'];
                 // Selected upcoming vehicles wait at their first stop; never invent earlier GPS movement.
                 if ($seconds<$trip['start'] && $trip['start']-$seconds>3600) { continue; }

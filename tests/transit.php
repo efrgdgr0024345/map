@@ -197,6 +197,13 @@ try {
     $all = $transit->vehicles($bbox);
     check(count(array_filter($all['vehicles'], static fn($v) => $v['tripId'] === 'train-current' && $v['mode'] === 'train')) >= 1, 'network view includes an operating train with the correct mode');
 
+    $railOnly = $transit->vehicles($bbox, ['NETWORK'], '', false, 'only');
+    check(count($railOnly['vehicles']) >= 1 && count(array_filter($railOnly['vehicles'], static fn($v) => $v['mode'] !== 'train')) === 0, 'overview request includes trains and excludes buses even with a focused route filter');
+    $withRail = $transit->vehicles($bbox, ['NETWORK'], '', false, 'always');
+    check(count(array_filter($withRail['vehicles'], static fn($v) => $v['tripId'] === 'train-current')) >= 1 && count(array_filter($withRail['vehicles'], static fn($v) => $v['tripId'] === 'current')) >= 1, 'focused journey request retains both its buses and other train lines');
+    $walkingRail = $transit->vehicles($bbox, ['missing-route'], '', false, 'always');
+    check(count($walkingRail['vehicles']) >= 1 && count(array_filter($walkingRail['vehicles'], static fn($v) => $v['mode'] !== 'train')) === 0, 'trains remain available when selected routes have no services');
+
     $publishedHash = hash_file('sha256', APP_VAR . '/transit.sqlite');
     $expired = $files;
     $expired['calendar.txt'] = csv($calendarHeader, [['DAILY', 1, 1, 1, 1, 1, 1, 1, date('Ymd', $midnight - 30 * 86400), $yesterday]]);

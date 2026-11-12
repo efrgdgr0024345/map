@@ -85,7 +85,7 @@ try {
             $bbox=array_map('floatval',$bbox);
             if ($bbox[0]>=$bbox[2] || $bbox[1]>=$bbox[3] || $bbox[0]<-180 || $bbox[2]>180 || $bbox[1]<-90 || $bbox[3]>90) { throw new InvalidArgumentException('Invalid map bounds.'); }
             $routes=array_values(array_filter(explode(',',substr((string)($_GET['routes'] ?? ''),0,2000))));
-            $result=$service->vehicles($bbox,$routes,substr((string)($_GET['journey'] ?? ''),0,200),($_GET['lines'] ?? '')!=='0');
+            $result=$service->vehicles($bbox,$routes,substr((string)($_GET['journey'] ?? ''),0,200),($_GET['lines'] ?? '')!=='0',in_array($_GET['rail'] ?? '', ['only','always'],true) ? $_GET['rail'] : '');
             break;
         case 'plan':
             $from=point((string)($_GET['from'] ?? '')); $to=point((string)($_GET['to'] ?? ''));

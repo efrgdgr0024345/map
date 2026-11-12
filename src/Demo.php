@@ -26,11 +26,12 @@ final class Demo
         return ['mode'=>'demo','timezone'=>'Australia/Perth','updatedAt'=>null,'realtime'=>false,'message'=>self::MESSAGE];
     }
 
-    public function vehicles(array $bbox, array $routes = [], string $journey = '',bool $includeLines=true): array
+    public function vehicles(array $bbox, array $routes = [], string $journey = '',bool $includeLines=true,string $rail=''): array
     {
         $vehicles=[]; $stops=[]; $lines=[];
         foreach ($this->lines as $line) {
-            if ($routes && !in_array($line['routeId'], $routes, true)) { continue; }
+            if ($rail==='only' && $line['mode']!=='train') { continue; }
+            if ($routes && !in_array($line['routeId'], $routes, true) && !($rail==='always' && $line['mode']==='train')) { continue; }
             if ($includeLines) { $lines[]=$line; }
             for ($i=0; $i<5; $i++) {
                 $progress=fmod(time()/2400+$i/5,1);

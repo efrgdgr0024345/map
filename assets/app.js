@@ -263,26 +263,13 @@
 
   function drawNetworkLines() {
     if (!map || !networkLayers) return;
-    if (map.getZoom() < STREET_ZOOM) {
-      networkLayers.clearLayers(); state.renderedNetworkKey = 'zoomed-out'; $('map').dataset.networkLines = '0'; return;
-    }
-    if (state.stationBrowse) {
-      if (state.renderedNetworkKey !== 'station-browse') networkLayers.clearLayers();
-      state.renderedNetworkKey = 'station-browse';
-      $('map').dataset.networkLines = '0';
-      return;
-    }
-    if (state.selected && !state.wholeNetwork) {
-      if (state.renderedNetworkKey !== 'focused') networkLayers.clearLayers();
-      state.renderedNetworkKey = 'focused';
-      $('map').dataset.networkLines = '0';
-      return;
-    }
+    const trainsOnly = map.getZoom() < STREET_ZOOM || state.stationBrowse || (state.selected && !state.wholeNetwork);
     const catalog = state.routeCatalog || state.fallbackLines;
     if (!catalog.length) return;
     const bounds = map.getBounds().pad(.15);
     const visible = [];
     catalog.forEach((line, index) => {
+      if (trainsOnly && line.mode !== 'train') return;
       const bbox = line.bbox;
       if (Array.isArray(bbox) && bbox.length === 4 && (bbox[2] < bounds.getWest() || bbox[0] > bounds.getEast() || bbox[3] < bounds.getSouth() || bbox[1] > bounds.getNorth())) return;
       if (Array.isArray(line.geometry) && line.geometry.length > 1) visible.push([line, index]);
@@ -828,8 +815,8 @@
   }
 
   function renderApproachVehicle() {
-    if (map.getZoom() < STREET_ZOOM) return;
     const vehicle = approachVehicle();
+    if (map.getZoom() < STREET_ZOOM && vehicle?.mode !== 'train') return;
     if (!vehicle) return;
     // One highlighted marker per selected service, regardless of which request
     // finishes first or whether the larger fleet request succeeds.
@@ -1918,13 +1905,6 @@
   }
 
   function renderVehicles(data) {
-    if (map.getZoom() < STREET_ZOOM) {
-      if (state.approachLayers) state.approachLayers.clearLayers();
-      state.markers.forEach(marker => { if (marker.nextstopAnimation) cancelAnimationFrame(marker.nextstopAnimation); map.removeLayer(marker); });
-      state.markers.clear(); state.vehicles = []; stopLayers.clearLayers();
-      if (state.approachMarker) { if (state.approachMarker.nextstopAnimation) cancelAnimationFrame(state.approachMarker.nextstopAnimation); map.removeLayer(state.approachMarker); state.approachMarker = null; }
-      $('network-count').textContent = 'Zoom in to see services'; $('network-detail').textContent = 'Street view shows buses and trains'; return;
-    }
     state.vehicles = Array.isArray(data.vehicles) ? data.vehicles : [];
     updateNextService();
     if (state.selected && state.needsJourneyFit) {
@@ -1979,9 +1959,8 @@
     }
     const count = state.vehicles.length;
     const demo = state.status && state.status.mode === 'demo';
-    const walkingOnly = state.selected && transitLegs().length === 0 && !state.wholeNetwork;
-    $('network-count').textContent = walkingOnly ? 'Your walking route' : `${count}${data.truncated ? '+' : ''} ${count === 1 ? 'service' : 'services'} ${demo ? 'in demo' : 'scheduled now'}`;
-    $('network-detail').textContent = walkingOnly ? 'Transport services hidden for this journey' : data.truncated ? 'Zoom in to see all services in an area' : state.selected && !state.wholeNetwork ? 'On your selected line · in this map area' : 'In this map area · updates every 15 sec';
+    $('network-count').textContent = `${count}${data.truncated ? '+' : ''} ${count === 1 ? 'service' : 'services'} ${demo ? 'in demo' : 'scheduled now'}`;
+    $('network-detail').textContent = data.truncated ? 'Zoom in to see all services in an area' : state.selected && !state.wholeNetwork ? 'Your selected lines and trains · updates every 15 sec' : 'In this map area · updates every 15 sec';
   }
 
   async function fetchVehicles() {
@@ -1989,13 +1968,8 @@
     if (state.vehicleController) state.vehicleController.abort();
     state.vehicleController = new AbortController();
     const request = ++state.requestNumber;
-    if (map.getZoom() < STREET_ZOOM) { renderVehicles({ vehicles: [], stops: [], lines: [] }); return; }
-    if (state.selected && transitLegs().length === 0 && !state.wholeNetwork) {
-      renderVehicles({ vehicles: [], stops: [], lines: [] });
-      return;
-    }
     const bounds = map.getBounds();
-    const params = { bbox: [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()].join(','), lines: '0' };
+    const params = { bbox: [bounds.getWest(), bounds.getSouth(), bounds.getEast(), bounds.getNorth()].join(','), lines: '0', rail: map.getZoom() < STREET_ZOOM || (state.selected && transitLegs().length === 0 && !state.wholeNetwork) ? 'only' : 'always' };
     if (state.selected && !state.wholeNetwork) params.routes = [...new Set(transitLegs().map(leg => leg.routeId).filter(value => value !== undefined))].join(',');
     const leg = nextLeg();
     if (leg && leg.tripId) params.journey = leg.tripId;
