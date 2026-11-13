@@ -102,6 +102,13 @@ try {
             if ($deadline!==null && $deadline<=$at) { throw new InvalidArgumentException('Arrival must be after departure.'); }
             $result=App\StreetJourneys::plan($service,$from,$to,$at,null,null,$deadline,max(0,$at-$now));
             break;
+        case 'toilets':
+            $bounds=explode(',',(string)($_GET['bbox'] ?? '115.65,-32.2,116.1,-31.7'));
+            $result=App\Toilets::inBounds($bounds);
+            break;
+        case 'toilet':
+            $result=App\Toilets::detail((string)($_GET['id'] ?? ''));
+            break;
         case 'phones':
             $parts=explode(',',(string)($_GET['bbox'] ?? '115.65,-32.2,116.1,-31.7'));
             if (count($parts)!==4 || count(array_filter($parts,'is_numeric'))!==4) { throw new InvalidArgumentException('Invalid map bounds.'); }
@@ -111,7 +118,7 @@ try {
             $location=point((string)($_GET['at'] ?? ''));
             $stop=trim((string)($_GET['stop'] ?? ''));
             if (strlen($stop)>200) { throw new InvalidArgumentException('Invalid stop.'); }
-            $result=$service instanceof App\Transit ? $service->nearbyBus($location,null,$stop)
+            $result=$service instanceof App\Transit ? $service->nearbyBus($location,null,$stop,substr((string)($_GET['service'] ?? ''),0,100))
                 : ['stop'=>null,'nearbyStops'=>[],'departure'=>null,'geometry'=>[],'vehicle'=>null,'message'=>'Import the official timetable to find nearby buses.'];
             break;
         case 'approach':

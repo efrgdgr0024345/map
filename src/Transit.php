@@ -213,55 +213,80 @@ final class Transit
         return array_slice($out,0,30);
     }
 
-    /** GPS is request-local. Pick an actual nearby boarding stop, never a guessed road side. */
-    public function nearbyBus(array $point, ?int $now=null, string $stopId=''): array
+    /** Next services in each destination group at the nearest stops for each mode. */
+    public function nearbyBus(array $point, ?int $now=null, string $stopId='', string $serviceKey=''): array
     {
         $this->activeGuard(); $now ??= time();
-        $radius=100.0;
-        $q=$this->db->prepare('SELECT s.id,s.name,s.lat,s.lon FROM stops s
+        $supported='(r.type IN (0,1,2,3,4) OR r.type BETWEEN 100 AND 199 OR r.type BETWEEN 700 AND 799 OR r.type BETWEEN 1000 AND 1099)';
+        $q=$this->db->prepare("SELECT s.id,s.name,s.lat,s.lon FROM stops s
             WHERE s.lat BETWEEN ? AND ? AND s.lon BETWEEN ? AND ?
             AND EXISTS (SELECT 1 FROM stop_times st JOIN trips t ON t.id=st.trip_id JOIN routes r ON r.id=t.route_id
-                WHERE st.stop_id=s.id AND st.pickup<>1 AND (r.type=3 OR r.type BETWEEN 700 AND 799)
-                AND EXISTS (SELECT 1 FROM stop_times later WHERE later.trip_id=t.id AND later.seq>st.seq))');
-        $q->execute([$point['lat']-.001,$point['lat']+.001,$point['lon']-.002,$point['lon']+.002]);
+                WHERE st.stop_id=s.id AND st.pickup<>1 AND $supported
+                AND EXISTS (SELECT 1 FROM stop_times later WHERE later.trip_id=t.id AND later.seq>st.seq))");
+        $q->execute([$point['lat']-.0046,$point['lat']+.0046,$point['lon']-.006,$point['lon']+.006]);
         $nearby=[];
         foreach ($q as $row) {
-            $row['lat']=(float)$row['lat']; $row['lon']=(float)$row['lon'];
-            $row['distance']=Geo::distance($point,$row);
-            if ($row['distance']<=$radius) { $nearby[]=$row; }
+            $row['lat']=(float)$row['lat']; $row['lon']=(float)$row['lon']; $row['distance']=Geo::distance($point,$row);
+            if ($row['distance']<=500) { $nearby[]=$row; }
         }
         usort($nearby,static fn($a,$b)=>($a['distance']<=>$b['distance']) ?: strcmp($a['id'],$b['id']));
-        $nearby=array_slice($nearby,0,12);
-        $result=['stop'=>null,'nearbyStops'=>$nearby,'departure'=>null,'geometry'=>[],'vehicle'=>null,
-            'generatedAt'=>date(DATE_ATOM,$now),'estimated'=>true,'message'=>'No bus boarding stop within 100 metres.'];
+        $limited=count($nearby)>256; $nearby=array_slice($nearby,0,256);
+        $result=['stop'=>$nearby[0] ?? null,'nearbyStops'=>$nearby,'departure'=>null,'geometry'=>[],'vehicle'=>null,'services'=>[],
+            'generatedAt'=>date(DATE_ATOM,$now),'estimated'=>true,'radius'=>500,'truncated'=>$limited,
+            'message'=>$nearby ? 'No scheduled departures from nearby stops in the next six hours.' : 'No boarding stop within 500 metres.'];
         if (!$nearby) { return $result; }
-        $stop=$nearby[0];
-        foreach ($nearby as $candidate) { if ($candidate['id']===$stopId) { $stop=$candidate; break; } }
-        $result['stop']=$stop;
-        $departures=[];
+        $stops=array_column($nearby,null,'id'); $rows=[];
+        $stopMarks=implode(',',array_fill(0,count($nearby),'?'));
         foreach ($this->serviceDays($now,21600) as $day) {
             $marks=implode(',',array_fill(0,count($day['ids']),'?'));
-            $q=$this->db->prepare("SELECT t.id trip_id,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type,st.arrival,st.departure,st.pickup
+            $q=$this->db->prepare("SELECT t.id trip_id,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type,st.stop_id,st.arrival,st.departure,st.pickup,
+                (SELECT last.stop_id FROM stop_times last WHERE last.trip_id=t.id ORDER BY last.seq DESC LIMIT 1) terminal_id
                 FROM stop_times st JOIN trips t ON t.id=st.trip_id JOIN routes r ON r.id=t.route_id
-                WHERE st.stop_id=? AND st.pickup<>1 AND (r.type=3 OR r.type BETWEEN 700 AND 799)
+                WHERE st.stop_id IN ($stopMarks) AND st.pickup<>1 AND $supported
                 AND t.service_id IN ($marks) AND st.departure>=? AND st.departure<=?
                 AND EXISTS (SELECT 1 FROM stop_times later WHERE later.trip_id=t.id AND later.seq>st.seq)
-                ORDER BY st.departure,t.id LIMIT 1");
-            $q->execute(array_merge([$stop['id']],$day['ids'],[$now-$day['base'],$now+21600-$day['base']]));
-            if ($row=$q->fetch()) { $departures[]=array_merge($row,['base'=>$day['base'],'date'=>$day['date']]); }
+                ORDER BY st.departure,t.id");
+            $q->execute(array_merge(array_keys($stops),$day['ids'],[$now-$day['base'],$now+21600-$day['base']]));
+            foreach ($q as $row) {
+                $row['base']=$day['base']; $row['date']=$day['date']; $row['mode']=self::mode((int)$row['type']);
+                $row['stop']=$stops[$row['stop_id']]; $rows[]=$row;
+            }
         }
-        usort($departures,static fn($a,$b)=>($a['base']+$a['departure'])<=>($b['base']+$b['departure']));
-        if (!$departures) { $result['message']='No scheduled buses from this stop in the next six hours.'; return $result; }
-        $trip=$departures[0];
-        $departure=array_merge(['tripId'=>$trip['trip_id'],'routeId'=>$trip['route_id'],'routeName'=>$trip['route_name'],
-            'headsign'=>$trip['headsign'],'mode'=>'bus','serviceDate'=>$trip['date'],'stopId'=>$stop['id'],'stopName'=>$stop['name'],
-            'arrival'=>date(DATE_ATOM,$trip['base']+(int)$trip['arrival']),
-            'departure'=>date(DATE_ATOM,$trip['base']+(int)$trip['departure']),'pickupType'=>(int)$trip['pickup']],
-            $this->routeStyle($trip['route_id'],$trip['route_name'],(int)$trip['type']));
-        $result['departure']=$departure;
-        $result['geometry']=$this->shape($trip['shape_id']);
-        $result['vehicle']=$this->approach($trip['trip_id'],$stop['id'],$now,$trip['date'],$departure['departure']);
-        $result['message']='Scheduled arrival and route. Delays and cancellations are unknown.';
+        // Pick the nearest active platform/stand per mode, then include the other
+        // nearby direction(s) of its routes. No assumption about road-side bearing.
+        $anchors=[];
+        foreach ($rows as $row) {
+            $mode=$row['mode']; $stop=$row['stop'];
+            if (!isset($anchors[$mode]) || $stop['distance']<$stops[$anchors[$mode]]['distance']) { $anchors[$mode]=$stop['id']; }
+        }
+        foreach ($rows as $row) { if ($row['stop_id']===$stopId) { $anchors[$row['mode']]=$stopId; } }
+        $routes=[];
+        foreach ($rows as $row) { if ($row['stop_id']===($anchors[$row['mode']] ?? null)) { $routes[$row['mode']."\0".$row['route_name']]=true; } }
+        $groups=[];
+        foreach ($rows as $row) {
+            if (!isset($routes[$row['mode']."\0".$row['route_name']])) { continue; }
+            $key=substr(hash('sha256',$row['mode']."\0".$row['route_name']."\0".($row['headsign'] ?: $row['terminal_id'])),0,24);
+            $old=$groups[$key] ?? null;
+            if (!$old || $row['stop']['distance']<$old['stop']['distance']-.1
+                || (abs($row['stop']['distance']-$old['stop']['distance'])<=.1 && $row['base']+$row['departure']<$old['base']+$old['departure'])) { $groups[$key]=$row; }
+        }
+        foreach ($groups as $key=>$trip) {
+            $terminal=$this->stop($trip['terminal_id']);
+            $result['services'][]=array_merge(['key'=>$key,'tripId'=>$trip['trip_id'],'routeId'=>$trip['route_id'],'routeName'=>$trip['route_name'],
+                'headsign'=>$trip['headsign'] ?: $terminal['name'],'destination'=>$terminal['name'],'mode'=>$trip['mode'],
+                'serviceDate'=>$trip['date'],'stopId'=>$trip['stop_id'],'stopName'=>$trip['stop']['name'],'stop'=>$trip['stop'],
+                'arrival'=>date(DATE_ATOM,$trip['base']+(int)$trip['arrival']),
+                'departure'=>date(DATE_ATOM,$trip['base']+(int)$trip['departure']),'pickupType'=>(int)$trip['pickup']],
+                $this->routeStyle($trip['route_id'],$trip['route_name'],(int)$trip['type']));
+        }
+        usort($result['services'],static fn($a,$b)=>($a['stop']['distance']<=>$b['stop']['distance']) ?: (strtotime($a['departure'])<=>strtotime($b['departure'])));
+        if (!$result['services']) { return $result; }
+        $selected=$result['services'][0];
+        foreach ($result['services'] as $service) { if ($service['key']===$serviceKey) { $selected=$service; break; } }
+        $result['stop']=$selected['stop']; $result['departure']=$selected;
+        $result['geometry']=$this->shape($groups[$selected['key']]['shape_id']);
+        $result['vehicle']=$this->approach($selected['tripId'],$selected['stopId'],$now,$selected['serviceDate'],$selected['departure']);
+        $result['message']='Next departures in each destination group at nearby boarding stops. Positions and arrivals are timetable estimates.';
         return $result;
     }
 

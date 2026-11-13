@@ -216,9 +216,9 @@ try {
     $terminal=$transit->nearbyBus(['lat'=>-31.95,'lon'=>116.05],$now);
     check($terminal['stop']===null, 'terminal-only stops do not offer an unboardable incoming bus');
     $farAway=$transit->nearbyBus(['lat'=>-31.95,'lon'=>116.02],$now);
-    check($farAway['stop']===null && $farAway['vehicle']===null, 'nearby preview never expands its 100 metre radius to invent a nearby stop');
+    check($farAway['stop']===null && $farAway['vehicle']===null, 'nearby preview never expands its 500 metre radius to invent a nearby stop');
     $atFarStop=$transit->nearbyBus(['lat'=>-31.95,'lon'=>116.0],$now);
-    check($atFarStop['stop']['id']==='D' && $atFarStop['departure']['tripId']==='upcoming' && $atFarStop['departure']['mode']==='bus', 'nearby preview excludes departed buses and train and ferry services');
+    check($atFarStop['stop']['id']==='D' && $atFarStop['departure']['tripId']==='upcoming' && $atFarStop['departure']['mode']==='bus', 'nearby preview excludes departed services and selects the next available departure at the nearest stand');
     $afterLast=$transit->nearbyBus(['lat'=>-31.95,'lon'=>115.85],$noon+4000);
     check($afterLast['stop']['id']==='A' && $afterLast['departure']===null && $afterLast['geometry']===[], 'nearby stop with no remaining departures gives an honest empty result');
     $outsideChoice=$transit->nearbyBus(['lat'=>-31.95,'lon'=>115.85],$noon,'D');

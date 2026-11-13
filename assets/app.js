@@ -40,6 +40,7 @@
     followJourney: true, programmaticView: false, lastFollowFit: null, viewTimer: null,
     userLocation: null, locationConsent: false, locationWatch: null, gpsMarker: null, accuracyCircle: null,
     zooming: false, fitAfterZoom: false, locationRetryTimer: null, locationRetryCount: 0,
+    toiletsEnabled: false, toilets: [], toiletMetadata: null, toiletLayers: null, toiletMarkers: new Map(), toiletController: null, toiletDetailController: null, toiletRequest: 0, toiletMoveTimer: null,
     phonesEnabled: false, phoneLayers: null, phones: [], phoneMetadata: null, phonesController: null, phoneRequest: 0, phonesMoveTimer: null,
     approachLayers: null, approachRenderer: null, approachController: null, approachKey: '', approachData: null,
     approachRequestedAt: 0, approachMarker: null, firstWalkFocus: false, firstWalkLayers: null, toastTimer: null, suppressSheetClickUntil: 0,
@@ -51,7 +52,7 @@
     stationBrowse: null, stationBrowseCandidate: null, stationBrowseSuppressed: null,
     stationBrowseController: null, stationBrowseRequest: 0, stationBrowseLayers: null,
     stationBrowseCache: new Map(), stationBrowseTimer: null, stationBrowseReady: false,
-    nearbyBusData: null, nearbyBusLayers: null, nearbyBusMarker: null, nearbyBusController: null, nearbyBusRequest: 0, nearbyBusFetched: 0, nearbyBusPoint: null, nearbyBusStop: '', nearbyGpsRefresh: false,
+    nearbyBusData: null, nearbyBusLayers: null, nearbyBusMarker: null, nearbyBusController: null, nearbyBusRequest: 0, nearbyBusFetched: 0, nearbyBusPoint: null, nearbyBusStop: '', nearbyServiceKey: '', nearbyGpsRefresh: false,
     originUserChosen: false, awaitingGpsOrigin: false, fullJourneyOverview: false, externalPick: null, pickPlaceName: null
   };
   const perthTime = new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Perth', hour: 'numeric', minute: '2-digit', hour12: true });
@@ -565,7 +566,7 @@
   }
 
   function renderNearbyBus(data) {
-    if (!nearbyBusEnabled() || !data.stop || map.distance([state.userLocation.lat, state.userLocation.lon], [data.stop.lat, data.stop.lon]) > 100) { clearNearbyBus(); return; }
+    if (!nearbyBusEnabled() || !data.stop || map.distance([state.userLocation.lat, state.userLocation.lon], [data.stop.lat, data.stop.lon]) > 500) { clearNearbyBus(); return; }
     state.nearbyBusData = data;
     if (!map.getPane('nearbyBusRoutes')) { map.createPane('nearbyBusRoutes'); map.getPane('nearbyBusRoutes').style.zIndex = '450'; map.getPane('nearbyBusRoutes').style.pointerEvents = 'none'; }
     if (!state.nearbyBusLayers) state.nearbyBusLayers = L.layerGroup().addTo(map);
@@ -607,6 +608,18 @@
       }
       if ([2, 3].includes(Number(bus.pickupType))) card.append(make('small', '', 'Booking or driver arrangement may be required'));
     } else card.append(make('strong', '', data.message));
+    if (Array.isArray(data.services) && data.services.length) {
+      const list = make('div', 'nearby-directions');
+      list.setAttribute('aria-label', 'Next services in each direction within 500 metres');
+      for (const service of data.services) {
+        const row = styleRoute(make('button', 'nearby-direction'), service); row.type = 'button';
+        row.setAttribute('aria-pressed', String(service.key === data.departure?.key));
+        row.append(make('strong', '', `${service.mode} ${service.routeName} → ${service.headsign}`),
+          make('span', '', `${service.stopName} · ${Math.round(service.stop.distance)} m · ${clock(service.departure)}`));
+        row.addEventListener('click', () => { state.nearbyServiceKey = service.key; fetchNearbyBus(true); }); list.append(row);
+      }
+      card.append(make('small', '', 'Next services · both directions where available · within 500 m'), list);
+    }
     card.append(make('small', 'nearby-note', 'Timetable estimate · delays and cancellations unknown'));
     if (data.nearbyStops.length > 1) {
       const label = make('label', 'nearby-stop-switch', 'Nearby stop ');
@@ -628,7 +641,7 @@
     const node = $('nearby-bus').querySelector('.nearby-countdown');
     if (!bus || !node) return;
     const seconds = Math.max(0, Math.ceil((timeValue(bus.arrival) - Date.now()) / 1000));
-    node.textContent = seconds > 0 ? `Next bus in ${Math.ceil(seconds / 60)} min · scheduled ${clock(bus.arrival)}` : `Scheduled at stop · departs ${clock(bus.departure)}`;
+    node.textContent = seconds > 0 ? `Next ${bus.mode || 'service'} in ${Math.ceil(seconds / 60)} min · scheduled ${clock(bus.arrival)}` : `Scheduled at stop · departs ${clock(bus.departure)}`;
     if (timeValue(bus.departure) < Date.now()) { clearNearbyBus(); if (!document.hidden) fetchNearbyBus(true); }
   }
 
@@ -641,14 +654,14 @@
     if (!nearbyBusEnabled()) { clearNearbyBus(); return; }
     const p = state.userLocation;
     const moved = !state.nearbyBusPoint || map.distance([p.lat, p.lon], [state.nearbyBusPoint.lat, state.nearbyBusPoint.lon]) > 25;
-    if (state.nearbyBusData?.stop && map.distance([p.lat, p.lon], [state.nearbyBusData.stop.lat, state.nearbyBusData.stop.lon]) > 100) { clearNearbyBus(); state.nearbyBusStop = ''; }
+    if (state.nearbyBusData?.stop && map.distance([p.lat, p.lon], [state.nearbyBusData.stop.lat, state.nearbyBusData.stop.lon]) > 500) { clearNearbyBus(); state.nearbyBusStop = ''; }
     if (!force && !moved && Date.now() - state.nearbyBusFetched < 14000) return;
     if (state.nearbyBusController) state.nearbyBusController.abort();
     const controller = new AbortController(); state.nearbyBusController = controller;
     const request = ++state.nearbyBusRequest;
     state.nearbyBusFetched = Date.now(); state.nearbyBusPoint = p;
     try {
-      const data = await api('nearby-bus', { at: `${p.lat},${p.lon}`, stop: state.nearbyBusStop }, controller.signal);
+      const data = await api('nearby-bus', { at: `${p.lat},${p.lon}`, stop: state.nearbyBusStop, service: state.nearbyServiceKey }, controller.signal);
       if (request !== state.nearbyBusRequest || !nearbyBusEnabled()) return;
       if (map.distance([p.lat, p.lon], [state.userLocation.lat, state.userLocation.lon]) > 25) return;
       renderNearbyBus(data);
@@ -797,6 +810,133 @@
       }
     } catch { /* Source text remains available when no valid HTTPS source link is supplied. */ }
     return line;
+  }
+
+  function toiletFreshness(data) {
+    const time = Number.isFinite(timeValue(data.updatedAt)) ? new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Perth', hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' }).format(timeValue(data.updatedAt)) : 'unknown';
+    return `${data.stale ? 'Saved data · refresh unavailable' : 'Source fetched'} ${time} · cache up to 2 min`;
+  }
+
+  function toiletPopupOptions() {
+    return { maxWidth: Math.min(300, window.innerWidth - 80), maxHeight: 300,
+      autoPanPaddingTopLeft: L.point(16, isMobile() ? 130 : 90),
+      autoPanPaddingBottomRight: L.point(70, isMobile() ? 180 : 45) };
+  }
+
+  function toiletPopup(toilet, metadata, details = false) {
+    const popup = make('div', 'toilet-popup');
+    popup.append(make('strong', '', toilet.name), make('span', '', toilet.address || toilet.type));
+    if (toilet.listedClosed) popup.append(make('strong', 'toilet-closed', 'Listed as closed by the source'));
+    popup.append(make('span', 'toilet-hours', `Published hours: ${toilet.hours}`));
+    if (toilet.amenities?.length) popup.append(make('span', '', toilet.amenities.join(' · ')));
+    for (const note of toilet.notes || []) popup.append(make('span', '', `${note.label}: ${note.text}`));
+    if (toilet.operator) popup.append(make('span', '', `Managed by ${toilet.operator}`));
+    if (toilet.contactPhone) popup.append(make('span', '', `Public contact: ${toilet.contactPhone}`));
+    if (!details) popup.append(make('small', 'toilet-detail-state', 'Loading access and facility notes…'));
+    const source = make('a', '', 'National Public Toilet Map · official record'); source.href = toilet.sourceUrl; source.target = '_blank'; source.rel = 'noopener noreferrer';
+    popup.append(source, make('small', 'toilet-freshness', toiletFreshness(metadata)), make('small', '', 'Published information, not live occupancy or guaranteed access. © Commonwealth of Australia.'));
+    return popup;
+  }
+
+  async function loadToiletDetails(marker, toilet) {
+    if (state.toiletDetailController) state.toiletDetailController.abort();
+    const controller = new AbortController(); state.toiletDetailController = controller;
+    try {
+      const data = await api('toilet', { id: toilet.id }, controller.signal);
+      if (state.toiletsEnabled && marker.isPopupOpen() && data.toilet) marker.setPopupContent(toiletPopup(data.toilet, data, true));
+    } catch (error) {
+      if (error.name === 'AbortError') return;
+      const node = marker.getPopup()?.getElement()?.querySelector('.toilet-detail-state');
+      if (node) node.textContent = 'Extra details unavailable · use the official record link';
+    }
+  }
+
+  function renderToilets() {
+    if (!state.toiletsEnabled || !state.toiletMetadata) return;
+    if (!state.toiletLayers) state.toiletLayers = L.layerGroup().addTo(map);
+    const zoom = map.getZoom(), groups = new Map(), retained = new Set();
+    for (const toilet of state.toilets) {
+      const point = map.project([toilet.lat, toilet.lon], zoom);
+      const key = zoom < 16 ? `cluster:${Math.floor(point.x / 55)}:${Math.floor(point.y / 55)}` : `location:${toilet.lat.toFixed(5)}:${toilet.lon.toFixed(5)}`;
+      if (!groups.has(key)) groups.set(key, []); groups.get(key).push(toilet);
+    }
+    for (const [key, items] of groups) {
+      retained.add(key);
+      const clustered = items.length > 1;
+      const lat = items.reduce((sum, t) => sum + t.lat, 0) / items.length, lon = items.reduce((sum, t) => sum + t.lon, 0) / items.length;
+      const symbol = make('div', 'toilet-marker-body', clustered ? `WC ${items.length}` : 'WC');
+      const markerIcon = L.divIcon({ html: symbol, className: clustered ? 'toilet-cluster' : 'toilet-marker', iconSize: [44, 44], iconAnchor: [22, 22] });
+      let marker = state.toiletMarkers.get(key);
+      const signature = items.map(t => t.id).sort().join(',');
+      if (marker && marker.toiletSignature !== signature) { state.toiletLayers.removeLayer(marker); state.toiletMarkers.delete(key); marker = null; }
+      if (!marker) {
+        marker = L.marker([lat, lon], { icon: markerIcon, bubblingMouseEvents: false, zIndexOffset: 1200, title: clustered ? `${items.length} toilet locations · ${zoom < 16 ? 'zoom to view' : 'choose facility'}` : items[0].name }).addTo(state.toiletLayers);
+        marker.toiletSignature = signature;
+        state.toiletMarkers.set(key, marker);
+        if (clustered && zoom < 16) marker.on('click', () => { pauseMapFollowing(); map.fitBounds(L.latLngBounds(items.map(t => [t.lat, t.lon])).pad(.15), { padding: [55, 150], maxZoom: 18 }); });
+        else if (clustered) {
+          const choices = () => {
+            const box = make('div', 'toilet-popup'); box.append(make('strong', '', 'Toilet facilities at this location'));
+            for (const toilet of items) {
+              const button = make('button', 'nearby-action', toilet.name); button.type = 'button';
+              button.addEventListener('click', event => { event.preventDefault(); event.stopPropagation(); marker.setPopupContent(toiletPopup(toilet, state.toiletMetadata)); loadToiletDetails(marker, toilet); }); box.append(button);
+            }
+            return box;
+          };
+          marker.bindPopup(choices(), toiletPopupOptions());
+          marker.on('popupclose', () => marker.setPopupContent(choices()));
+        }
+        else {
+          marker.bindPopup(toiletPopup(items[0], state.toiletMetadata), toiletPopupOptions());
+          marker.on('popupopen', () => loadToiletDetails(marker, items[0]));
+        }
+      } else {
+        marker.setIcon(markerIcon);
+        if (!marker.isPopupOpen()) marker.setLatLng([lat, lon]);
+        if (!clustered && !marker.isPopupOpen()) marker.setPopupContent(toiletPopup(items[0], state.toiletMetadata));
+        const freshness = marker.getPopup()?.getElement()?.querySelector('.toilet-freshness');
+        if (freshness) freshness.textContent = toiletFreshness(state.toiletMetadata);
+      }
+    }
+    state.toiletMarkers.forEach((marker, key) => { if (!retained.has(key)) { state.toiletLayers.removeLayer(marker); state.toiletMarkers.delete(key); } });
+  }
+
+  async function fetchToilets(announce = false) {
+    if (!map || !state.toiletsEnabled || document.hidden) return;
+    if (state.toiletController) state.toiletController.abort();
+    const controller = new AbortController(); state.toiletController = controller;
+    const request = ++state.toiletRequest;
+    const b = map.getBounds();
+    try {
+      const data = await api('toilets', { bbox: [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()].join(',') }, controller.signal);
+      if (!state.toiletsEnabled || request !== state.toiletRequest) return;
+      state.toiletMetadata = data;
+      state.toilets = (data.toilets || []).filter(t => /^\d+$/.test(String(t.id)) && Number.isFinite(t.lat) && Number.isFinite(t.lon));
+      renderToilets();
+      $('map-toilets').title = `${state.toilets.length} nearby toilet locations · ${toiletFreshness(data)}`;
+      $('toilet-count').hidden = false; $('toilet-count').textContent = String(state.toilets.length);
+      if (announce || data.stale) mapToast(data.stale ? 'Toilets: showing saved data · live refresh unavailable' : `${state.toilets.length} nearby toilet locations · live source, cached up to 2 min${data.limited ? ' · pan or zoom for more' : ''}`);
+    } catch (error) {
+      if (error.name === 'AbortError' || !state.toiletsEnabled || request !== state.toiletRequest) return;
+      if (state.toiletMetadata) { state.toiletMetadata.stale = true; renderToilets(); }
+      $('map-toilets').title = 'Public toilets · source unavailable';
+      mapToast('Toilet source unavailable. Saved locations, if shown, may be out of date.', true, { label: 'Retry', run: () => fetchToilets(true) });
+    }
+  }
+
+  function toggleToilets() {
+    state.toiletsEnabled = !state.toiletsEnabled;
+    $('map-toilets').setAttribute('aria-pressed', String(state.toiletsEnabled));
+    $('map-toilets').setAttribute('aria-label', state.toiletsEnabled ? 'Hide public toilets' : 'Show public toilets');
+    if (state.toiletsEnabled) fetchToilets(true);
+    else {
+      state.toiletRequest++;
+      if (state.toiletController) state.toiletController.abort();
+      if (state.toiletDetailController) state.toiletDetailController.abort();
+      clearTimeout(state.toiletMoveTimer);
+      if (state.toiletLayers) state.toiletLayers.clearLayers(); state.toiletMarkers.clear();
+      $('toilet-count').hidden = true;
+    }
   }
 
   function renderPhones() {
@@ -2158,6 +2298,7 @@
         fetchApproach();
       }
       scheduleStationBrowse();
+      if (state.toiletsEnabled) { clearTimeout(state.toiletMoveTimer); state.toiletMoveTimer = setTimeout(() => fetchToilets(false), 450); }
       if (state.phonesEnabled) { clearTimeout(state.phonesMoveTimer); state.phonesMoveTimer = setTimeout(() => fetchPhones(false), 450); }
     });
     map.on('dragstart', pauseMapFollowing);
@@ -2165,6 +2306,7 @@
     map.on('zoomend', () => {
       state.zooming = false;
       if (state.phonesEnabled) renderPhones();
+      if (state.toiletsEnabled) renderToilets();
       const pendingFit = state.fitAfterZoom;
       state.fitAfterZoom = false;
       if (pendingFit && state.selected && state.followJourney) {
@@ -2256,6 +2398,7 @@
     $('use-location').addEventListener('click', locate);
     $('map-locate').addEventListener('click', locate);
     $('map-phones').addEventListener('click', togglePhones);
+    $('map-toilets').addEventListener('click', toggleToilets);
     $('station-browse-toggle').addEventListener('click', () => {
       const station = state.stationBrowseCandidate;
       if (!station || state.selected || state.guidance || state.pickField) return;
@@ -2286,7 +2429,7 @@
     $('map-zoom-out').addEventListener('click', () => { pauseMapFollowing(); map.zoomOut(); });
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        fetchVehicles(); loadStatus(); startLocationWatch(); fetchApproach(); fetchNearbyBus(true);
+        fetchVehicles(); loadStatus(); startLocationWatch(); fetchApproach(); fetchNearbyBus(true); fetchToilets();
         if (!state.routeCatalog) { state.routeRetryCount = 0; refreshRouteCatalog(); }
       } else {
         stopLocationWatch(); clearNearbyBus(); clearTimeout(state.routeRetryTimer);
@@ -2323,6 +2466,7 @@
     }, 1000);
     setInterval(() => { if (!document.hidden) loadStatus(); }, 60000);
     setInterval(() => { if (!document.hidden) refreshRouteCatalog(); }, 300000);
+    setInterval(() => { if (!document.hidden) fetchToilets(); }, 120000);
   }
 
   window.Nextstop = {
