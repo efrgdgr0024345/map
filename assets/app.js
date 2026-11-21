@@ -52,6 +52,8 @@
     stationBrowse: null, stationBrowseCandidate: null, stationBrowseSuppressed: null,
     stationBrowseController: null, stationBrowseRequest: 0, stationBrowseLayers: null,
     stationBrowseCache: new Map(), stationBrowseTimer: null, stationBrowseReady: false,
+    onboard: null, nearbyFocused: false, nearbyVerifyWalk: false, nearbyCamera: null, nearbyFitPending: false, nearbyDetailsOpen: false,
+    nearbyLabelLayers: null, nearbyAreaLayers: null, nearbyCountdownNodes: [], nearbyCameraTimer: null,
     nearbyBusData: null, nearbyBusLayers: null, nearbyBusMarker: null, nearbyBusController: null, nearbyBusRequest: 0, nearbyBusFetched: 0, nearbyBusPoint: null, nearbyBusStop: '', nearbyServiceKey: '', nearbyGpsRefresh: false,
     originUserChosen: false, awaitingGpsOrigin: false, fullJourneyOverview: false, externalPick: null, pickPlaceName: null
   };
@@ -276,7 +278,8 @@
       if (Array.isArray(bbox) && bbox.length === 4 && (bbox[2] < bounds.getWest() || bbox[0] > bounds.getEast() || bbox[3] < bounds.getSouth() || bbox[1] > bounds.getNorth())) return;
       if (Array.isArray(line.geometry) && line.geometry.length > 1) visible.push([line, index]);
     });
-    const key = `${state.routesEpoch}:${visible.map(([, index]) => index).join(',')}`;
+    const muted = Boolean(state.nearbyBusData && (state.nearbyFocused || state.onboard));
+    const key = `${state.routesEpoch}:${Number(muted)}:${visible.map(([, index]) => index).join(',')}`;
     if (key === state.renderedNetworkKey) return;
     state.renderedNetworkKey = key;
     $('map').dataset.networkLines = String(visible.length);
@@ -284,8 +287,8 @@
     networkLayers.clearLayers();
     visible.forEach(([line]) => {
       const weight = line.mode === 'train' ? 4.5 : 3.5;
-      L.polyline(line.geometry, { color: '#ffffff', weight: weight + 3, opacity: .9, interactive: false }).addTo(networkLayers);
-      L.polyline(line.geometry, { color: routeColor(line), weight, opacity: .9, interactive: false }).addTo(networkLayers);
+      L.polyline(line.geometry, { color: '#ffffff', weight: weight + 3, opacity: muted ? .16 : .9, interactive: false, className: 'background-network-line' }).addTo(networkLayers);
+      L.polyline(line.geometry, { color: routeColor(line), weight, opacity: muted ? .16 : .9, interactive: false, className: 'background-network-line' }).addTo(networkLayers);
     });
     journeyLayers.eachLayer(layer => { if (layer.bringToFront) layer.bringToFront(); });
   }
@@ -551,98 +554,226 @@
       && Date.now() - p.timestamp < 60000;
   }
 
-  function clearNearbyBus() {
-    if (state.nearbyBusController) state.nearbyBusController.abort();
-    state.nearbyBusController = null;
-    state.nearbyBusRequest++;
-    state.nearbyBusData = null;
-    if (state.nearbyBusLayers) state.nearbyBusLayers.clearLayers();
-    if (state.nearbyBusMarker) {
-      if (state.nearbyBusMarker.nextstopAnimation) cancelAnimationFrame(state.nearbyBusMarker.nextstopAnimation);
-      map.removeLayer(state.nearbyBusMarker); state.nearbyBusMarker = null;
-    }
-    $('nearby-bus').hidden = true;
-    document.body.classList.remove('has-nearby-bus');
+  function nearbyButton(label, run, className = 'nearby-action') {
+    const button = make('button', className, label); button.type = 'button';
+    button.addEventListener('click', event => { event.stopPropagation(); run(); });
+    return button;
   }
 
-  function renderNearbyBus(data) {
-    if (!nearbyBusEnabled() || !data.stop || map.distance([state.userLocation.lat, state.userLocation.lon], [data.stop.lat, data.stop.lon]) > 500) { clearNearbyBus(); return; }
-    state.nearbyBusData = data;
-    if (!map.getPane('nearbyBusRoutes')) { map.createPane('nearbyBusRoutes'); map.getPane('nearbyBusRoutes').style.zIndex = '450'; map.getPane('nearbyBusRoutes').style.pointerEvents = 'none'; }
-    if (!state.nearbyBusLayers) state.nearbyBusLayers = L.layerGroup().addTo(map);
-    state.nearbyBusLayers.clearLayers();
+  function leaveNearbyRide() {
+    state.onboard = null; state.nearbyServiceKey = ''; state.nearbyBusStop = ''; state.nearbyVerifyWalk = false;
+    state.nearbyCamera = 'local'; state.nearbyFitPending = true; clearNearbyBus(); fetchNearbyBus(true);
+  }
+
+  function clearNearbyBus() {
+    if (state.nearbyBusController) state.nearbyBusController.abort();
+    state.nearbyBusController = null; state.nearbyBusRequest++; state.nearbyBusData = null; state.nearbyPendingCamera = null;
+    if (state.nearbyBusLayers) state.nearbyBusLayers.clearLayers();
+    if (state.nearbyLabelLayers) state.nearbyLabelLayers.clearLayers();
+    if (state.nearbyAreaLayers) state.nearbyAreaLayers.clearLayers();
+    state.nearbyCountdownNodes = [];
     if (state.nearbyBusMarker) {
       if (state.nearbyBusMarker.nextstopAnimation) cancelAnimationFrame(state.nearbyBusMarker.nextstopAnimation);
       map.removeLayer(state.nearbyBusMarker); state.nearbyBusMarker = null;
     }
-    const card = $('nearby-bus'); card.replaceChildren(); card.hidden = false;
-    document.body.classList.add('has-nearby-bus');
-    card.append(make('small', 'nearby-stop', `${data.stop.name} · ${Math.round(data.stop.distance)} m away`));
-    const bus = data.departure;
-    if (bus) {
-      styleRoute(card, bus);
-      const main = make('div', 'nearby-main');
-      main.append(make('strong', 'next-route', bus.routeName), make('strong', 'nearby-destination', bus.headsign || 'Next scheduled bus'));
-      card.append(main, make('div', 'nearby-countdown'));
-      card.append(timetableButton('View all stops', tripQuery(bus), 'nearby-action'));
-      if (Array.isArray(data.geometry) && data.geometry.length > 1) {
-        L.polyline(data.geometry, { pane: 'nearbyBusRoutes', color: '#fff', weight: 9, opacity: .95, interactive: false }).addTo(state.nearbyBusLayers);
-        L.polyline(data.geometry, { pane: 'nearbyBusRoutes', color: routeColor(bus), weight: 5, opacity: 1, interactive: false }).addTo(state.nearbyBusLayers);
-        const show = make('button', 'nearby-action', 'Show full route'); show.type = 'button';
-        show.addEventListener('click', () => {
-          pauseMapFollowing();
-          const cardTop = card.getBoundingClientRect().top - map.getContainer().getBoundingClientRect().top;
-          const bottom = Math.max(100, Math.min(map.getSize().y * .65, map.getSize().y - cardTop + 16));
-          map.fitBounds(L.latLngBounds(data.geometry), { paddingTopLeft: [isMobile() ? 25 : 420, 90], paddingBottomRight: [80, bottom], maxZoom: 16 });
+    const card = $('nearby-bus'); card.hidden = true;
+    document.body.classList.remove('has-nearby-bus', 'nearby-focused');
+    drawNetworkLines();
+    if (state.onboard && !state.selected && !document.hidden) {
+      card.replaceChildren(make('strong', '', `On ${state.onboard.routeName} · nearby guidance paused`),
+        make('small', '', 'Waiting for an accurate location or updated services.'), nearbyButton("I'm off", leaveNearbyRide));
+      card.hidden = false; document.body.classList.add('has-nearby-bus');
+    }
+  }
+
+  function selectNearbyService(service) {
+    state.nearbyServiceKey = service.key; state.nearbyFocused = true; state.nearbyVerifyWalk = true;
+    state.nearbyPendingCamera = null;
+    state.nearbyCamera = 'local'; state.nearbyFitPending = true;
+    if (state.onboard) state.onboard.place = null;
+    fetchNearbyBus(true);
+  }
+
+  function fitNearbyView(full = false) {
+    const data = state.nearbyBusData; if (!data) return;
+    if (state.zooming) {
+      state.nearbyPendingCamera = full ? 'full' : 'local';
+      if (!state.nearbyZoomFitQueued) {
+        state.nearbyZoomFitQueued = true;
+        map.once('zoomend', () => {
+          state.nearbyZoomFitQueued = false;
+          const pending = state.nearbyPendingCamera; state.nearbyPendingCamera = null;
+          if (pending) requestAnimationFrame(() => fitNearbyView(pending === 'full'));
         });
-        card.append(show);
-      } else card.append(make('small', '', 'Route geometry unavailable'));
-      const vehicle = data.vehicle;
-      if (vehicle && vehicle.position && Number.isFinite(vehicle.position.lat) && Number.isFinite(vehicle.position.lon)) {
-        const marker = L.marker([vehicle.position.lat, vehicle.position.lon], { icon: vehicleIcon(vehicle, true), zIndexOffset: 3500, bubblingMouseEvents: false }).addTo(map);
-        marker.bindPopup(servicePopup(vehicle, true));
-        state.nearbyBusMarker = marker;
-        moveMarker(marker, { ...vehicle, ...vehicle.position }, vehicle.generatedAt);
-        const duplicate = state.markers.get(String(vehicle.id));
-        if (duplicate) { if (duplicate.nextstopAnimation) cancelAnimationFrame(duplicate.nextstopAnimation); map.removeLayer(duplicate); state.markers.delete(String(vehicle.id)); }
       }
-      if ([2, 3].includes(Number(bus.pickupType))) card.append(make('small', '', 'Booking or driver arrangement may be required'));
-    } else card.append(make('strong', '', data.message));
-    if (Array.isArray(data.services) && data.services.length) {
-      const list = make('div', 'nearby-directions');
-      list.setAttribute('aria-label', 'Next services in each direction within 500 metres');
-      for (const service of data.services) {
-        const row = styleRoute(make('button', 'nearby-direction'), service); row.type = 'button';
-        row.setAttribute('aria-pressed', String(service.key === data.departure?.key));
-        row.append(make('strong', '', `${service.mode} ${service.routeName} → ${service.headsign}`),
-          make('span', '', `${service.stopName} · ${Math.round(service.stop.distance)} m · ${clock(service.departure)}`));
-        row.addEventListener('click', () => { state.nearbyServiceKey = service.key; fetchNearbyBus(true); }); list.append(row);
-      }
-      card.append(make('small', '', 'Next services · both directions where available · within 500 m'), list);
+      return;
     }
-    card.append(make('small', 'nearby-note', 'Timetable estimate · delays and cancellations unknown'));
-    if (data.nearbyStops.length > 1) {
-      const label = make('label', 'nearby-stop-switch', 'Nearby stop ');
-      const select = make('select');
-      for (const stop of data.nearbyStops) {
-        const option = make('option', '', `${stop.name} (${Math.round(stop.distance)} m)`); option.value = stop.id; option.selected = stop.id === data.stop.id; select.append(option);
+    const points = full && data.geometry?.length > 1 ? [...data.geometry] : [];
+    const extend = p => { if (p && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon))) points.push([Number(p.lat), Number(p.lon)]); };
+    if (!full) {
+      if (!state.nearbyFocused && data.centre) {
+        const c = data.centre, r = data.radius || 500;
+        points.push([c.lat-r/111000, c.lon-r/(111000*Math.cos(c.lat*Math.PI/180))], [c.lat+r/111000, c.lon+r/(111000*Math.cos(c.lat*Math.PI/180))]);
       }
-      select.addEventListener('change', () => { state.nearbyBusStop = select.value; fetchNearbyBus(true); });
-      label.append(select); card.append(label);
+      extend(state.userLocation); extend(data.stop); extend(data.onboard?.nextStop); extend(data.place);
+      if (data.walk?.available) points.push(...data.walk.geometry);
+      if (data.vehicle?.position && data.centre && map.distance([data.centre.lat, data.centre.lon], [data.vehicle.position.lat, data.vehicle.position.lon]) < 1500) extend(data.vehicle.position);
     }
+    if (!points.length) return;
+    state.nearbyCamera = full ? 'full' : 'local'; state.programmaticView = true;
+    const height = $('nearby-bus').getBoundingClientRect().height;
+    map.fitBounds(L.latLngBounds(points), { paddingTopLeft: [isMobile() ? 35 : (state.panelOpen ? 425 : 40), 95],
+      paddingBottomRight: [75, Math.min(map.getSize().y * .42, height + (isMobile() ? 115 : 55))], maxZoom: full ? 16 : 17,
+      animate: !reducedMotion, duration: .5 });
+    clearTimeout(state.nearbyCameraTimer);
+    state.nearbyCameraTimer = setTimeout(() => { state.programmaticView = false; }, 600);
+  }
+
+  function drawNearbyLabels() {
+    if (!state.nearbyLabelLayers) state.nearbyLabelLayers = L.layerGroup().addTo(map);
+    state.nearbyLabelLayers.clearLayers(); state.nearbyCountdownNodes = [];
+    const data = state.nearbyBusData; if (!data || !nearbyBusEnabled() || state.pickField) return;
+    const services = [...(data.services || [])].sort((a, b) => Number(b.key === data.departure?.key) - Number(a.key === data.departure?.key));
+    const occupied = [], size = map.getSize(), bottom = size.y - (isMobile() ? 215 : 150);
+    for (const service of services) {
+      if (occupied.length >= 6) break;
+      if (!service.stop) continue;
+      const p = map.latLngToContainerPoint([service.stop.lat, service.stop.lon]);
+      if (p.x < 0 || p.x > size.x || p.y < 60 || p.y > bottom + 60) continue;
+      const left = p.x + 218 > size.x - 65, x = Math.max(8, Math.min(p.x + 17, size.x - 62 - 194));
+      let offset = null;
+      for (const dy of [-54, 0, 54, -108, 108]) {
+        const rect = { x, y: p.y - 22 + dy, w: 194, h: 50 };
+        if (rect.x < 8 || rect.x + rect.w > size.x - 58 || rect.y < 85 || rect.y + rect.h > bottom) continue;
+        if (occupied.some(r => rect.x < r.x + r.w + 4 && rect.x + rect.w + 4 > r.x && rect.y < r.y + r.h + 4 && rect.y + rect.h + 4 > r.y)) continue;
+        offset = dy; occupied.push(rect); break;
+      }
+      if (offset === null) continue;
+      const body = styleRoute(make('div', `nearby-map-anchor${left ? ' is-left' : ''}`), service);
+      body.append(make('span', 'nearby-stop-dot'));
+      const button = nearbyButton('', () => selectNearbyService(service), 'nearby-map-option');
+      button.style.top = `${offset}px`; button.style.left = `${x - p.x + 22}px`; button.style.right = 'auto'; button.setAttribute('aria-pressed', String(service.key === data.departure?.key));
+      button.setAttribute('aria-label', `${service.mode} ${service.routeName} to ${service.headsign}, ${service.stop.name}. Show boarding stop and route`);
+      const line = make('span', 'nearby-map-line');
+      line.append(make('b', 'nearby-route-badge', serviceLabel(service)), make('span', 'nearby-map-destination', `→ ${service.headsign || service.destination}`));
+      const counter = make('b', 'nearby-map-minutes'); line.append(counter); state.nearbyCountdownNodes.push({ node: counter, service });
+      button.append(line, make('small', '', `${service.stop.code ? `Stop ${service.stop.code} · ` : ''}${service.stop.name}`)); body.append(button);
+      if (offset) { const leader = make('span', 'nearby-label-leader'); leader.style.height = `${Math.abs(offset)}px`; leader.style.top = `${Math.min(0, offset) + 22}px`; body.append(leader); }
+      L.marker([service.stop.lat, service.stop.lon], { icon: L.divIcon({ html: body, className: 'nearby-label-marker', iconSize: [44, 44], iconAnchor: [22, 22] }),
+        keyboard: false, zIndexOffset: service.key === data.departure?.key ? 2200 : 1800, bubblingMouseEvents: false }).addTo(state.nearbyLabelLayers);
+    }
+    state.nearbyCountdownNodes.push(...[...$('nearby-bus').querySelectorAll('.nearby-direction')].map(row => row.nearbyCounter).filter(Boolean));
     updateNearbyBusCountdown();
   }
 
+  function renderNearbyBus(data) {
+    if (!nearbyBusEnabled()) { clearNearbyBus(); return; }
+    const centre = data.centre || state.userLocation, radius = data.radius || 500;
+    if (!state.onboard && map.distance([centre.lat, centre.lon], [state.userLocation.lat, state.userLocation.lon]) > 25) return;
+    state.nearbyBusData = data;
+    if (!map.getPane('nearbyBusRoutes')) { map.createPane('nearbyBusRoutes'); map.getPane('nearbyBusRoutes').style.zIndex = '450'; map.getPane('nearbyBusRoutes').style.pointerEvents = 'none'; }
+    if (!state.nearbyBusLayers) state.nearbyBusLayers = L.layerGroup().addTo(map);
+    if (!state.nearbyAreaLayers) state.nearbyAreaLayers = L.layerGroup().addTo(map);
+    state.nearbyBusLayers.clearLayers(); state.nearbyAreaLayers.clearLayers();
+    if (state.nearbyBusMarker) { if (state.nearbyBusMarker.nextstopAnimation) cancelAnimationFrame(state.nearbyBusMarker.nextstopAnimation); map.removeLayer(state.nearbyBusMarker); state.nearbyBusMarker = null; }
+    const context = data.onboard, bus = data.departure, card = $('nearby-bus'); card.replaceChildren(); card.hidden = false;
+    document.body.classList.add('has-nearby-bus');
+    document.body.classList.toggle('nearby-focused', Boolean(state.nearbyFocused || state.onboard));
+    drawNetworkLines();
+    document.body.classList.remove('mascot-visible'); $('mascot-peek').hidden = true;
+    if (!context?.needsStopChoice) {
+      L.circle([centre.lat, centre.lon], { radius, color: '#628746', weight: 1.5, dashArray: '5 7', opacity: .65, fillColor: '#9acb71', fillOpacity: .055, interactive: false, className: 'nearby-search-area' }).addTo(state.nearbyAreaLayers);
+      L.marker([centre.lat + radius / 111000, centre.lon], { icon: L.divIcon({ html: make('span', 'nearby-radius-label', `${radius} m${context ? ' from alighting stop' : ' search'}`), className: 'nearby-radius-marker', iconSize: [160, 25], iconAnchor: [80, 13] }), interactive: false, keyboard: false }).addTo(state.nearbyAreaLayers);
+    }
+    const controls = make('div', 'nearby-controls');
+    if (context) {
+      card.append(make('strong', 'nearby-onboard-title', `On ${context.trip.routeName} → ${context.trip.headsign}`));
+      card.append(make('span', 'nearby-stop', context.nextStop ? `Alight: ${context.nextStop.name}` : context.message));
+      const label = make('label', 'nearby-alight-choice', 'Alighting stop '), select = make('select'); select.setAttribute('aria-label', 'Choose alighting stop');
+      select.append(make('option', '', 'Automatic next stop')); select.firstChild.value = '0';
+      for (const stop of context.choices || []) { const option = make('option', '', stop.name); option.value = String(stop.sequence); option.selected = state.onboard?.alight === stop.sequence; select.append(option); }
+      select.addEventListener('change', () => { state.onboard.alight = Number(select.value); state.nearbyVerifyWalk = false; state.nearbyFitPending = true; fetchNearbyBus(true); }); label.append(select); label.dataset.alightChoice = ''; card.append(label);
+      controls.append(nearbyButton("I'm off", leaveNearbyRide));
+      if (context.nextStop) {
+        L.marker([context.nextStop.lat, context.nextStop.lon], { icon: L.divIcon({ className: 'nearby-alight-pin', html: make('b', '', 'A'), iconSize: [32, 32], iconAnchor: [16, 16] }), title: `Alight here: ${context.nextStop.name}` })
+          .bindTooltip(`Alight here · ${context.nextStop.name}`, { permanent: true, direction: 'top', className: 'nearby-boarding-label' }).addTo(state.nearbyBusLayers);
+        if (context.geometry?.length > 1) L.polyline(context.geometry, { pane: 'nearbyBusRoutes', color: routeColor(context.trip), weight: 6, opacity: .9 }).addTo(state.nearbyBusLayers);
+      }
+    } else if (bus) card.append(make('strong', 'nearby-compact-title', `${bus.routeName} → ${bus.headsign}`));
+    if (bus) {
+      styleRoute(card, bus);
+      card.append(make('span', 'nearby-stop', `${bus.stop?.code ? `Stop ${bus.stop.code} · ` : ''}${data.stop.name} · ${Math.round(data.stop.distance || 0)} m${context ? ' from alighting' : ' away'}`), make('span', 'nearby-countdown'));
+      if (data.geometry?.length > 1) {
+        L.polyline(data.geometry, { pane: 'nearbyBusRoutes', color: '#fff', weight: 8, opacity: .95, interactive: false }).addTo(state.nearbyBusLayers);
+        L.polyline(data.geometry, { pane: 'nearbyBusRoutes', color: routeColor(bus), weight: 4, opacity: state.nearbyFocused ? 1 : .65, interactive: false }).addTo(state.nearbyBusLayers);
+        controls.append(nearbyButton('Show full route', () => fitNearbyView(true)), nearbyButton('Back to stop', () => fitNearbyView(false)));
+      }
+      const vehicle = data.vehicle;
+      if (vehicle?.position && Number.isFinite(vehicle.position.lat) && Number.isFinite(vehicle.position.lon)) {
+        state.nearbyBusMarker = L.marker([vehicle.position.lat, vehicle.position.lon], { icon: vehicleIcon(vehicle, state.nearbyFocused), zIndexOffset: 3500, bubblingMouseEvents: false }).addTo(map).bindPopup(servicePopup(vehicle, true));
+        moveMarker(state.nearbyBusMarker, { ...vehicle, ...vehicle.position }, vehicle.generatedAt);
+        const duplicate = state.markers.get(String(vehicle.id));
+        if (duplicate) { if (duplicate.nextstopAnimation) cancelAnimationFrame(duplicate.nextstopAnimation); map.removeLayer(duplicate); state.markers.delete(String(vehicle.id)); }
+      }
+      L.circleMarker([data.stop.lat, data.stop.lon], { radius: 8, color: '#14201d', weight: 2, fillColor: '#c2f65b', fillOpacity: 1, className: 'nearby-boarding-dot', interactive: false })
+        .bindTooltip(`Board here · ${data.stop.name}`, { permanent: state.nearbyFocused, direction: 'bottom', className: 'nearby-boarding-label' }).addTo(state.nearbyBusLayers);
+      if (!state.onboard) controls.append(nearbyButton("I'm on this service", () => {
+        state.onboard = { trip: bus.tripId, date: bus.serviceDate, routeName: bus.routeName, after: 0, alight: 0 };
+        state.nearbyServiceKey = ''; state.nearbyBusStop = ''; state.nearbyVerifyWalk = false; state.nearbyFitPending = true; state.nearbyCamera = 'local'; fetchNearbyBus(true);
+      }));
+      if (!data.walk && state.nearbyFocused) controls.append(nearbyButton('Show walk', () => { state.nearbyVerifyWalk = true; fetchNearbyBus(true); }));
+      if ([2, 3].includes(Number(bus.pickupType))) card.append(make('small', '', 'Booking or driver arrangement may be required'));
+    } else if (!context?.needsStopChoice && !data.place) card.append(make('span', '', data.message || 'No nearby departures.'));
+    if (data.walk) {
+      if (data.walk.available) {
+        const walk = data.walk;
+        card.append(make('span', 'nearby-walk-summary', `${context ? 'Alight → ' : ''}${walk.duration ? `walk ${minutes(walk.duration)} min · ${Math.round(walk.distance)} m` : 'Same boarding stop'}${data.place ? ` → ${data.place.name}` : bus ? ` → ${bus.routeName} to ${bus.headsign}` : ' · no reachable departure'}`));
+        if (walk.geometry?.length > 1) L.polyline(walk.geometry, { pane: 'nearbyBusRoutes', color: '#14201d', weight: 4, dashArray: '3 8', className: 'nearby-walking-path', interactive: false }).addTo(state.nearbyBusLayers);
+        for (const connector of walk.accessConnectors || []) L.polyline(connector.geometry, { pane: 'nearbyBusRoutes', color: '#8d7960', weight: 2, dashArray: '2 6', interactive: false }).bindTooltip('Unverified short access connection').addTo(state.nearbyBusLayers);
+      } else card.append(make('span', 'nearby-walk-summary', data.walk.message));
+    } else if (context?.nextStop) card.append(make('small', '', 'After alighting · tap a stop to check the walk and connection.'));
+    if (data.place) {
+      L.marker([data.place.lat, data.place.lon], { title: data.place.name }).bindTooltip(data.place.name, { permanent: true }).addTo(state.nearbyBusLayers);
+      controls.append(nearbyButton('Nearby services', () => { state.onboard.place = null; fetchNearbyBus(true); }));
+    }
+    card.append(controls);
+    const details = make('details', 'nearby-more'); details.open = state.nearbyDetailsOpen || false;
+    details.addEventListener('toggle', () => { state.nearbyDetailsOpen = details.open; });
+    details.append(make('summary', '', `Nearby options · ${(data.services || []).length} directions`));
+    const list = make('div', 'nearby-directions');
+    for (const service of data.services || []) {
+      const row = styleRoute(nearbyButton('', () => selectNearbyService(service), 'nearby-direction'), service);
+      row.setAttribute('aria-pressed', String(service.key === bus?.key));
+      const counter = make('b', 'nearby-list-minutes');
+      row.append(make('strong', '', `${service.mode} ${service.routeName} → ${service.headsign}`), make('span', '', `${service.stopName || service.stop.name} · ${Math.round(service.stop.distance)} m`), counter);
+      list.append(row); // Countdown nodes are populated after map label placement.
+      row.nearbyCounter = { node: counter, service };
+    }
+    details.append(list);
+    const alightChoice = card.querySelector('[data-alight-choice]');
+    if (alightChoice && !context?.needsStopChoice) details.prepend(alightChoice);
+    if (bus) details.append(timetableButton('View all stops', tripQuery(bus), 'nearby-action'));
+    if (data.nearbyStops?.length > 1 && !context) {
+      const label = make('label', 'nearby-stop-switch', 'Nearby stop '), select = make('select'); select.setAttribute('aria-label', 'Nearby stop');
+      for (const stop of data.nearbyStops) { const option = make('option', '', `${stop.name} (${Math.round(stop.distance)} m)`); option.value = stop.id; option.selected = stop.id === data.stop?.id; select.append(option); }
+      select.addEventListener('change', () => { state.nearbyBusStop = select.value; state.nearbyServiceKey = ''; state.nearbyVerifyWalk = true; state.nearbyFitPending = true; fetchNearbyBus(true); }); label.append(select); details.append(label);
+    }
+    details.append(make('small', 'nearby-note', 'Scheduled estimates · delays and cancellations unknown. Access requires a checked walking route.'));
+    card.append(details); drawNearbyLabels();
+    updateNearbyBusCountdown();
+    if (context && state.onboard) state.onboard.after = Math.max(state.onboard.after || 0, context.passedSequence || 0);
+    if (state.nearbyFitPending) { state.nearbyFitPending = false; fitNearbyView(false); }
+    else if (state.nearbyCamera === 'local' && !map.getBounds().pad(-.2).contains([centre.lat, centre.lon])) fitNearbyView(false);
+  }
+
   function updateNearbyBusCountdown() {
-    const data = state.nearbyBusData;
-    if (!data) return;
+    const data = state.nearbyBusData; if (!data) return;
     if (!nearbyBusEnabled() || Date.now() - timeValue(data.generatedAt) > 45000) { clearNearbyBus(); return; }
-    const bus = data.departure;
-    const node = $('nearby-bus').querySelector('.nearby-countdown');
-    if (!bus || !node) return;
-    const seconds = Math.max(0, Math.ceil((timeValue(bus.arrival) - Date.now()) / 1000));
-    node.textContent = seconds > 0 ? `Next ${bus.mode || 'service'} in ${Math.ceil(seconds / 60)} min · scheduled ${clock(bus.arrival)}` : `Scheduled at stop · departs ${clock(bus.departure)}`;
-    if (timeValue(bus.departure) < Date.now()) { clearNearbyBus(); if (!document.hidden) fetchNearbyBus(true); }
+    const text = service => timeValue(service.departure) < Date.now() ? 'Left' : timeValue(service.arrival) <= Date.now() ? 'Due' : `${Math.ceil((timeValue(service.arrival) - Date.now()) / 60000)} min`;
+    for (const { node, service } of state.nearbyCountdownNodes || []) node.textContent = text(service);
+    const bus = data.departure, node = $('nearby-bus').querySelector('.nearby-countdown');
+    if (bus && node) node.textContent = `${text(bus)} · scheduled ${clock(bus.arrival)}${bus.accessVerified ? ' · walk checked' : ''}`;
+    if (bus && timeValue(bus.departure) < Date.now()) { clearNearbyBus(); if (!document.hidden) fetchNearbyBus(true); }
   }
 
   async function fetchNearbyBus(force = false) {
@@ -654,20 +785,30 @@
     if (!nearbyBusEnabled()) { clearNearbyBus(); return; }
     const p = state.userLocation;
     const moved = !state.nearbyBusPoint || map.distance([p.lat, p.lon], [state.nearbyBusPoint.lat, state.nearbyBusPoint.lon]) > 25;
-    if (state.nearbyBusData?.stop && map.distance([p.lat, p.lon], [state.nearbyBusData.stop.lat, state.nearbyBusData.stop.lon]) > 500) { clearNearbyBus(); state.nearbyBusStop = ''; }
-    if (!force && !moved && Date.now() - state.nearbyBusFetched < 14000) return;
+    if (!state.onboard && state.nearbyBusData?.centre && map.distance([p.lat, p.lon], [state.nearbyBusData.centre.lat, state.nearbyBusData.centre.lon]) > 25) clearNearbyBus();
+    if (!force && Date.now() - state.nearbyBusFetched < (moved ? 2000 : 14000)) return;
     if (state.nearbyBusController) state.nearbyBusController.abort();
     const controller = new AbortController(); state.nearbyBusController = controller;
     const request = ++state.nearbyBusRequest;
     state.nearbyBusFetched = Date.now(); state.nearbyBusPoint = p;
+    const params = { at: `${p.lat},${p.lon}`, stop: state.nearbyBusStop, service: state.nearbyServiceKey, walk: state.nearbyVerifyWalk ? '1' : '0' };
+    if (state.onboard) {
+      Object.assign(params, { trip: state.onboard.trip, date: state.onboard.date, after: state.onboard.after, alight: state.onboard.alight });
+      if (state.onboard.place) Object.assign(params, { to: `${state.onboard.place.lat},${state.onboard.place.lon}`, name: state.onboard.place.name });
+    }
     try {
-      const data = await api('nearby-bus', { at: `${p.lat},${p.lon}`, stop: state.nearbyBusStop, service: state.nearbyServiceKey }, controller.signal);
+      const data = await api('nearby-bus', params, controller.signal);
       if (request !== state.nearbyBusRequest || !nearbyBusEnabled()) return;
       if (map.distance([p.lat, p.lon], [state.userLocation.lat, state.userLocation.lon]) > 25) return;
       renderNearbyBus(data);
     } catch (error) {
       if (error.name === 'AbortError' || request !== state.nearbyBusRequest) return;
       clearNearbyBus();
+      if (state.onboard?.alight && /alighting stop ahead/.test(error.message || '')) {
+        state.onboard.alight = 0; state.nearbyVerifyWalk = false; state.nearbyServiceKey = '';
+        mapToast('That stop has passed. Showing the next alighting stop.'); fetchNearbyBus(true); return;
+      }
+      if (state.onboard) mapToast(error.message || 'Onboard options unavailable. Choose another stop or retry.', true);
     } finally { if (state.nearbyBusController === controller) state.nearbyBusController = null; }
   }
 
@@ -676,6 +817,7 @@
     const point = { lat: Number(position.coords.latitude), lon: Number(position.coords.longitude), accuracy: Number.isFinite(accuracy) && accuracy > 0 ? accuracy : null, timestamp: Number(position.timestamp) || Date.now() };
     if (!Number.isFinite(point.lat) || !Number.isFinite(point.lon)) return false;
     const previous = state.userLocation;
+    if (!previous && !state.selected) { state.nearbyCamera = 'local'; state.nearbyFitPending = true; }
     if (previous && point.timestamp < previous.timestamp) return false;
     if (previous && point.timestamp === previous.timestamp && point.accuracy !== null && previous.accuracy !== null && point.accuracy >= previous.accuracy && map.distance([previous.lat, previous.lon], [point.lat, point.lon]) < point.accuracy) return false;
     state.userLocation = point;
@@ -760,6 +902,7 @@
   }
 
   function pauseMapFollowing() {
+    state.nearbyCamera = null; state.nearbyPendingCamera = null;
     if (state.guidance) { state.guidance.following = false; state.guidance.fitPending = false; }
     if (state.selected) setFollow(false);
   }
@@ -776,6 +919,7 @@
     $('use-location').disabled = true;
     $('gps-status').hidden = false;
     $('gps-status').textContent = 'Finding GPS…';
+    state.nearbyCamera = 'local'; state.nearbyFitPending = true;
     navigator.geolocation.getCurrentPosition(position => {
       $('use-location').disabled = false;
       state.locationConsent = true;
@@ -1777,6 +1921,7 @@
   }
 
   function selectJourney(journey) {
+    state.onboard = null; state.nearbyCamera = null;
     clearStationBrowse(false);
     if (state.guidance) exitStationGuidance(false);
     clearApproach();
@@ -2292,6 +2437,7 @@
       if (isMobile()) setPanel(false);
     });
     map.on('moveend', () => {
+      if (state.nearbyBusData) drawNearbyLabels();
       drawNetworkLines(); clearTimeout(moveTimer); moveTimer = setTimeout(fetchVehicles, 350);
       if (map.getZoom() >= STREET_ZOOM) {
         if (state.approachData && nextLeg()) { renderApproachVehicle(); drawApproach(state.approachData, nextLeg()); }
@@ -2324,7 +2470,7 @@
     let resizeTimer;
     window.addEventListener('resize', () => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => { map.invalidateSize({ pan: false }); setPanel(state.panelOpen); if (state.guidance) fitStationGuidance(); else if (state.selected) fitJourneyBounds(state.selected); }, 150);
+      resizeTimer = setTimeout(() => { map.invalidateSize({ pan: false }); setPanel(state.panelOpen); if (state.guidance) fitStationGuidance(); else if (state.selected) fitJourneyBounds(state.selected); else if (state.nearbyCamera) fitNearbyView(state.nearbyCamera === 'full'); else drawNearbyLabels(); }, 150);
     });
 
     $('open-panel').addEventListener('click', event => { if (event.detail === 0 || Date.now() >= state.suppressSheetClickUntil) { if (state.firstWalkFocus) setFollow(true); setPanel(true, true); } });
@@ -2471,7 +2617,15 @@
 
   window.Nextstop = {
     getMap: () => map,
-    choosePlace: place => chooseSearchPlace('destination', place),
+    choosePlace: place => {
+      if (state.onboard) {
+        const explore = point => {
+          if (!point || !state.onboard) return;
+          state.onboard.place = { ...point, name: place.name }; state.nearbyFitPending = true; fetchNearbyBus(true);
+        };
+        if (place.requiresEntrance) window.Nextstop.pickLocation(place, explore); else explore(place);
+      } else chooseSearchPlace('destination', place);
+    },
     pickLocation: (point, callback) => {
       const previous = { callback, field: state.field, panelOpen: state.panelOpen, follow: state.followJourney };
       beginMapPick('destination'); state.externalPick = previous;

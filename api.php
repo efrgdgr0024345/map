@@ -118,7 +118,17 @@ try {
             $location=point((string)($_GET['at'] ?? ''));
             $stop=trim((string)($_GET['stop'] ?? ''));
             if (strlen($stop)>200) { throw new InvalidArgumentException('Invalid stop.'); }
-            $result=$service instanceof App\Transit ? $service->nearbyBus($location,null,$stop,substr((string)($_GET['service'] ?? ''),0,100))
+            $radius=filter_var($_GET['radius'] ?? '500',FILTER_VALIDATE_INT);
+            if ($radius===false || $radius<100 || $radius>1000) { throw new InvalidArgumentException('Choose a search radius between 100 and 1000 metres.'); }
+            $ride=null;
+            if (($_GET['trip'] ?? '')!=='') {
+                if (strlen($_GET['trip'])>200 || !preg_match('/^\d{8}$/D',$_GET['date'] ?? '')) { throw new InvalidArgumentException('Choose a valid onboard service and date.'); }
+                $after=filter_var($_GET['after'] ?? '0',FILTER_VALIDATE_INT); $alight=filter_var($_GET['alight'] ?? '0',FILTER_VALIDATE_INT);
+                if ($after===false || $alight===false || $after<0 || $alight<0) { throw new InvalidArgumentException('Choose a valid stop sequence.'); }
+                $ride=['trip'=>$_GET['trip'],'date'=>$_GET['date'],'after'=>$after,'alight'=>$alight];
+            }
+            $place=isset($_GET['to']) ? point($_GET['to'])+['name'=>substr($_GET['name'] ?? 'Your destination',0,160)] : null;
+            $result=$service instanceof App\Transit ? (new App\NearbyExplorer($service))->explore($location,$stop,substr((string)($_GET['service'] ?? ''),0,100),$radius,$ride,($_GET['walk'] ?? '')==='1',$place)
                 : ['stop'=>null,'nearbyStops'=>[],'departure'=>null,'geometry'=>[],'vehicle'=>null,'message'=>'Import the official timetable to find nearby buses.'];
             break;
         case 'approach':

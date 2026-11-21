@@ -36,5 +36,60 @@ try{
  $fresh=new Transit();$far=$fresh->nearbyBus(['lat'=>-32.1,'lon'=>116.2],$now);
  check($far['services']===[]&&$far['stop']===null,'no nearby stop gives an empty response');
  check(count($transit->nearbyBus($p,$now,'','made-up-key')['services'])===6,'an unknown direction key cannot request an unrelated service');
- echo "\n$checks nearby service/direction checks passed. Synthetic timetable only.\n";
+ // Confirmed ride and actual alight-to-walk feasibility, without external providers.
+ $db->exec("INSERT INTO routes VALUES('ON','RIDE',3);INSERT INTO stops VALUES('RO','Ride origin',-31.956,115.85),('AL','Alighting stand',-31.95,115.85),('RZ','Ride terminus',-31.947,115.85)");
+ $db->prepare('INSERT INTO trips VALUES(?,?,?,?,?,?,?)')->execute(['onboard','ON','daily','Ride terminus','onboard',$s-300,$s+300]);
+ $q=$db->prepare('INSERT INTO stop_times VALUES(?,?,?,?,?,?,?)');
+ foreach([['RO',-300],['AL',60],['RZ',300]] as $i=>$row)$q->execute(['onboard',$row[0],($i+1)*10,$s+$row[1],$s+$row[1],0,0]);
+ $q=$db->prepare('INSERT INTO shapes VALUES(?,?,?,?)');foreach([[-31.956,115.85],[-31.95,115.85],[-31.947,115.85]] as $i=>$p2)$q->execute(['onboard',$i,$p2[0],$p2[1]]);
+ $add('bus-west-between','B','BW','W','West',300);
+ $fresh=new Transit();$gps=['lat'=>-31.9505,'lon'=>115.85];$date=date('Ymd',$now);
+ $context=$fresh->onboardContext('onboard',$date,$gps,0,0,$now);
+ check($context['nextStop']['id']==='AL'&&$context['nextStop']['sequence']===20,'GPS progress resolves the next alighting visit ahead');
+ check(strtotime($context['alightAt'])>$now,'alighting time includes the remaining ride');
+ $ride=['trip'=>'onboard','date'=>$date,'after'=>0,'alight'=>0];
+ $calls=[];$walker=static function($from,$to)use(&$calls){$calls[]=[$from,$to];return ['geometry'=>[[$from['lat'],$from['lon']],[$from['lat'],115.8499],[$to['lat'],$to['lon']]],'duration'=>500,'distance'=>625,'accessConnectors'=>[],'routing'=>'street'];};
+ $explorer=new App\NearbyExplorer($fresh,$walker);
+ $discovery=$explorer->explore($gps,'','',500,$ride,false,null,$now);
+ check($discovery['centre']['id']==='AL'&&$discovery['radius']===300,'onboard search is centred 300 metres around the alighting stand, not mid-road GPS');
+ check(count($calls)===0,'discovery does not fan out pedestrian provider requests');
+ $west=array_values(array_filter($discovery['services'],static fn($d)=>$d['routeName']==='915'&&$d['headsign']==='West'))[0];
+ check($west['tripId']==='bus-west-between','discovery excludes buses already missed after the remaining ride and approximate walk');
+ $verified=$explorer->explore($gps,'',$west['key'],500,$ride,true,null,$now);
+ check($verified['departure']['tripId']==='bus-west-later'&&$verified['departure']['accessVerified'],'verified walk replaces a missed bus with the next reachable service');
+ check($verified['walk']['from']['id']==='AL'&&$verified['walk']['to']['id']==='BW','walk starts at the alighting stand and ends at the opposite-direction boarding stop');
+ check($verified['walk']['geometry'][1][1]===115.8499,'verified pedestrian geometry retains its bends');
+ $place=['lat'=>-31.949,'lon'=>115.849,'name'=>'Fixture place'];
+ $visit=$explorer->explore($gps,'','',500,$ride,false,$place,$now);
+ check($visit['place']===$place&&$visit['departure']===null&&$visit['walk']['available'],'a post-alight place ends with a walk, without an invented next bus');
+ check(!isset(end($calls)[1]['id']),'personal place endpoints are not assigned trusted public-stop IDs');
+ $failed=(new App\NearbyExplorer($fresh,static function(){throw new RuntimeException('Fixture footpath failure');}))->explore($gps,'',$west['key'],500,$ride,true,null,$now);
+ check(!$failed['walk']['available']&&!isset($failed['walk']['geometry']),'routing failure never fabricates a walking line');
+ $same=$explorer->explore(['lat'=>-31.95,'lon'=>115.85],'','',500,null,true,null,$now);
+ check($same['walk']['available']&&$same['walk']['duration']===0,'same-location access needs no external walking route');
+ $db->exec("UPDATE stop_times SET dropoff=1 WHERE trip_id='onboard' AND stop_id='AL'");
+ $restricted=$fresh->onboardContext('onboard',$date,$gps,0,0,$now);
+ check($restricted['nextStop']['id']==='RZ','no-dropoff stops are skipped when choosing the next alighting stop');
+ try{$fresh->onboardContext('onboard',$date,$gps,0,20,$now);check(false,'restricted alighting rejected');}catch(InvalidArgumentException){check(true,'manual alighting cannot override no-dropoff restrictions');}
+ $offRoute=$fresh->onboardContext('onboard',$date,['lat'=>-32.05,'lon'=>115.85],0,0,$now);
+ check($offRoute['needsStopChoice']&&$offRoute['nextStop']===null,'off-route or ambiguous GPS requests an explicit alighting stop');
+ $manual=$fresh->onboardContext('onboard',$date,['lat'=>-32.05,'lon'=>115.85],0,30,$now);
+ check($manual['nextStop']['id']==='RZ'&&$manual['geometry']===[],'manual stop selection works without inventing a GPS-to-route ride segment');
+ $db->exec("CREATE TABLE transfers(from_stop_id TEXT,to_stop_id TEXT,transfer_type INTEGER,min_transfer_time INTEGER);INSERT INTO transfers VALUES('AL','BW',3,NULL);UPDATE stop_times SET dropoff=0 WHERE trip_id='onboard'");
+ $blocked=(new App\NearbyExplorer(new Transit(),$walker))->explore($gps,'','',500,$ride,false,null,$now);
+ check(!array_filter($blocked['services'],static fn($d)=>$d['stopId']==='BW'),'forbidden GTFS transfers are excluded from onward options');
+ $db->exec("CREATE TABLE stop_codes(stop_id TEXT PRIMARY KEY,code TEXT);CREATE TABLE trip_directions(trip_id TEXT PRIMARY KEY,direction_id TEXT);INSERT INTO stop_codes VALUES('BE','12345');INSERT INTO trip_directions VALUES('bus-east','0')");
+ $metadata=(new Transit())->nearbyBus(['lat'=>-31.95,'lon'=>115.85],$now,'BE');
+ $east=array_values(array_filter($metadata['services'],static fn($d)=>$d['tripId']==='bus-east'))[0];
+ check($east['stop']['code']==='12345'&&$east['directionId']==='0'&&$east['sequence']===20,'optional metadata returns public stop code, direction and exact boarding sequence');
+ // Repeated stop IDs on a loop must retain their stop sequence and ask when GPS is ambiguous.
+ $db->prepare('INSERT INTO trips VALUES(?,?,?,?,?,?,?)')->execute(['loop','ON','daily','Loop','loop',$s-300,$s+1200]);
+ $q=$db->prepare('INSERT INTO stop_times VALUES(?,?,?,?,?,?,?)');foreach([['RO',-300],['AL',60],['RZ',300],['AL',600],['RO',1200]] as $i=>$row)$q->execute(['loop',$row[0],($i+1)*10,$s+$row[1],$s+$row[1],0,0]);
+ $q=$db->prepare('INSERT INTO shapes VALUES(?,?,?,?)');foreach([[-31.956,115.85],[-31.95,115.85],[-31.947,115.85],[-31.95,115.85],[-31.956,115.85]] as $i=>$p2)$q->execute(['loop',$i,$p2[0],$p2[1]]);
+ $loop=(new Transit())->onboardContext('loop',$date,$gps,0,0,$now);
+ check($loop['needsStopChoice']&&$loop['nextStop']===null,'overlapping outward and return geometry cannot silently select a loop direction');
+ $return=(new Transit())->onboardContext('loop',$date,['lat'=>-31.948,'lon'=>115.85],30,0,$now);
+ check($return['nextStop']['id']==='AL'&&$return['nextStop']['sequence']===40,'returning to the same stop uses its later visit, not the earlier outward visit');
+ try{(new Transit())->nearbyBus($gps,$now,'','',99);check(false,'invalid radius rejected');}catch(InvalidArgumentException){check(true,'backend rejects out-of-bounds search radii');}
+ echo "\n$checks nearby service/direction checks passed. Synthetic timetable and walking fixtures only.\n";
 }finally{unset($db,$transit,$fresh);foreach(new RecursiveIteratorIterator(new RecursiveDirectoryIterator($tmp,FilesystemIterator::SKIP_DOTS),RecursiveIteratorIterator::CHILD_FIRST) as $e){if($e->isDir())rmdir($e->getPathname());else unlink($e->getPathname());}rmdir($tmp);}

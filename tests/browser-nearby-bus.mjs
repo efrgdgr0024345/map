@@ -9,7 +9,7 @@ const browser=await chromium.launch({headless:true,executablePath:process.env.CH
 const base=process.env.BASE_URL||'http://127.0.0.1:8080/';
 let checks=0;const check=(condition,label)=>{assert.ok(condition,label);checks++;console.log('PASS:',label);};
 try {
-for(const width of [320,390,1366]) {
+for(const width of [320,390,430,1366]) {
  const ctx=await browser.newContext({viewport:{width,height:900},isMobile:width<760,hasTouch:width<760});
  const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>{navigator.geolocation.watchPosition=()=>1;navigator.geolocation.clearWatch=()=>{};});
@@ -18,10 +18,10 @@ for(const width of [320,390,1366]) {
  const geometry=[[-31.952,115.848],[-31.951,115.848],[-31.95,115.85],[-31.949,115.853]];
  const iso=seconds=>new Date(Date.now()+seconds*1000).toISOString();
  function payload(stop=a, selectedKey='') {
-  let bus={tripId:stop.id==='A'?'trip-east':'trip-west',routeId:'R',routeName:'915',headsign:stop.id==='A'?'Fixture east':'Fixture west',mode:'bus',serviceDate:'20261112',departure:iso(300),arrival:iso(280),stopId:stop.id,routeColor:'#009645'};
+  let bus={key:'bus',tripId:stop.id==='A'?'trip-east':'trip-west',routeId:'R',routeName:'915',headsign:stop.id==='A'?'Fixture east':'Fixture west',mode:'bus',serviceDate:'20261112',departure:iso(300),arrival:iso(280),stopId:stop.id,routeColor:'#009645'};
   const directions=[{...bus,key:'bus',stop},{...bus,key:'train-return',tripId:'train-return',mode:'train',routeName:'Rail',headsign:'Opposite direction',stop:b,stopName:b.name}];
   if(selectedKey==='train-return'){bus=directions[1];stop=b;}
-  return {services:mode==='empty'?[]:directions,stop,nearbyStops:[a,b],departure:mode==='empty'?null:bus,geometry:mode==='empty'?[]:geometry,estimated:true,generatedAt:iso(0),message:'No scheduled buses in the next six hours.',vehicle:mode==='empty'?null:{...bus,id:'fixture-'+bus.tripId,position:{lat:-31.951,lon:115.848,bearing:0},phase:'approaching',generatedAt:iso(0),estimated:true}};
+  return {centre:{lat:-31.95,lon:115.85},radius:500,services:mode==='empty'?[]:directions,stop,nearbyStops:[a,b],departure:mode==='empty'?null:bus,geometry:mode==='empty'?[]:geometry,estimated:true,generatedAt:iso(0),message:'No scheduled buses in the next six hours.',vehicle:mode==='empty'?null:{...bus,id:'fixture-'+bus.tripId,position:{lat:-31.951,lon:115.848,bearing:0},phase:'approaching',generatedAt:iso(0),estimated:true}};
  }
  await page.route('**/api.php*',async route=>{
   const url=new URL(route.request().url()),action=url.searchParams.get('action');
@@ -51,6 +51,13 @@ for(const width of [320,390,1366]) {
  await page.getByRole('button',{name:'Show full route',exact:true}).click();
  await page.waitForFunction(()=>Nextstop.getMap().getBounds().contains([-31.949,115.853]));
  check(true,`${width}px full-route control reveals the destination`);
+ await page.waitForFunction(()=>document.querySelectorAll('.nearby-map-option').length>0);
+ check(await page.locator('.nearby-map-minutes').first().innerText()==='5 min',`${width}px map labels show a minute counter beside the route destination`);
+ check(await page.evaluate(()=>__nearbyTest.state.nearbyAreaLayers.getLayers().some(l=>l.getRadius?.()===500)),`${width}px search area has a real 500 metre radius`);
+ check(await page.locator('#mascot-peek').isHidden(),`${width}px mascot never covers nearby options`);
+ check(!await page.locator('.nearby-more').evaluate(d=>d.open),`${width}px the service list is collapsed so the map remains primary`);
+ await page.screenshot({path:`/tmp/nextstop-nearby-${width}.png`});
+ await page.locator('.nearby-more summary').click();
  await page.getByRole('button',{name:'View all stops',exact:true}).click();await page.locator('#timetable-dialog').waitFor({state:'visible'});
  await page.waitForFunction(()=>document.querySelector('#timetable-title').textContent.includes('915'));
  check((await page.locator('#timetable-title').innerText()).includes('915'),`${width}px timetable control opens the incoming service`);
@@ -68,7 +75,7 @@ for(const width of [320,390,1366]) {
  await gps();await page.evaluate(()=>__nearbyTest.fetchNearbyBus(true));await page.locator('#nearby-bus').waitFor({state:'visible'});
  await gps(-32.1,116.2);check(await page.locator('#nearby-bus').isHidden(),`${width}px walking away clears the route immediately`);
  await gps();await page.evaluate(()=>__nearbyTest.fetchNearbyBus(true));await page.locator('#nearby-bus').waitFor({state:'visible'});
- await page.locator('.nearby-direction').filter({hasText:'train Rail'}).click();
+ await page.locator('#nearby-bus .nearby-direction').filter({hasText:'train Rail'}).click();
  await page.waitForFunction(()=>__nearbyTest.state.nearbyBusData?.departure.mode==='train');
  check(await page.evaluate(()=>__nearbyTest.state.nearbyBusData.departure.tripId==='train-return'),`${width}px choosing an opposite train direction updates the selected service`);
  mode='empty';await page.evaluate(()=>__nearbyTest.fetchNearbyBus(true));check((await page.locator('#nearby-bus').innerText()).includes('No scheduled buses'),`${width}px no departures gives an honest empty card`);

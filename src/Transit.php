@@ -16,6 +16,7 @@ final class Transit
     private array $nearbyStops=[];
     private bool $materializedTrips;
     private TransferRules $transferRules;
+    private array $metadataTables=[];
 
     public function __construct(?string $path = null)
     {
@@ -23,6 +24,7 @@ final class Transit
         $this->db->exec('PRAGMA query_only=ON; PRAGMA busy_timeout=3000;');
         $this->materializedTrips=version_compare((string)$this->db->query('SELECT sqlite_version()')->fetchColumn(),'3.35.0','>=');
         $this->transferRules=new TransferRules($this->db);
+        $this->metadataTables=$this->db->query("SELECT name FROM sqlite_master WHERE name IN ('trip_directions','stop_codes')")->fetchAll(PDO::FETCH_COLUMN);
         // Older cPanel databases work immediately; a refresh adds optional feed colours.
         if ($this->db->query("SELECT 1 FROM sqlite_master WHERE type='table' AND name='route_styles'")->fetchColumn()) {
             $this->routeStyles=$this->db->query('SELECT route_id,color,text_color FROM route_styles')->fetchAll(PDO::FETCH_UNIQUE | PDO::FETCH_ASSOC);
@@ -96,6 +98,16 @@ final class Transit
         if (!$r) { throw new RuntimeException('Timetable refers to an unknown stop. Re-import the feed.'); }
         $r['lat']=(float)$r['lat']; $r['lon']=(float)$r['lon'];
         return $this->stops[$id]=$r;
+    }
+
+    private function publicStop(string $id): array
+    {
+        $r=$this->stop($id);
+        if (in_array('stop_codes',$this->metadataTables,true)) {
+            $code=$this->db->prepare('SELECT code FROM stop_codes WHERE stop_id=?'); $code->execute([$id]);
+            $r['code']=(string)($code->fetchColumn() ?: '');
+        }
+        return $r;
     }
 
     public function vehicles(array $bbox,array $routes=[],string $selected='',bool $includeLines=true,string $rail=''): array
@@ -214,32 +226,35 @@ final class Transit
     }
 
     /** Next services in each destination group at the nearest stops for each mode. */
-    public function nearbyBus(array $point, ?int $now=null, string $stopId='', string $serviceKey=''): array
+    public function nearbyBus(array $point, ?int $now=null, string $stopId='', string $serviceKey='', int $radius=500, array $access=[]): array
     {
         $this->activeGuard(); $now ??= time();
+        if ($radius<100 || $radius>1000) { throw new \InvalidArgumentException('Choose a search radius between 100 and 1000 metres.'); }
         $supported='(r.type IN (0,1,2,3,4) OR r.type BETWEEN 100 AND 199 OR r.type BETWEEN 700 AND 799 OR r.type BETWEEN 1000 AND 1099)';
         $q=$this->db->prepare("SELECT s.id,s.name,s.lat,s.lon FROM stops s
             WHERE s.lat BETWEEN ? AND ? AND s.lon BETWEEN ? AND ?
             AND EXISTS (SELECT 1 FROM stop_times st JOIN trips t ON t.id=st.trip_id JOIN routes r ON r.id=t.route_id
                 WHERE st.stop_id=s.id AND st.pickup<>1 AND $supported
                 AND EXISTS (SELECT 1 FROM stop_times later WHERE later.trip_id=t.id AND later.seq>st.seq))");
-        $q->execute([$point['lat']-.0046,$point['lat']+.0046,$point['lon']-.006,$point['lon']+.006]);
+        $dlat=$radius/111000; $dlon=$radius/(111000*cos(deg2rad($point['lat'])));
+        $q->execute([$point['lat']-$dlat,$point['lat']+$dlat,$point['lon']-$dlon,$point['lon']+$dlon]);
         $nearby=[];
         foreach ($q as $row) {
             $row['lat']=(float)$row['lat']; $row['lon']=(float)$row['lon']; $row['distance']=Geo::distance($point,$row);
-            if ($row['distance']<=500) { $nearby[]=$row; }
+            if ($row['distance']<=$radius) { $nearby[]=array_merge($row,$this->publicStop((string)$row['id'])); }
         }
         usort($nearby,static fn($a,$b)=>($a['distance']<=>$b['distance']) ?: strcmp($a['id'],$b['id']));
         $limited=count($nearby)>256; $nearby=array_slice($nearby,0,256);
         $result=['stop'=>$nearby[0] ?? null,'nearbyStops'=>$nearby,'departure'=>null,'geometry'=>[],'vehicle'=>null,'services'=>[],
-            'generatedAt'=>date(DATE_ATOM,$now),'estimated'=>true,'radius'=>500,'truncated'=>$limited,
-            'message'=>$nearby ? 'No scheduled departures from nearby stops in the next six hours.' : 'No boarding stop within 500 metres.'];
+            'generatedAt'=>date(DATE_ATOM,$now),'estimated'=>true,'radius'=>$radius,'centre'=>$point,'truncated'=>$limited,
+            'message'=>$nearby ? 'No reachable scheduled departures from nearby stops in the next six hours.' : "No boarding stop within $radius metres."];
         if (!$nearby) { return $result; }
         $stops=array_column($nearby,null,'id'); $rows=[];
         $stopMarks=implode(',',array_fill(0,count($nearby),'?'));
         foreach ($this->serviceDays($now,21600) as $day) {
             $marks=implode(',',array_fill(0,count($day['ids']),'?'));
-            $q=$this->db->prepare("SELECT t.id trip_id,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type,st.stop_id,st.arrival,st.departure,st.pickup,
+            $direction=in_array('trip_directions',$this->metadataTables,true) ? '(SELECT direction_id FROM trip_directions WHERE trip_id=t.id)' : 'NULL';
+            $q=$this->db->prepare("SELECT t.id trip_id,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type,st.stop_id,st.seq,st.arrival,st.departure,st.pickup,$direction direction_id,
                 (SELECT last.stop_id FROM stop_times last WHERE last.trip_id=t.id ORDER BY last.seq DESC LIMIT 1) terminal_id
                 FROM stop_times st JOIN trips t ON t.id=st.trip_id JOIN routes r ON r.id=t.route_id
                 WHERE st.stop_id IN ($stopMarks) AND st.pickup<>1 AND $supported
@@ -248,6 +263,15 @@ final class Transit
                 ORDER BY st.departure,t.id");
             $q->execute(array_merge(array_keys($stops),$day['ids'],[$now-$day['base'],$now+21600-$day['base']]));
             foreach ($q as $row) {
+                if (($access['fromTripId'] ?? '')===$row['trip_id'] && ($access['serviceDate'] ?? '')===$day['date']) { continue; }
+                if ($access) {
+                    $walk=$access['walkSeconds'][$row['stop_id']] ?? (int)ceil($stops[$row['stop_id']]['distance']*1.3/1.25);
+                    $rule=$this->transferRules->between((string)($access['fromStopId'] ?? ''),$row['stop_id'],[
+                        'fromTripId'=>$access['fromTripId'] ?? '', 'fromRouteId'=>$access['fromRouteId'] ?? '',
+                        'toTripId'=>$row['trip_id'],'toRouteId'=>$row['route_id']]);
+                    $ready=(int)($access['arrival'] ?? $now)+max($walk+120,(int)$rule['minimumSeconds']);
+                    if (!$rule['allowed'] || $day['base']+(int)$row['departure']<$ready) { continue; }
+                }
                 $row['base']=$day['base']; $row['date']=$day['date']; $row['mode']=self::mode((int)$row['type']);
                 $row['stop']=$stops[$row['stop_id']]; $rows[]=$row;
             }
@@ -265,7 +289,7 @@ final class Transit
         $groups=[];
         foreach ($rows as $row) {
             if (!isset($routes[$row['mode']."\0".$row['route_name']])) { continue; }
-            $key=substr(hash('sha256',$row['mode']."\0".$row['route_name']."\0".($row['headsign'] ?: $row['terminal_id'])),0,24);
+            $key=substr(hash('sha256',$row['mode']."\0".$row['route_name']."\0".($row['headsign'] ?: $row['terminal_id'])."\0".($row['direction_id'] ?? '')),0,24);
             $old=$groups[$key] ?? null;
             if (!$old || $row['stop']['distance']<$old['stop']['distance']-.1
                 || (abs($row['stop']['distance']-$old['stop']['distance'])<=.1 && $row['base']+$row['departure']<$old['base']+$old['departure'])) { $groups[$key]=$row; }
@@ -275,6 +299,8 @@ final class Transit
             $result['services'][]=array_merge(['key'=>$key,'tripId'=>$trip['trip_id'],'routeId'=>$trip['route_id'],'routeName'=>$trip['route_name'],
                 'headsign'=>$trip['headsign'] ?: $terminal['name'],'destination'=>$terminal['name'],'mode'=>$trip['mode'],
                 'serviceDate'=>$trip['date'],'stopId'=>$trip['stop_id'],'stopName'=>$trip['stop']['name'],'stop'=>$trip['stop'],
+                'sequence'=>(int)$trip['seq'],'directionId'=>$trip['direction_id'],
+                'accessVerified'=>array_key_exists($trip['stop_id'],$access['walkSeconds'] ?? []),
                 'arrival'=>date(DATE_ATOM,$trip['base']+(int)$trip['arrival']),
                 'departure'=>date(DATE_ATOM,$trip['base']+(int)$trip['departure']),'pickupType'=>(int)$trip['pickup']],
                 $this->routeStyle($trip['route_id'],$trip['route_name'],(int)$trip['type']));
@@ -283,11 +309,68 @@ final class Transit
         if (!$result['services']) { return $result; }
         $selected=$result['services'][0];
         foreach ($result['services'] as $service) { if ($service['key']===$serviceKey) { $selected=$service; break; } }
+        if (($access['requireKey'] ?? false) && ($selected['key']!==$serviceKey || $selected['stopId']!==$stopId)) {
+            $result['message']='No reachable departure in this direction at this stop in the next six hours.'; return $result;
+        }
         $result['stop']=$selected['stop']; $result['departure']=$selected;
         $result['geometry']=$this->shape($groups[$selected['key']]['shape_id']);
         $result['vehicle']=$this->approach($selected['tripId'],$selected['stopId'],$now,$selected['serviceDate'],$selected['departure']);
         $result['message']='Next departures in each destination group at nearby boarding stops. Positions and arrivals are timetable estimates.';
         return $result;
+    }
+
+    /** Explicitly confirmed trip: locate the next legal alighting visit, never infer boarding. */
+    public function onboardContext(string $tripId,string $date,array $point,int $afterSequence=0,int $alightSequence=0,?int $now=null): array
+    {
+        $now ??= time();
+        $board=$this->timetable('',$tripId,$now,$date); $stops=$board['stops']; $trip=$board['trip'];
+        if (count($stops)<2 || strtotime($stops[0]['departure'])>$now+300 || strtotime(end($stops)['arrival'])<$now-7200) {
+            throw new \InvalidArgumentException('Choose a service that is running before confirming you are on board.');
+        }
+        $q=$this->db->prepare('SELECT shape_id FROM trips WHERE id=?'); $q->execute([$tripId]); $shape=$this->shape((string)$q->fetchColumn());
+        if (count($shape)<2) { $shape=[]; }
+        $visits=array_map(static fn($s)=>['lat'=>$s['lat'],'lon'=>$s['lon']],$stops);
+        $indices=Geo::stopIndices($shape,$visits); $candidates=[]; $choices=[];
+        foreach ($stops as $i=>$stop) {
+            if ($i>0 && $stop['sequence']>$afterSequence && $stop['dropoffType']!==1) { $choices[]=$stop; }
+            if (!$shape || !isset($stops[$i+1]) || $stop['sequence']<$afterSequence) { continue; }
+            $line=Geo::betweenStops($shape,$visits,$indices,$i,$i+1); $projection=Geo::project($line,$point);
+            $candidates[]=array_merge($projection,['index'=>$i,'line'=>$line]);
+        }
+        usort($candidates,static fn($a,$b)=>$a['distance']<=>$b['distance']);
+        $match=$candidates[0] ?? null; $ambiguous=!$match || $match['distance']>120;
+        foreach ($candidates as $other) {
+            if (!$match || $other['index']===$match['index'] || $other['distance']>$match['distance']+10) { continue; }
+            // Adjacent legs legitimately meet at one stop; a long retraced road is ambiguous.
+            if (abs($other['index']-$match['index'])===1 && Geo::distance($point,$stops[max($other['index'],$match['index'])])<40) { continue; }
+            $ambiguous=true;
+        }
+        $context=['trip'=>$trip,'choices'=>$choices,'nextStop'=>null,'needsStopChoice'=>$ambiguous && !$alightSequence,
+            'passedSequence'=>$afterSequence,'estimated'=>true,'geometry'=>[], 'message'=>'Choose the stop you will get off at.'];
+        if ($context['needsStopChoice']) { return $context; }
+        $chosen=null;
+        foreach ($stops as $i=>$stop) {
+            if ($i===0 || $stop['sequence']<=$afterSequence || $stop['dropoffType']===1) { continue; }
+            if ($alightSequence ? $stop['sequence']===$alightSequence : $i>($match['index'] ?? -1)) { $chosen=$i; break; }
+        }
+        if ($chosen===null || ($match && !$ambiguous && $chosen<=$match['index'])) {
+            throw new \InvalidArgumentException('Choose an alighting stop ahead that allows passengers to get off.');
+        }
+        $stop=$stops[$chosen]; $seconds=max(0,strtotime($stop['arrival'])-$now);
+        if ($match && !$ambiguous) {
+            $i=$match['index']; $remaining=max(0,strtotime($stops[$i+1]['arrival'])-strtotime($stops[$i]['departure']))*(1-$match['fraction']);
+            $seconds=(int)ceil($remaining+max(0,strtotime($stop['arrival'])-strtotime($stops[$i+1]['arrival'])));
+            if (Geo::distance($point,$stop)<25) { $seconds=0; }
+            $context['geometry']=Geo::betweenStops($shape,$visits,$indices,$i,$chosen);
+            $projection=Geo::project($context['geometry'],$point);
+            $context['geometry']=Geo::tail($context['geometry'],$projection['fraction']);
+            $context['passedSequence']=$stops[$i]['sequence'];
+        }
+        $context['choices']=array_values(array_filter($choices,static fn($s)=>$s['sequence']>$context['passedSequence']));
+        $context['nextStop']=$this->publicStop($stop['id'])+['sequence'=>$stop['sequence'],'dropoffType'=>$stop['dropoffType']];
+        $context['alightAt']=date(DATE_ATOM,$now+$seconds);
+        $context['message']='Alight here, then walk. Arrival and vehicle positions are estimates.';
+        return $context;
     }
 
     /** In-app scheduled departures or the full stop-by-stop timetable of a trip. */

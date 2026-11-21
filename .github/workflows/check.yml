@@ -22,6 +22,7 @@ jobs:
           coverage: none
       - run: find . -name '*.php' -not -path './var/*' -print0 | xargs -0 -n1 php -l
       - run: php tests/transit.php
+      - run: php tests/nearby_services.php
       - run: php tests/geo.php
       - run: php tests/timetable.php
       - run: php tests/route_cache.php
@@ -48,6 +49,8 @@ jobs:
       - run: PHP_BINARY=php python3 tests/loader_progress_http.py
       - run: PHP_BINARY=php python3 tests/calendar_http.py
       - run: PHP_BINARY=php python3 tests/poi_http.py
+      - run: node --check tests/browser-nearby-bus.mjs
+      - run: node --check tests/browser-nearby-onboard.mjs
       - run: node --check assets/app.js
       - run: node --check assets/planner.js
       - run: node --check assets/pois.js

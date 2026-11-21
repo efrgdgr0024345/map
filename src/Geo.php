@@ -118,4 +118,23 @@ final class Geo
         if (!$shape) { return [[$a['lat'],$a['lon']],[$b['lat'],$b['lon']]]; }
         return array_merge([[$a['lat'],$a['lon']]],array_slice($shape,$indices[$from],max(1,$indices[$to]-$indices[$from]+1)),[[$b['lat'],$b['lon']]]);
     }
+
+    /** Closest projection on a short local polyline; fraction is by travelled distance. */
+    public static function project(array $line,array $point): array
+    {
+        $best=['distance'=>INF,'fraction'=>0.0,'point'=>null]; $travelled=0.0; $at=0.0;
+        $scale=cos(deg2rad($point['lat']));
+        for ($i=1;$i<count($line);$i++) {
+            $a=$line[$i-1]; $b=$line[$i];
+            $dx=($b[1]-$a[1])*$scale; $dy=$b[0]-$a[0]; $length2=$dx*$dx+$dy*$dy;
+            $f=$length2>0 ? max(0,min(1,((($point['lon']-$a[1])*$scale)*$dx+($point['lat']-$a[0])*$dy)/$length2)) : 0;
+            $p=['lat'=>$a[0]+($b[0]-$a[0])*$f,'lon'=>$a[1]+($b[1]-$a[1])*$f];
+            $length=self::distance(['lat'=>$a[0],'lon'=>$a[1]],['lat'=>$b[0],'lon'=>$b[1]]);
+            $distance=self::distance($point,$p);
+            if ($distance<$best['distance']) { $best=['distance'=>$distance,'fraction'=>0.0,'point'=>$p]; $at=$travelled+$length*$f; }
+            $travelled+=$length;
+        }
+        $best['fraction']=$travelled>0 ? $at/$travelled : 0.0;
+        return $best;
+    }
 }

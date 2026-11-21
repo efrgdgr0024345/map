@@ -67,6 +67,8 @@ final class GtfsImporter
                 CREATE TABLE routes (id TEXT PRIMARY KEY,name TEXT,type INTEGER);
                 CREATE TABLE route_styles (route_id TEXT PRIMARY KEY,color TEXT,text_color TEXT);
                 CREATE TABLE trips (id TEXT PRIMARY KEY,route_id TEXT,service_id TEXT,headsign TEXT,shape_id TEXT,start INTEGER,end INTEGER);
+                CREATE TABLE trip_directions (trip_id TEXT PRIMARY KEY,direction_id TEXT);
+                CREATE TABLE stop_codes (stop_id TEXT PRIMARY KEY,code TEXT);
                 CREATE TABLE stop_times (trip_id TEXT,stop_id TEXT,seq INTEGER,arrival INTEGER,departure INTEGER,pickup INTEGER,dropoff INTEGER,PRIMARY KEY(trip_id,seq));
                 CREATE TABLE connections (trip_id TEXT,seq INTEGER,from_id TEXT,to_id TEXT,departure INTEGER,arrival INTEGER,pickup INTEGER,dropoff INTEGER);
                 CREATE TABLE calendar (service_id TEXT PRIMARY KEY,mon INTEGER,tue INTEGER,wed INTEGER,thu INTEGER,fri INTEGER,sat INTEGER,sun INTEGER,start TEXT,end TEXT);
@@ -76,6 +78,8 @@ final class GtfsImporter
             $counts = [];
             $counts['stops'] = $this->rows($zip, 'stops.txt', true, $db,
                 'INSERT INTO stops VALUES (?,?,?,?)', static fn($r) => [$r['stop_id'], $r['stop_name'], (float)$r['stop_lat'], (float)$r['stop_lon']]);
+            $this->rows($zip, 'stops.txt', true, $db,
+                'INSERT INTO stop_codes VALUES (?,?)', static fn($r) => [$r['stop_id'], $r['stop_code'] ?? '']);
             $counts['stop_details'] = $this->rows($zip, 'stops.txt', true, $db,
                 'INSERT INTO stop_details VALUES (?,?,?,?,?,?)', static fn($r) => [
                     $r['stop_id'], $r['parent_station'] ?? '', self::integer($r['location_type'] ?? '', 0, 4, 'stops.txt location_type', 0),
@@ -87,6 +91,8 @@ final class GtfsImporter
                 static fn($r) => [$r['route_id'], $r['route_color'] ?? '', $r['route_text_color'] ?? '']);
             $counts['trips'] = $this->rows($zip, 'trips.txt', true, $db,
                 'INSERT INTO trips VALUES (?,?,?,?,?,NULL,NULL)', static fn($r) => [$r['trip_id'], $r['route_id'], $r['service_id'], $r['trip_headsign'] ?? '', $r['shape_id'] ?? '']);
+            $this->rows($zip, 'trips.txt', true, $db,
+                'INSERT INTO trip_directions VALUES (?,?)', static fn($r) => [$r['trip_id'], in_array($r['direction_id'] ?? '', ['0','1'], true) ? $r['direction_id'] : '']);
             $counts['stop_times'] = $this->rows($zip, 'stop_times.txt', true, $db,
                 'INSERT INTO stop_times VALUES (?,?,?,?,?,?,?)', static fn($r) => [$r['trip_id'], $r['stop_id'], (int)$r['stop_sequence'], self::seconds($r['arrival_time']), self::seconds($r['departure_time']), (int)($r['pickup_type'] ?? 0), (int)($r['drop_off_type'] ?? 0)]);
             $this->rows($zip, 'calendar.txt', false, $db,
