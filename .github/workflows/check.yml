@@ -71,7 +71,7 @@ jobs:
   browser-checks:
     runs-on: ubuntu-latest
     env:
-      NODE_PATH: ${{ runner.temp }}/nextstop-ui/node_modules
+      NODE_PATH: /tmp/nextstop-ui/node_modules
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -82,8 +82,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm install --prefix "$RUNNER_TEMP/nextstop-ui" --no-save --no-package-lock playwright@1.62.1
-      - run: node "$RUNNER_TEMP/nextstop-ui/node_modules/playwright/cli.js" install --with-deps chromium
+      - run: npm install --prefix /tmp/nextstop-ui --no-save --no-package-lock playwright@1.62.1
+      - run: node /tmp/nextstop-ui/node_modules/playwright/cli.js install --with-deps chromium
       - name: Start the fixture test host
         run: |
           php -S 127.0.0.1:8080 dev-router.php > "$RUNNER_TEMP/nextstop-php.log" 2>&1 &
