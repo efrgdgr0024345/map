@@ -290,7 +290,7 @@ function pm_remove_tree(string $path): void
     @rmdir($path);
 }
 
-function pm_download_archive(string $target): void
+function pm_download_archive(string $target, ?string $revision=null): void
 {
     pm_progress_report(['stage'=>'app-download','label'=>'Downloading application','message'=>'Fetching the published GitHub package.','percent'=>5,'_force'=>true]);
     $stream = fopen($target, 'xb');
@@ -300,7 +300,8 @@ function pm_download_archive(string $target): void
     chmod($target, 0600);
     $bytes = 0;
     $total = 0;
-    $curl = curl_init(PM_LOADER_ARCHIVE);
+    if ($revision!==null && !preg_match('/^[a-f0-9]{40}$/D',$revision)) { fclose($stream); throw new RuntimeException('Invalid release revision.'); }
+    $curl = curl_init($revision===null ? PM_LOADER_ARCHIVE : 'https://codeload.github.com/efrgdgr0024345/map/zip/'.$revision);
     curl_setopt_array($curl, [
         CURLOPT_CONNECTTIMEOUT => 20,
         CURLOPT_TIMEOUT => 120,
@@ -358,7 +359,7 @@ function pm_github_read(string $url, int $limit): string
 }
 
 /** Compare actual local Git blob hashes, so interrupted updates and missing files repair on retry. */
-function pm_incremental_package(array $tree, string $archive, callable $download): array
+function pm_release_files(array $tree): array
 {
     if (!empty($tree['truncated']) || !isset($tree['tree']) || !is_array($tree['tree'])
         || !preg_match('/^[a-f0-9]{40}$/D',(string)($tree['sha'] ?? '')) || count($tree['tree'])>10000) {
@@ -383,6 +384,12 @@ function pm_incremental_package(array $tree, string $archive, callable $download
     foreach (pm_application_manifest() as $required) {
         if (empty($files[$required]['size'])) { throw new RuntimeException('GitHub file list is missing required application files.'); }
     }
+    return $files;
+}
+
+function pm_incremental_package(array $tree, string $archive, callable $download): array
+{
+    $files=pm_release_files($tree);
     $zip=new ZipArchive();
     if ($zip->open($archive,ZipArchive::CREATE | ZipArchive::EXCL)!==true) { throw new RuntimeException('Cannot stage incremental update.'); }
     $downloaded=0; $reused=0; $bytes=0;
@@ -409,18 +416,109 @@ function pm_incremental_package(array $tree, string $archive, callable $download
     return ['downloaded'=>$downloaded,'reused'=>$reused,'downloadBytes'=>$bytes,'revision'=>$tree['sha']];
 }
 
+/** Resolve one immutable main commit and require its successful push workflow. */
+function pm_source_release(?string $expected=null, ?callable $read=null): array
+{
+    if ($expected!==null && !preg_match('/^[a-f0-9]{40}$/D',$expected)) { throw new RuntimeException('Choose a full GitHub commit SHA.'); }
+    $read ??= static fn($url)=>pm_github_read($url,8*1024*1024);
+    $base='https://api.github.com/repos/efrgdgr0024345/map';
+    $commit=json_decode($read($base.'/commits/main'),true,64,JSON_THROW_ON_ERROR);
+    $revision=(string)($commit['sha'] ?? '');
+    if (!preg_match('/^[a-f0-9]{40}$/D',$revision) || ($expected!==null && !hash_equals($expected,$revision))) {
+        throw new RuntimeException('GitHub main differs from the requested checked commit. No release was installed.');
+    }
+    $runs=json_decode($read($base.'/actions/workflows/check.yml/runs?head_sha='.$revision.'&event=push&per_page=20'),true,64,JSON_THROW_ON_ERROR);
+    $checked=null;
+    foreach ($runs['workflow_runs'] ?? [] as $run) {
+        if (($run['head_sha'] ?? '')===$revision && ($run['head_branch'] ?? '')==='main'
+            && ($run['event'] ?? '')==='push' && ($run['conclusion'] ?? '')==='success'
+            && is_int($run['id'] ?? null) && $run['id']>0) { $checked=$run['id']; break; }
+    }
+    if ($checked===null) { throw new RuntimeException('GitHub checks have not passed for commit '.$revision.'. No release was installed.'); }
+    $treeRevision=(string)($commit['commit']['tree']['sha'] ?? '');
+    if (!preg_match('/^[a-f0-9]{40}$/D',$treeRevision)) { throw new RuntimeException('Invalid GitHub source tree revision.'); }
+    $tree=json_decode($read($base.'/git/trees/'.$treeRevision.'?recursive=1'),true,64,JSON_THROW_ON_ERROR);
+    if ($treeRevision!==($tree['sha'] ?? null)) { throw new RuntimeException('GitHub commit and source tree do not match.'); }
+    return ['revision'=>$revision,'tree'=>$tree['sha'],'files'=>pm_release_files($tree),
+        'checksUrl'=>'https://github.com/efrgdgr0024345/map/actions/runs/'.$checked];
+}
+
+function pm_manifest_digest(array $files): string
+{
+    ksort($files,SORT_STRING); $hash=hash_init('sha256');
+    foreach ($files as $path=>$sha) { hash_update($hash,$path."\0".$sha."\n"); }
+    return hash_final($hash);
+}
+
+function pm_validate_release(array $manifest): void
+{
+    if (!preg_match('/^[a-f0-9]{40}$/D',(string)($manifest['revision'] ?? ''))
+        || !is_array($manifest['files'] ?? null) || !$manifest['files'] || count($manifest['files'])>10000) {
+        throw new RuntimeException('Invalid protected release record.');
+    }
+    foreach ($manifest['files'] as $path=>$sha) {
+        if (!is_string($path) || !pm_safe_relative($path) || pm_preserved($path) || !is_string($sha) || !preg_match('/^[a-f0-9]{64}$/D',$sha)) {
+            throw new RuntimeException('Invalid protected release file entry.');
+        }
+    }
+    if (!hash_equals(pm_manifest_digest($manifest['files']),(string)($manifest['manifestDigest'] ?? ''))) {
+        throw new RuntimeException('Protected release manifest checksum does not match.');
+    }
+}
+
+/** Refuse unrecorded executable/source files; never delete unknown owner files. */
+function pm_unexpected_code(array $expected, array $retiring=[]): array
+{
+    $known=array_fill_keys(array_merge($expected,$retiring),true); $unexpected=[]; $visited=0;
+    $walk=static function(string $directory,string $prefix='') use (&$walk,&$unexpected,&$visited,$known): void {
+        foreach (new FilesystemIterator($directory,FilesystemIterator::SKIP_DOTS) as $entry) {
+            if (++$visited>20000) { throw new RuntimeException('Too many application files to verify.'); }
+            $path=$prefix.$entry->getFilename();
+            if (pm_preserved($path)) { continue; }
+            if ($entry->isLink()) { if (!isset($known[$path])) { $unexpected[]=$path; } continue; }
+            if ($entry->isDir()) { $walk($entry->getPathname(),$path.'/'); continue; }
+            $runtime=in_array(explode('/',$path,2)[0],['assets','src','scripts','tests'],true);
+            if (!isset($known[$path]) && ($runtime || preg_match('/(?:\.(?:php|phtml|phar|js|mjs|css|html?|py|sh)(?:\.|$)|^\.htaccess$)/i',$entry->getFilename()))) { $unexpected[]=$path; }
+        }
+    };
+    $walk(PM_LOADER_ROOT); sort($unexpected,SORT_STRING); return $unexpected;
+}
+
+function pm_check_release(array $manifest): array
+{
+    pm_validate_release($manifest); $changed=[]; $actual=[];
+    foreach ($manifest['files'] as $path=>$sha) {
+        pm_assert_destination($path); $file=PM_LOADER_ROOT.'/'.$path;
+        $actual[$path]=is_file($file) ? hash_file('sha256',$file) : 'missing';
+        if ($actual[$path]!==$sha) { $changed[]=$path; }
+    }
+    $unexpected=pm_unexpected_code(array_keys($manifest['files']));
+    return ['verified'=>!$changed && !$unexpected,'revision'=>$manifest['revision'],
+        'manifestDigest'=>pm_manifest_digest($actual),'expectedDigest'=>$manifest['manifestDigest'],
+        'fileCount'=>count($actual),'changed'=>$changed,'unexpected'=>$unexpected,
+        'verifiedAt'=>gmdate(DATE_ATOM),'checksUrl'=>$manifest['checksUrl'] ?? null];
+}
+
+function pm_verify_release(): array
+{
+    if (!is_file(PM_LOADER_PRIVATE.'/release.php')) {
+        return ['verified'=>false,'revision'=>null,'error'=>'No verified release record. Update through the published loader first.'];
+    }
+    return pm_check_release(pm_read_private(PM_LOADER_PRIVATE.'/release.php'));
+}
+
 function pm_application_manifest(): array
 {
     return ['loader.php', 'index.php', 'bootstrap.php', 'api.php', 'calendar.php', 'alerts-sw.js', '.htaccess',
         'src/.htaccess', 'scripts/.htaccess',
         'src/GtfsImporter.php', 'src/Transit.php', 'src/TransferRules.php', 'src/StationMap.php', 'src/Demo.php', 'src/Geo.php', 'src/Geocoder.php', 'src/PlaceAccess.php', 'src/NetworkStyle.php', 'src/RouteCache.php', 'src/VehicleMotion.php', 'src/WalkingRouter.php', 'src/WalkingRouteException.php', 'src/StreetJourneys.php', 'src/Payphones.php', 'src/TransferGuide.php', 'scripts/import-gtfs.php', 'scripts/build-route-cache.php',
-        'src/Toilets.php', 'src/GoogleCalendar.php', 'src/PoiCatalog.php', 'assets/perth-pois.json', 'assets/pois.js', 'assets/pois.css', 'assets/planner.js', 'assets/planner.css',
+        'src/Toilets.php', 'src/NearbyExplorer.php', 'src/GoogleCalendar.php', 'src/PoiCatalog.php', 'assets/perth-pois.json', 'assets/pois.js', 'assets/pois.css', 'assets/planner.js', 'assets/planner.css',
         'assets/app.js', 'assets/style.css', 'assets/black-cat.svg', 'assets/mascot-head.webp', 'assets/mascot-paws.webp',
         'assets/place-access.json', 'assets/station-maps/manifest.json', 'assets/vendor/leaflet/leaflet.js', 'assets/vendor/leaflet/leaflet.css', 'assets/vendor/leaflet/LICENSE'];
 }
 
 /** Apply a previously obtained trusted package. No browser input reaches this path. */
-function pm_apply_archive(string $archive): array
+function pm_apply_archive(string $archive, ?array $release=null): array
 {
     if (!class_exists('ZipArchive')) {
         throw new RuntimeException('Enable PHP ZIP in cPanel Select PHP Version before installing the application.');
@@ -437,7 +535,12 @@ function pm_apply_archive(string $archive): array
     $changed = [];
     $created = [];
     $opened = false;
+    $removed=[]; $retiring=[]; $manifestFiles=[]; $verifiedRelease=null;
+    $releaseWritten=false; $updateWritten=false; $previousRelease=null; $previousUpdate=null;
     try {
+        if (is_link(PM_LOADER_PRIVATE.'/release.php')) { throw new RuntimeException('Unsafe release record path.'); }
+        if (is_file(PM_LOADER_PRIVATE.'/release.php')) { $previousRelease=pm_read_private(PM_LOADER_PRIVATE.'/release.php'); pm_validate_release($previousRelease); }
+        if (is_file(PM_LOADER_PRIVATE.'/last-update.php')) { $previousUpdate=pm_read_private(PM_LOADER_PRIVATE.'/last-update.php'); }
         if ($zip->open($archive) !== true) {
             throw new RuntimeException('GitHub did not return a valid ZIP archive.');
         }
@@ -488,6 +591,15 @@ function pm_apply_archive(string $archive): array
                 throw new RuntimeException('The GitHub archive does not contain the complete Perth Map application yet. Publish the project code before using install/update. No application files were changed.');
             }
         }
+        if ($release!==null) {
+            if (!preg_match('/^[a-f0-9]{40}$/D',(string)($release['revision'] ?? '')) || !is_array($release['files'] ?? null)
+                || array_diff_key($files,$release['files']) || array_diff_key($release['files'],$files)) {
+                throw new RuntimeException('Package file list differs from the pinned GitHub commit.');
+            }
+            $retiring=array_keys(array_diff_key($previousRelease['files'] ?? [],$release['files']));
+            $unexpected=pm_unexpected_code(array_keys($files),$retiring);
+            if ($unexpected) { throw new RuntimeException('Unrecorded application files must be reviewed before updating: '.implode(', ',array_slice($unexpected,0,10))); }
+        }
         // Replace the executing loader only after every other file is in place.
         $loaderIndex = $files['loader.php'];
         unset($files['loader.php']);
@@ -508,6 +620,14 @@ function pm_apply_archive(string $archive): array
             fclose($input);
             fclose($output);
             chmod($staged, 0600);
+            if ($release!==null) {
+                $content=file_get_contents($staged); $entry=$release['files'][$relative];
+                if (strlen($content)!==$entry['size'] || hash('sha1','blob '.strlen($content)."\0".$content)!==$entry['sha']) {
+                    throw new RuntimeException('Package bytes differ from GitHub: '.$relative);
+                }
+                $manifestFiles[$relative]=hash('sha256',$content);
+            }
+
             pm_progress_report(['stage'=>'app-stage','label'=>'Checking and extracting files','message'=>$relative,'completed'=>++$done,'total'=>count($files),'unit'=>'files','percent'=>15+7*$done/count($files)]);
         }
         $zip->close();
@@ -523,7 +643,8 @@ function pm_apply_archive(string $archive): array
         // Back up every overwritten file before the first application write.
         $done=0;
         pm_progress_report(['stage'=>'app-backup','label'=>'Backing up existing files','message'=>'Saving the current application before replacement.','percent'=>22,'_force'=>true]);
-        foreach ($files as $relative => $index) {
+        foreach ($files + array_fill_keys($retiring,-1) as $relative => $index) {
+            pm_assert_destination($relative);
             $destination = PM_LOADER_ROOT . '/' . $relative;
             if (file_exists($destination)) {
                 if (!is_file($destination)) {
@@ -541,6 +662,13 @@ function pm_apply_archive(string $archive): array
             pm_progress_report(['stage'=>'app-backup','label'=>'Backing up existing files','message'=>$relative,'completed'=>++$done,'total'=>count($files),'unit'=>'files','percent'=>22+4*$done/count($files)]);
         }
         $done=0;
+        foreach ($retiring as $relative) {
+            $path=PM_LOADER_ROOT.'/'.$relative;
+            if (is_file($path)) {
+                if (!unlink($path)) { throw new RuntimeException('Cannot retire an old application file.'); }
+                $removed[]=$relative;
+            }
+        }
         pm_progress_report(['stage'=>'app-publish','label'=>'Installing application files','message'=>'Replacing verified files; the loader is replaced last.','percent'=>26,'_force'=>true]);
         foreach ($files as $relative => $index) {
             $destination = PM_LOADER_ROOT . '/' . $relative;
@@ -561,12 +689,22 @@ function pm_apply_archive(string $archive): array
             }
             pm_progress_report(['stage'=>'app-publish','label'=>'Installing application files','message'=>$relative,'completed'=>++$done,'total'=>count($files),'unit'=>'files','percent'=>26+4*$done/count($files)]);
         }
-        pm_write_private($backup . '/backup-info.php', ['created_at' => gmdate(DATE_ATOM), 'source' => PM_LOADER_ARCHIVE, 'overwritten' => $changed, 'new' => $created]);
-        pm_write_private(PM_LOADER_PRIVATE . '/last-update.php', ['updated_at' => gmdate(DATE_ATOM), 'source' => PM_LOADER_ARCHIVE, 'backup' => 'var/backups/' . $id, 'files' => count($files)]);
-        return ['files' => count($files), 'unchanged'=>$unchanged, 'backup' => 'var/backups/' . $id, 'message' => 'Updated ' . count($files) . ' files; kept '.$unchanged.' unchanged files. The loader is updated when changed. Previous files are backed up in var/backups/' . $id . '. Your database, configuration, and maintenance credentials were preserved.'];
+        if ($release!==null) {
+            $manifest=['revision'=>$release['revision'],'tree'=>$release['tree'],'checksUrl'=>$release['checksUrl'],
+                'files'=>$manifestFiles,'manifestDigest'=>pm_manifest_digest($manifestFiles),'installedAt'=>gmdate(DATE_ATOM)];
+            $verifiedRelease=pm_check_release($manifest);
+            if (!$verifiedRelease['verified']) { throw new RuntimeException('Installed files do not match the pinned release. Restoring the previous application.'); }
+        }
+        pm_write_private($backup . '/backup-info.php', ['created_at'=>gmdate(DATE_ATOM),'source'=>PM_LOADER_ARCHIVE,'overwritten'=>$changed,'new'=>$created,'removed'=>$removed]);
+        if ($release!==null) { pm_write_private(PM_LOADER_PRIVATE.'/release.php',$manifest); $releaseWritten=true; }
+        pm_write_private(PM_LOADER_PRIVATE.'/last-update.php', ['updated_at'=>gmdate(DATE_ATOM),'source'=>PM_LOADER_ARCHIVE,
+            'backup'=>'var/backups/'.$id,'files'=>count($files),'revision'=>$release['revision'] ?? null]);
+        $updateWritten=true;
+        return ['files'=>count($files),'unchanged'=>$unchanged,'removed'=>count($removed),'backup'=>'var/backups/'.$id,'release'=>$verifiedRelease,
+            'message'=>'Updated '.count($files).' files; kept '.$unchanged.' unchanged files; retired '.count($removed).' previously managed files. Backups: var/backups/'.$id.'.'];
     } catch (Throwable $exception) {
         $rollbackFailed = false;
-        foreach ($changed as $relative) {
+        foreach (array_merge($changed,$removed) as $relative) {
             if (!copy($backup . '/' . $relative, PM_LOADER_ROOT . '/' . $relative)) {
                 $rollbackFailed = true;
             } elseif (function_exists('opcache_invalidate') && str_ends_with($relative, '.php')) {
@@ -577,6 +715,11 @@ function pm_apply_archive(string $archive): array
             if (is_file(PM_LOADER_ROOT . '/' . $relative) && !unlink(PM_LOADER_ROOT . '/' . $relative)) {
                 $rollbackFailed = true;
             }
+        }
+        foreach ([['release.php',$releaseWritten,$previousRelease],['last-update.php',$updateWritten,$previousUpdate]] as [$name,$written,$old]) {
+            if (!$written) { continue; }
+            try { if ($old!==null) { pm_write_private(PM_LOADER_PRIVATE.'/'.$name,$old); } elseif (!unlink(PM_LOADER_PRIVATE.'/'.$name)) { $rollbackFailed=true; } }
+            catch (Throwable) { $rollbackFailed=true; }
         }
         if ($rollbackFailed) {
             throw new RuntimeException('Update failed and automatic restoration was incomplete. Restore files from var/backups/' . $id . ' in cPanel File Manager. Original error: ' . $exception->getMessage());
@@ -591,35 +734,23 @@ function pm_apply_archive(string $archive): array
 }
 
 /** Download only the fixed project repository; URLs and paths are never accepted from forms. */
-function pm_install_archive(): array
+function pm_install_archive(?string $expected=null): array
 {
-    if (!extension_loaded('curl')) {
-        throw new RuntimeException('Enable PHP cURL in cPanel before downloading the application.');
-    }
-    $archive = PM_LOADER_PRIVATE . '/download-' . bin2hex(random_bytes(8)) . '.zip';
+    if (!extension_loaded('curl')) { throw new RuntimeException('Enable PHP cURL before downloading the application.'); }
+    $archive=PM_LOADER_PRIVATE.'/download-'.bin2hex(random_bytes(8)).'.zip';
     try {
+        pm_progress_report(['stage'=>'app-download','label'=>'Checking the published release','message'=>'Requiring passed checks for one pinned main commit.','percent'=>5,'_force'=>true]);
+        $release=pm_source_release($expected); $revision=$release['revision'];
         if (is_file(PM_LOADER_ROOT.'/bootstrap.php')) {
-            pm_progress_report(['stage'=>'app-download','label'=>'Checking GitHub for changes','message'=>'Comparing installed files with main.','percent'=>5,'_force'=>true]);
-            $commit=json_decode(pm_github_read('https://api.github.com/repos/efrgdgr0024345/map/commits/main',8*1024*1024),true,64,JSON_THROW_ON_ERROR);
-            $revision=(string)($commit['sha'] ?? '');
-            if (!preg_match('/^[a-f0-9]{40}$/D',$revision)) { throw new RuntimeException('Invalid GitHub release revision.'); }
-            $tree=json_decode(pm_github_read('https://api.github.com/repos/efrgdgr0024345/map/git/trees/'.$revision.'?recursive=1',8*1024*1024),true,64,JSON_THROW_ON_ERROR);
+            $tree=['sha'=>$release['tree'],'tree'=>array_values($release['files'])];
             $stats=pm_incremental_package($tree,$archive,static function(string $path,array $entry) use ($revision): string {
                 $encoded=implode('/',array_map('rawurlencode',explode('/',$path)));
                 return pm_github_read('https://raw.githubusercontent.com/efrgdgr0024345/map/'.$revision.'/'.$encoded,10*1024*1024);
             });
-            $stats['revision']=$revision;
-            $result=pm_apply_archive($archive);
-            $result['message'].=' Downloaded '.$stats['downloaded'].' changed or missing files ('.$stats['downloadBytes'].' bytes); reused '.$stats['reused'].' local files.';
-            return array_merge($result,$stats);
-        }
-        pm_download_archive($archive);
-        return pm_apply_archive($archive);
-    } finally {
-        if (is_file($archive)) {
-            unlink($archive);
-        }
-    }
+        } else { pm_download_archive($archive,$revision); $stats=[]; }
+        $result=pm_apply_archive($archive,$release);
+        return array_merge($result,$stats,['revision'=>$revision]);
+    } finally { if (is_file($archive)) { unlink($archive); } }
 }
 
 /** Lightweight installed-data check. The importer checks full integrity before publication. */
@@ -683,7 +814,7 @@ function pm_readiness(?callable $progress = null): array
 }
 
 /** Run the complete first install/update, or retry only its failed timetable stage. */
-function pm_run_setup(bool $downloadApplication = true): array
+function pm_run_setup(bool $downloadApplication = true, ?string $revision=null): array
 {
     @set_time_limit(600);
     pm_progress_report(['stage'=>'hosting','label'=>'Checking hosting and installed data','message'=>'Checking PHP requirements and existing timetable readiness.','percent'=>2,'_force'=>true]);
@@ -705,7 +836,8 @@ function pm_run_setup(bool $downloadApplication = true): array
         });
         $save();
         if ($downloadApplication) {
-            $installed = pm_install_archive();
+            $installed = pm_install_archive($revision);
+            $result['release'] = $installed['release'];
             $result['steps'][] = ['step' => 'Download, backup and install', 'status' => 'passed', 'message' => $installed['message']];
             $result['backup'] = $installed['backup'];
             $save();
@@ -788,6 +920,7 @@ Usage: php loader.php <command>
   --help              Show this help (also the default without a command).
   --check             Check PHP extensions and writable application storage.
   --status            Show the active task, elapsed time and last update (read-only).
+  --verify-release    Verify installed application bytes against their pinned release.
   --show-setup-token  Show the initial browser maintenance key in this terminal.
                       Available only before maintenance has been configured.
   --install           Download the app and loader, then import and verify the timetable.
@@ -813,7 +946,7 @@ function pm_cli(array $arguments): int
         fwrite(STDOUT, pm_cli_usage() . PHP_EOL);
         return 0;
     }
-    if (count($arguments) !== 1 || !in_array($arguments[0], ['--check', '--status', '--show-setup-token', '--install', '--update', '--refresh', '--refresh-phones'], true)) {
+    if (count($arguments) !== 1 || !in_array($arguments[0], ['--check', '--status', '--verify-release', '--show-setup-token', '--install', '--update', '--refresh', '--refresh-phones'], true)) {
         fwrite(STDERR, "Unknown or combined commands. Choose exactly one command.\n\n" . pm_cli_usage() . PHP_EOL);
         return 2;
     }
@@ -821,6 +954,16 @@ function pm_cli(array $arguments): int
     if ($command==='--status') {
         fwrite(STDOUT,json_encode(pm_status(),JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL);
         return 0;
+    }
+    if ($command === '--verify-release') {
+        try {
+            if (is_file(PM_LOADER_PRIVATE.'/release.php')) {
+                $lock=pm_lock();
+                try { $result=pm_verify_release(); } finally { flock($lock,LOCK_UN); fclose($lock); }
+            } else { $result=pm_verify_release(); }
+        } catch (Throwable $error) { $result=['verified'=>false,'error'=>$error->getMessage()]; }
+        fwrite(STDOUT,json_encode($result,JSON_PRETTY_PRINT|JSON_UNESCAPED_SLASHES|JSON_THROW_ON_ERROR).PHP_EOL);
+        return $result['verified'] ? 0 : 1;
     }
     if ($command === '--check') {
         $requirements = pm_requirements();
@@ -981,7 +1124,15 @@ try {
             if (!$authenticated) {
                 throw new RuntimeException('Unlock maintenance before making changes.');
             }
-            if ($action === 'install' || $action === 'import') {
+            if ($action==='verify-release') {
+                $lock=pm_lock();
+                try {
+                    $csrfForResponse=$_SESSION['csrf']; session_write_close();
+                    $liveResult=pm_verify_release();
+                    if ($liveResult['verified']) { $notice='Installed application files match GitHub commit '.$liveResult['revision'].'.'; }
+                    else { $error='Installed application does not match a verified release. Review changed/unrecorded files or update from GitHub.'; }
+                } finally { flock($lock,LOCK_UN); fclose($lock); }
+            } elseif ($action === 'install' || $action === 'import') {
                 if ($action === 'install' && ($_POST['confirm'] ?? '') !== 'yes') {
                     throw new RuntimeException('Confirm replacement of application files before installing or updating.');
                 }
@@ -991,7 +1142,10 @@ try {
                     session_write_close();
                     ignore_user_abort(true);
                     pm_progress_begin($action==='install' ? 'install/update' : 'refresh');
-                    $setupResult = pm_run_setup($action === 'install');
+                    if (isset($_POST['revision']) && !is_string($_POST['revision'])) { throw new RuntimeException('Choose a full GitHub commit SHA.'); }
+                    $expected=$_POST['revision'] ?? null;
+                    if ($expected!==null && !preg_match('/^[a-f0-9]{40}$/D',$expected)) { throw new RuntimeException('Choose a full GitHub commit SHA.'); }
+                    $setupResult = pm_run_setup($action === 'install',$expected);
                     if ($setupResult['complete']) {
                         $notice = 'Setup complete. The application and a current Perth timetable have been verified.';
                     } else {
@@ -1111,6 +1265,7 @@ $maintenance=$authenticated ? pm_status() : null;
 <!doctype html>
 <html lang="en">
 <head>
+<meta name="nextstop-release-protocol" content="1">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Perth Map · Setup</title>
@@ -1135,6 +1290,9 @@ $maintenance=$authenticated ? pm_status() : null;
 <?php if ($environmentKey): ?><p class="note">Use the key configured in your hosting environment as <code>PERTH_MAP_SETUP_TOKEN</code>.</p><?php elseif (is_file(PM_LOADER_PRIVATE . '/setup-token.php')): ?><p class="note">In <strong>cPanel → File Manager</strong>, open <code>var/setup-token.php</code> beside this file and read the <code>setup_token</code> value. Alternatively, open cPanel Terminal in this folder and run <code>php loader.php --show-setup-token</code>. Paste that key below and save it in your password manager. The token file is protected data: opening it over HTTP returns 404, and executing the token file directly prints nothing. It is removed after your first successful login.</p><?php else: ?><p class="note">Use your saved maintenance key. If it is lost, use cPanel File Manager to remove <code>var/maintenance.php</code>, then reload this page to generate a new private setup token. Existing transport data is preserved.</p><?php endif; ?>
 <form method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="login"><label for="key">Maintenance key</label><input id="key" type="password" name="key" required autocomplete="current-password" maxlength="512"><div class="row"><button class="primary" type="submit">Unlock setup ↗</button></div></form></section>
 <?php elseif ($authenticated): ?>
+<section class="card"><h2>Verified GitHub release</h2><p>Updates require passing GitHub checks, download one immutable commit, and verify the installed file hashes. Private data and hosting configuration stay separate.</p>
+<?php if (is_file(PM_LOADER_PRIVATE.'/release.php')): try { $record=pm_read_private(PM_LOADER_PRIVATE.'/release.php'); pm_validate_release($record); ?><p class="note">Recorded commit: <code><?= pm_escape($record['revision']) ?></code></p><?php } catch (Throwable) { ?><p class="note">The release record needs attention. Verify before claiming this deployment matches GitHub.</p><?php } endif; ?>
+<form method="post"><input type="hidden" name="csrf" value="<?= $csrf ?>"><input type="hidden" name="action" value="verify-release"><button type="submit" class="quiet">Verify installed files</button></form></section>
 <section id="maintenance-progress" class="card progress-card" aria-label="Maintenance progress" hidden>
 <div class="progress-heading"><h2 id="progress-heading">Maintenance progress</h2><strong id="progress-percent"></strong></div>
 <progress id="progress-bar" max="100" aria-label="Installation stage progress"></progress>

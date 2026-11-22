@@ -19,7 +19,11 @@ try{for(const width of [320,390,430,1366]){
   if(action==='status')data={mode:'timetable',routeRevision:'map-only-fixture'};
   else if(action==='routes')data={revision:'map-only-fixture',lines:[{routeId:'R',routeName:'960',mode:'bus',geometry:[[origin.lat,origin.lon],[stop.lat,stop.lon],[dest.lat,dest.lon]]}]};
   else if(action==='vehicles'){fleetRequests++;data={vehicles:[{...service,lat:origin.lat+fleetRequests*.0001,lon:origin.lon+.0002}],stops:[stop],generatedAt:iso(0)};}
-  else if(action==='nearby-bus')data={centre:origin,radius:500,stop,nearbyStops:[stop],departure:service,services:[service],geometry:[[origin.lat,origin.lon],[stop.lat,stop.lon],[dest.lat,dest.lon]],generatedAt:iso(0)};
+  else if(action==='nearby-bus'){
+   const choices=[service,{...service,key:'west',tripId:'west-trip',headsign:'Fixture west',arrival:iso(240),departure:iso(260),stop:{...stop,id:'B',name:'Opposite stand',lat:origin.lat}},{...service,key:'rail',routeName:'Y',mode:'train',routeColor:'#EFC100',routeTextColor:'#14201d',headsign:'Alkimos',arrival:iso(360),departure:iso(380)},{...service,key:'ferry',routeName:'F',mode:'ferry',routeColor:'#009DB9',headsign:'South Perth'}];
+   const chosen=choices.find(s=>s.key===u.searchParams.get('service'))||service;
+   data={centre:origin,radius:500,stop:chosen.stop,nearbyStops:[stop],departure:chosen,services:choices,geometry:[[origin.lat,origin.lon],[chosen.stop.lat,chosen.stop.lon],[dest.lat,dest.lon]],generatedAt:iso(0)};
+  }
   else if(action==='approach')data={...service,phase:'approaching',generatedAt:iso(0),position:{lat:origin.lat,lon:origin.lon},geometry:[[origin.lat,origin.lon],[stop.lat,stop.lon]]};
   else if(action==='timetable')data={trip:{id:service.tripId,routeName:'960',mode:'bus',headsign:service.headsign},stops:[{...stop,arrival:iso(580),departure:iso(600)},{...dest,id:'D',arrival:iso(1200),departure:iso(1200)}],generatedAt:iso(0)};
   await r.fulfill({json:data});
@@ -53,7 +57,7 @@ try{for(const width of [320,390,430,1366]){
  check(await page.evaluate(()=>document.querySelector('#day-planner').open&&document.querySelector('#planner-stay').open&&document.activeElement.closest('dialog')?.id==='planner-stay'),`${width}px nested dialogs return in order with focus in the current dialog`);
  check(await page.locator('#planner-stay-minutes').inputValue()==='45',`${width}px a pending visit duration is preserved`);
  await page.locator('#planner-stay-cancel').click();await page.locator('#close-day-planner').click();
- await page.evaluate(()=>__viewTest.openTimetable({trip:'fixture-trip'}));await page.waitForFunction(()=>__viewTest.state.timetableHistory.length===1);
+ await page.evaluate(()=>__viewTest.openTimetable({trip:'fixture-trip'}));await page.waitForFunction(()=>__viewTest.state.timetableHistory.length===1&&document.querySelectorAll('#timetable-content .timetable-stop-row').length===2);
  const timetableScroll=await page.evaluate(()=>{const dialog=document.querySelector('#timetable-dialog'),extra=document.createElement('div');extra.style.height='1500px';extra.textContent='Long timetable fixture';document.querySelector('#timetable-content').append(extra);dialog.scrollTop=120;return dialog.scrollTop;});
  await page.locator('#timetable-dialog .dialog-map-only').click();await toggle.click();await page.waitForTimeout(20);
  check(await page.locator('#timetable-dialog').evaluate(d=>d.scrollTop)===timetableScroll,`${width}px restoring a long timetable retains its scroll position`);
@@ -68,8 +72,14 @@ try{for(const width of [320,390,430,1366]){
  check(await page.evaluate(()=>__viewTest.state.pickField==='destination'&&!__viewTest.state.destination),`${width}px an unfinished map choice is preserved without accepting a point`);
  await page.locator('#cancel-map-pick').click();await page.evaluate(()=>{const t=__viewTest;t.state.locationConsent=true;t.updateUserLocation({timestamp:Date.now(),coords:{latitude:-31.9505,longitude:115.8586,accuracy:5}});});
  await page.waitForFunction(()=>__viewTest.state.nearbyBusData);await page.evaluate(()=>__viewTest.setPanel(true));await toggle.click();
- await page.waitForFunction(()=>document.querySelector('.nearby-map-option')?.getBoundingClientRect().width>0);
- check(await page.locator('#nearby-bus').isHidden()&&await page.locator('.nearby-map-option').first().isVisible(),`${width}px nearby destination labels stay on the map while their card is hidden`);
+ await page.waitForFunction(()=>document.querySelector('.map-only-service')?.getBoundingClientRect().width>0);
+ check(await page.locator('#nearby-bus').isHidden()&&await page.locator('.nearby-map-option').first().isHidden()&&await page.locator('.map-only-service').count()===4,`${width}px floating arrival boxes become four compact top cards while pins remain on the map`);
+ const cards=await page.locator('.map-only-service').evaluateAll(nodes=>nodes.map(n=>({top:n.getBoundingClientRect().top,bottom:n.getBoundingClientRect().bottom,left:n.getBoundingClientRect().left,right:n.getBoundingClientRect().right})));
+ check(cards.every(c=>c.top>=0&&c.bottom<180&&c.left>=0&&c.right<=width),`${width}px arrival cards occupy only a shallow strip at the top`);
+ check(await page.locator('.map-only-service').filter({hasText:'Alkimos'}).locator('.map-only-route').evaluate(n=>getComputedStyle(n).backgroundColor)==='rgb(239, 193, 0)',`${width}px the top cards retain official route colours`);
+ check((await page.locator('.map-only-service').filter({hasText:'Fixture west'}).innerText()).includes('4 min'),`${width}px time to the boarding stop is prominent beside its destination`);
+ await page.locator('.map-only-service').filter({hasText:'Fixture west'}).click();await page.waitForFunction(()=>__viewTest.state.nearbyBusData?.departure.key==='west');
+ check(await page.evaluate(()=>__viewTest.state.mapOnly&&__viewTest.state.nearbyBusData.stop.id==='B'),`${width}px tapping a top card selects the correct direction and boarding pin without reopening controls`);
  await page.screenshot({path:`/tmp/nextstop-map-only-${width}.png`});await toggle.click();
  await page.evaluate(({origin,stop,dest})=>{const departure=new Date(Date.now()).toISOString(),boarding=new Date(Date.now()+600000).toISOString(),arrival=new Date(Date.now()+1800000).toISOString();const walk={mode:'walk',routing:'street',from:origin,to:stop,departure,arrival:boarding,geometry:[[origin.lat,origin.lon],[origin.lat,stop.lon],[stop.lat,stop.lon]]};const ride={mode:'bus',from:stop,to:dest,tripId:'fixture-trip',routeId:'R',routeName:'960',headsign:'Fixture east',departure:boarding,arrival,geometry:[[stop.lat,stop.lon],[dest.lat,dest.lon]]};Nextstop.showJourney({id:'fixture-journey',departure,arrival,duration:1800,walkRouting:'street',walkToBoardSeconds:120,boardingBufferSeconds:120,leaveAt:new Date(Date.now()+360000).toISOString(),boardingAt:boarding,legs:[walk,ride]},origin,dest);__viewTest.focusFirstWalk();},{origin,stop,dest});
  await page.waitForFunction(()=>__viewTest.state.firstWalkFocus);await toggle.click();await page.evaluate(()=>__viewTest.fitJourneyBounds(__viewTest.state.selected,true));

@@ -50,6 +50,11 @@ try{for(const width of [320,390,430,1366]){
  check(await page.evaluate(()=>__mapTest.state.nearbyBusData.departure.tripId==='later-west'),`${width}px verified access replaces the too-early service`);
  check((await page.locator('.nearby-walk-summary').innerText()).includes('Alight → walk 4 min'),`${width}px the micro-itinerary includes alighting and the actual walk`);
  check(await page.evaluate(()=>__mapTest.state.nearbyBusLayers.getLayers().some(l=>l.options.className==='nearby-walking-path'&&l.getLatLngs().length===3)),`${width}px walking geometry preserves its street bends`);
+ await page.locator('#map-view-toggle').click();
+ check((await page.locator('.map-only-service').first().innerText()).includes('Alight')&&(await page.locator('.map-only-service-time').first().innerText())==='2 min',`${width}px the top strip prioritises time to the current bus's alighting stop`);
+ check(await page.locator('.map-only-service').count()===2&&(await page.locator('.map-only-service').nth(1).innerText()).includes('West destination'),`${width}px onward service destination and arrival remain visible beside the current ride`);
+ await page.locator('#map-view-toggle').click();
+
  await page.evaluate(()=>{Nextstop.getMap().fire('dragstart');});
  check(await page.evaluate(()=>__mapTest.state.nearbyCamera===null),`${width}px exploring pauses automatic camera movement`);
  await page.evaluate(()=>Nextstop.choosePlace({lat:-31.948,lon:115.849,name:'Choose museum entrance',requiresEntrance:true}));

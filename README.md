@@ -1,10 +1,12 @@
 # Nextstop — Perth in motion
 
+**Release rule:** checked commit → GitHub main with passing CI → existing passkey updater → matching live file hashes. See [AGENTS.md](AGENTS.md) and [release instructions](docs/releases.md).
+
 A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and OpenStreetMap. Your selected bus/train has a bright **YOUR NEXT BUS / TRAIN** marker. Other vehicles on the same line stay visible, so you can see the service behind it. Unrelated bus lines disappear when you select a journey; train and ferry lines remain visible; a switch brings back the network.
 
 ## What works
 
-- **Map only** hides the panels, branding and controls while keeping pins, routes, GPS and scheduled vehicle updates running. **Controls** or Escape restores the previous interface, including open dialogs and unsaved form values. The toggle is also available inside the day planner and timetable.
+- **Map only** hides the panels, branding and controls while keeping pins, routes, GPS and scheduled vehicle updates running. **Controls** or Escape restores the previous interface, including open dialogs and unsaved form values. The toggle is also available inside the day planner and timetable. In map-only mode, up to four compact cards at the top prioritise minutes to stop, route colours and destinations; the boarding pins stay on the map.
 
 - Map-first nearby learning: a light 500 m search circle, stop-anchored destination/minute labels and compact optional details. Confirm **I'm on this service** to explore from the next alighting stop, with a 300 m search area and verified alight → walk → board/place connections. See [docs/nearby.md](docs/nearby.md) for controls, estimates and human testing.
 
@@ -66,7 +68,7 @@ The current GTFS import preserves station parent/child relationships and officia
 3. Open `loader.php`. Through **cPanel → File Manager**, open the generated `var/setup-token.php`. Copy the `setup_token` value into the maintenance login, and save it in a password manager. The token is never sent to the public page; its file disappears after login. Alternatively provision a strong `PERTH_MAP_SETUP_TOKEN` in your hosting environment.
 4. Choose **Install & set up**. The loader checks hosting requirements, downloads the application from the fixed GitHub repository, creates protected storage, imports the official Transperth timetable, and checks that installation is ready. It also installs the map library locally. If a download or import fails, the loader shows which step failed and lets you retry; it does not label a demo or missing timetable as a completed setup.
 
-5. Open the map once setup is complete. The banner reads **Timetable estimates**. Return to the same `loader.php` for **Back up & update** or timetable refresh. Updates include the loader itself; there is no second file to upload. After installing this loader version once, later updates compare actual local content with GitHub main, download only changed or missing files from one pinned revision, and back up only replaced files. Identical files keep their modification times. A valid timetable is reused; use the separate timetable refresh when you want a newer feed. Initial installations still use the full package. GitHub API rate limits may require retrying later. Files removed upstream are retained locally; updates do not delete local files.
+5. Open the map once setup is complete. The banner reads **Timetable estimates**. Return to the same `loader.php` for **Back up & update** or timetable refresh. Updates include the loader itself; there is no second file to upload. After installing this loader version once, later updates compare actual local content with GitHub main, download only changed or missing files from one pinned revision, and back up only replaced files. Identical files keep their modification times. A valid timetable is reused; use the separate timetable refresh when you want a newer feed. Initial installations still use the full package. GitHub API rate limits may require retrying later. Verified releases retire only files recorded in an earlier release, with backups; unexpected application files are reported for review.
 
 **GitHub source:** the loader downloads `efrgdgr0024345/map` on branch `main`. A complete application must be published there before a fresh cPanel installation can download it; the loader refuses an incomplete or README-only archive. Future local development changes must also be published to `main` before the loader can install them. Uploading a copy of the loader does not publish application code.
 
@@ -85,7 +87,7 @@ The current GTFS import preserves station parent/child relationships and officia
 
 Keep timetables fresh using the loader's refresh button or an optional daily cPanel cron task with the import command. A failed download, corrupt/expired archive, or interrupted staging import keeps the previous database intact.
 
-**Updates:** `loader.php` downloads only that fixed GitHub source over verified HTTPS. It stages files, verifies backups and restores overwritten files on a failed update. It preserves `var/`, `.env`, `config.php` and hosting configuration. Application files and the loader are updated together; the loader is replaced last. Local edits to application files will be replaced; keep them in Git or back them up first. Old files removed upstream are not automatically deleted; review release notes for manual removals. Backups are in private `var/backups/`.
+**Updates:** `loader.php` downloads only that fixed GitHub source over verified HTTPS. It stages files, verifies backups and restores overwritten files on a failed update. It preserves `var/`, `.env`, `config.php` and hosting configuration. Application files and the loader are updated together; the loader is replaced last. Local edits to application files will be replaced; keep them in Git or back them up first. Previously recorded files removed upstream are retired with backups. Unknown application files block strict verification rather than being deleted. Backups are in private `var/backups/`.
 
 Keep HTTPS enabled. Confirm a request to `var/` and any private file is denied. On Nginx, add equivalent deny rules for `var`, `src`, `scripts`, `tests`, dotfiles and `bootstrap.php`; `.htaccess` is Apache-specific. The built-in development server must use the supplied router.
 
@@ -96,13 +98,14 @@ The same single file supports command-line installation and updates. Run these f
 ```sh
 php loader.php --check
 php loader.php --status
+php loader.php --verify-release
 php -d memory_limit=512M loader.php --install
 php -d memory_limit=512M loader.php --update
 php -d memory_limit=512M loader.php --refresh
 php -d memory_limit=512M loader.php --refresh-phones
 ```
 
-`--install` and `--update` download the application and loader, prepare storage, import timetables and validate readiness. `--refresh` retries only the timetable. Commands print structured results and exit nonzero when setup is incomplete. `--help` lists the commands.
+`--install` and `--update` require passed checks on a pinned GitHub main commit, verify the application bytes, prepare storage and validate timetable readiness. A current timetable is retained. `--refresh` retries only the timetable. Commands print structured results and exit nonzero when setup is incomplete. `--help` lists the commands.
 
 Installation and refresh print live task details to Terminal on stderr: package bytes, file counts, timetable rows, index creation and validation. Stdout remains one final JSON result for scripts. The authenticated browser loader shows the same stages in a progress bar, with elapsed time, time since the last report and recent task history. Percentages describe stages rather than time remaining; database indexing can remain on one stage for a while.
 

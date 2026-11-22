@@ -202,6 +202,70 @@
       if (focus?.isConnected) focus.focus({ preventScroll: true });
     }
     drawNearbyLabels();
+    renderMapOnlyServices();
+  }
+
+  function mapOnlyTop() {
+    const box = $('map-only-services').getBoundingClientRect();
+    return box.height ? box.bottom + 12 : 35;
+  }
+
+  function renderMapOnlyServices() {
+    const strip = $('map-only-services');
+    if (!strip) return;
+    if (!state.mapOnly) { strip.hidden = true; state.mapOnlyStripKey = ''; return; }
+    const entries = [], now = Date.now(), context = state.nearbyBusData?.onboard;
+    const add = (key, service, stop, arrival, departure, label, run) => entries.push({ key, service, stop, arrival, departure, label, run });
+    const leg = state.guidance?.transfer?.next || nextLeg();
+    if (state.selected && leg) {
+      const riding = timeValue(leg.departure) <= now && !state.guidance;
+      const approach = approachVehicle() && String(state.approachData?.tripId) === String(leg.tripId) ? state.approachData : null;
+      const stop = riding ? leg.to : leg.from;
+      add(`journey:${leg.tripId}`, leg, stop, riding ? leg.arrival : approach?.arrival || leg.departure,
+        riding ? leg.arrival : leg.departure, riding ? 'Alight' : 'Board', () => {
+          if (!riding && transitLegs()[0] === leg && state.selected.walkRouting === 'street') focusFirstWalk();
+          else setFollow(true);
+        });
+    } else {
+      if (state.onboard && context?.nextStop) {
+        add(`onboard:${state.onboard.trip}`, context.trip, context.nextStop, context.alightAt, context.alightAt, 'Alight', () => fitNearbyView(false));
+      }
+      const data = state.nearbyBusData;
+      const services = [...(data?.services || [])].sort((a, b) => Number(b.key === data?.departure?.key) - Number(a.key === data?.departure?.key));
+      for (const service of services) {
+        if (entries.length >= 4) break;
+        if (timeValue(service.departure) < now) continue;
+        add(`nearby:${service.key}`, service, service.stop, service.arrival, service.departure,
+          state.onboard ? 'After alighting' : 'Board', () => selectNearbyService(service));
+      }
+    }
+    strip.hidden = !entries.length;
+    const signature = JSON.stringify(entries.map(e => [e.key, e.service.routeName, e.service.headsign, e.service.routeColor,
+      e.stop?.id, e.stop?.name, e.arrival, e.departure, e.label]));
+    if (signature !== state.mapOnlyStripKey) {
+      state.mapOnlyStripKey = signature; state.mapOnlyStripCounters = [];
+      strip.replaceChildren(); strip.dataset.count = String(entries.length);
+      strip.style.setProperty('--service-count', String(entries.length || 1));
+      for (const entry of entries) {
+        const { service, stop } = entry;
+        const button = styleRoute(nearbyButton('', entry.run, 'map-only-service'), service);
+        const count = make('b', 'map-only-service-time');
+        const destination = service.headsign || service.destination || service.lineName || 'Scheduled service';
+        const place = `${entry.label} · ${stop?.code ? `Stop ${stop.code}` : stop?.name || 'Scheduled stop'}`;
+        button.append(make('b', 'map-only-route', serviceLabel(service)), count,
+          make('strong', 'map-only-destination', `→ ${destination}`), make('small', 'map-only-stop', `${place} · scheduled`));
+        button.title = `${service.routeName} to ${destination}. ${place}. Scheduled estimate.`;
+        strip.append(button); state.mapOnlyStripCounters.push({ count, button, entry, destination, place });
+      }
+    }
+    for (const { count, button, entry, destination, place } of state.mapOnlyStripCounters || []) {
+      const remaining = timeValue(entry.arrival) - now;
+      const text = !Number.isFinite(remaining) ? '—' : timeValue(entry.departure) < now ? 'At stop' : remaining <= 0 ? 'Due' : `${Math.ceil(remaining / 60000)} min`;
+      if (count.textContent !== text) {
+        count.textContent = text;
+        button.setAttribute('aria-label', `${entry.service.routeName} to ${destination}, ${text}. ${place}. Scheduled estimate.`);
+      }
+    }
   }
 
   function bindMapOnlyControls() {
@@ -647,6 +711,7 @@
     const card = $('nearby-bus'); card.hidden = true;
     document.body.classList.remove('has-nearby-bus', 'nearby-focused');
     drawNetworkLines();
+    renderMapOnlyServices();
     if (state.onboard && !state.selected && !document.hidden) {
       card.replaceChildren(make('strong', '', `On ${state.onboard.routeName} · nearby guidance paused`),
         make('small', '', 'Waiting for an accurate location or updated services.'), nearbyButton("I'm off", leaveNearbyRide));
@@ -690,7 +755,7 @@
     if (!points.length) return;
     state.nearbyCamera = full ? 'full' : 'local'; state.programmaticView = true;
     const height = $('nearby-bus').getBoundingClientRect().height;
-    map.fitBounds(L.latLngBounds(points), { paddingTopLeft: state.mapOnly ? [30, 35] : [isMobile() ? 35 : (state.panelOpen ? 425 : 40), 95],
+    map.fitBounds(L.latLngBounds(points), { paddingTopLeft: state.mapOnly ? [30, mapOnlyTop()] : [isMobile() ? 35 : (state.panelOpen ? 425 : 40), 95],
       paddingBottomRight: state.mapOnly ? [35, 80] : [75, Math.min(map.getSize().y * .42, height + (isMobile() ? 115 : 55))], maxZoom: full ? 16 : 17,
       animate: !reducedMotion, duration: .5 });
     clearTimeout(state.nearbyCameraTimer);
@@ -829,6 +894,7 @@
     details.append(make('small', 'nearby-note', 'Scheduled estimates · delays and cancellations unknown. Access requires a checked walking route.'));
     card.append(details); drawNearbyLabels();
     updateNearbyBusCountdown();
+    renderMapOnlyServices();
     if (context && state.onboard) state.onboard.after = Math.max(state.onboard.after || 0, context.passedSequence || 0);
     if (state.nearbyFitPending) { state.nearbyFitPending = false; fitNearbyView(false); }
     else if (state.nearbyCamera === 'local' && !map.getBounds().pad(-.2).contains([centre.lat, centre.lon])) fitNearbyView(false);
@@ -1499,7 +1565,7 @@
     state.programmaticView = true;
     clearTimeout(state.viewTimer);
     const card = $('station-guidance').getBoundingClientRect();
-    map.fitBounds(bounds.pad(.12), { paddingTopLeft: state.mapOnly ? [35, 35] : isMobile() ? [35, card.bottom + 25] : [card.right + 25, 105], paddingBottomRight: state.mapOnly ? [35, 80] : isMobile() ? [65, 80] : [80, 110], maxZoom: 19, animate: false });
+    map.fitBounds(bounds.pad(.12), { paddingTopLeft: state.mapOnly ? [35, mapOnlyTop()] : isMobile() ? [35, card.bottom + 25] : [card.right + 25, 105], paddingBottomRight: state.mapOnly ? [35, 80] : isMobile() ? [65, 80] : [80, 110], maxZoom: 19, animate: false });
     if (state.guidanceTargetMarker && state.guidanceTargetMarker.getElement()) state.guidanceTargetMarker.getElement().classList.toggle('label-left', map.latLngToContainerPoint(state.guidanceTargetMarker.getLatLng()).x > map.getSize().x / 2);
     state.viewTimer = setTimeout(() => { state.programmaticView = false; }, 500);
   }
@@ -2096,7 +2162,7 @@
     const mobile = isMobile(), size = map.getSize();
     const labelPadding = mobile ? Math.min(100, Math.max(60, (size.x - 160) / 2)) : 135;
     const launcher = $('open-panel').getBoundingClientRect();
-    map.fitBounds(bounds, { maxZoom: 18, paddingTopLeft: state.mapOnly ? [35, 35] : [labelPadding + 5, 165],
+    map.fitBounds(bounds, { maxZoom: 18, paddingTopLeft: state.mapOnly ? [35, mapOnlyTop()] : [labelPadding + 5, 165],
       paddingBottomRight: state.mapOnly ? [35, 80] : [labelPadding + 15, mobile ? Math.max(120, size.y - launcher.top + 20) : 100], animate: !force && !reducedMotion });
     state.viewTimer = setTimeout(() => { state.programmaticView = false; }, 850);
   }
@@ -2118,7 +2184,7 @@
     if (!force && previous && previous.leg === key && now - previous.at < 8000) return;
     const mobile = isMobile(), size = map.getSize(), panel = $('journey-panel').getBoundingClientRect();
     const left = !mobile && getComputedStyle($('journey-panel')).display !== 'none' ? panel.right + 20 : 25;
-    const top = state.mapOnly ? 35 : mobile ? 155 : 110, bottom = state.mapOnly ? 80 : mobile ? 200 : 100;
+    const top = state.mapOnly ? mapOnlyTop() : mobile ? 155 : 110, bottom = state.mapOnly ? 80 : mobile ? 200 : 100;
     const zoom = leg.mode === 'walk' ? 17 : STREET_ZOOM;
     const center = map.unproject(map.project([point.lat, point.lon], zoom).add(L.point((size.x - left - 70) / 2 + left - size.x / 2, (size.y - top - bottom) / 2 + top - size.y / 2).multiplyBy(-1)), zoom);
     state.lastFollowFit = { center, at: now, leg: key, zoom };
@@ -2155,7 +2221,7 @@
       const activity = document.querySelector('.network-card').getBoundingClientRect();
       const leave = $('leave-widget').getBoundingClientRect();
       const size = map.getSize();
-      const topLeft = state.mapOnly ? L.point(35, 35) : L.point(mobile ? 35 : panel.right + 24, mobile ? state.panelOpen ? 150 : Math.max(150, leave.bottom + 70) : 105);
+      const topLeft = state.mapOnly ? L.point(35, mapOnlyTop()) : L.point(mobile ? 35 : panel.right + 24, mobile ? state.panelOpen ? 150 : Math.max(150, leave.bottom + 70) : 105);
       const bottomRight = state.mapOnly ? L.point(35, 80) : L.point(mobile ? 70 : 95, mobile ? state.panelOpen ? size.y - panel.top + 16 : size.y - Math.min(launcher.top, activity.top || launcher.top) + 20 : 145);
       if (size.x - topLeft.x - bottomRight.x < 50 || size.y - topLeft.y - bottomRight.y < 35) return;
       const desiredZoom = Math.max(map.getMinZoom(), Math.min(16, map.getBoundsZoom(bounds, false, topLeft.add(bottomRight))));
@@ -2230,6 +2296,7 @@
   }
 
   function updateNextService() {
+    renderMapOnlyServices();
     const container = $('next-service');
     const leg = nextLeg();
     state.nextTrip = leg ? String(leg.tripId) : null;
@@ -2673,7 +2740,7 @@
     }
     setInterval(() => { updateClock(); updateNextService(); updateLauncher(); if (!document.hidden) { fetchVehicles(); fetchApproach(); fetchNearbyBus(); } }, 15000);
     setInterval(() => {
-      updateLeaveWidget(); updateBoardingCountdown(); updateNearbyBusCountdown();
+      updateLeaveWidget(); updateBoardingCountdown(); updateNearbyBusCountdown(); renderMapOnlyServices();
       updateGuidanceTarget();
       if (!document.hidden) maybeAutoGuidance();
       if (state.approachData) {

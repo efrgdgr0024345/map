@@ -43,7 +43,10 @@ jobs:
       - run: python3 tests/station_catalog.py
       - run: php tests/payphones.php
       - run: php tests/loader_install.php
+      - run: php tests/releases.php
       - run: php tests/loader_progress.php
+      - run: PHP_BINARY=php python3 tests/releases_http.py
+      - run: python3 tests/release_client.py
       - run: PHP_BINARY=php python3 tests/loader_http.py
       - run: PHP_BINARY=php python3 tests/loader_cli.py
       - run: PHP_BINARY=php python3 tests/loader_progress_http.py
