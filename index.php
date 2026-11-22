@@ -82,6 +82,7 @@ function assetUrl(string $path): string
       <div id="journey-options" class="journey-options"></div>
       <div id="next-service" class="next-service" hidden></div>
       <div id="itinerary" class="itinerary"></div>
+      <aside id="last-mile-uber" class="last-mile-uber" aria-label="Optional Uber for the final walking leg" hidden></aside>
       <button type="button" id="network-toggle" class="network-toggle" aria-pressed="false"><span class="toggle-track"><span></span></span><span>Show the whole network</span></button>
     </div>
 

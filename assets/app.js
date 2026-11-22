@@ -2,6 +2,9 @@
 (() => {
   'use strict';
   const STREET_ZOOM = 16;
+  // Temporary last-mile test threshold; increase this value for production tuning.
+  const LAST_MILE_UBER_THRESHOLD_SECONDS = 180;
+  const LAST_MILE_UBER_FARE = { baseAud: 5, perKmAud: 2.2, minimumAud: 8, roadFactor: 1.25 };
 
   const $ = id => document.getElementById(id);
   const make = (tag, className, text) => {
@@ -31,7 +34,7 @@
     mapOnly: false, mapOnlyDialogs: [], mapOnlyClosedDialogs: new WeakMap(), mapOnlyFocus: null,
     origin: { lat: -31.9505, lon: 115.8586, name: 'Perth Busport' },
     destination: null, field: 'destination', pickField: null,
-    journeys: [], selected: null, wholeNetwork: false, status: null,
+    journeys: [], selected: null, journeyMode: null, wholeNetwork: false, status: null,
     vehicles: [], markers: new Map(), placeMarkers: {},
     requestNumber: 0, searchNumber: 0, vehicleController: null,
     nextTrip: null, planNumber: 0, searchTimer: null, searchController: null, needsJourneyFit: false,
@@ -540,6 +543,7 @@
       $('data-banner').title = status.message || '';
       if (status.routeRevision && state.routeCatalog && String(status.routeRevision) !== state.routeRevision) refreshRouteCatalog();
       updateNextService();
+      renderLastMileUber();
     } catch (error) {
       $('data-banner-text').textContent = 'Network status unavailable · retrying shortly';
       $('data-banner').classList.add('is-demo');
@@ -1033,6 +1037,7 @@
     $('follow-journey').setAttribute('aria-pressed', String(state.followJourney));
     $('follow-journey').querySelector('span').textContent = state.firstWalkFocus ? 'Show full journey' : state.followJourney ? 'Following journey' : 'Recenter journey';
     if (state.followJourney && state.selected) { state.lastFollowFit = null; fitJourneyBounds(state.selected); }
+    renderLastMileUber();
   }
 
   function pauseMapFollowing() {
@@ -2017,6 +2022,7 @@
         return;
       }
       state.journeys = data.journeys;
+      state.journeyMode = data.mode === 'timetable' ? 'timetable' : 'demo';
       renderJourneyOptions();
       $('journey-results').hidden = false;
       document.querySelector('.journey-panel').classList.add('has-journey');
@@ -2293,6 +2299,47 @@
     destination.append(make('strong', '', state.destination ? state.destination.name : 'Arrive at destination'), make('span', '', 'Scheduled arrival · Perth time'));
     arrival.append(destination, make('span', 'leg-time', clock(state.selected.arrival)));
     container.append(arrival);
+    renderLastMileUber();
+  }
+
+  function lastMileUberOffer() {
+    const journey = state.selected, legs = journey?.legs || [];
+    if (!journey || !state.followJourney || state.journeyMode !== 'timetable' || state.status?.mode !== 'timetable'
+      || state.status.expired || journey.mode === 'demo' || journey.walkRouting === 'unavailable' || legs.length < 2) return null;
+    const walk = legs[legs.length - 1], ride = legs[legs.length - 2];
+    if (walk.mode !== 'walk' || !['bus', 'train', 'ferry'].includes(ride.mode) || !ride.tripId) return null;
+    const seconds = walk.duration == null ? (timeValue(walk.arrival) - timeValue(walk.departure)) / 1000 : Number(walk.duration);
+    if (!Number.isFinite(seconds) || seconds <= LAST_MILE_UBER_THRESHOLD_SECONDS || timeValue(journey.arrival) <= Date.now()) return null;
+    const point = p => p && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon))
+      && Number(p.lat) >= -33.5 && Number(p.lat) <= -30.5 && Number(p.lon) >= 114.5 && Number(p.lon) <= 117.5;
+    if (!point(walk.from) || !point(walk.to)) return null;
+    const distanceKm = map.distance([walk.from.lat, walk.from.lon], [walk.to.lat, walk.to.lon]) / 1000;
+    if (distanceKm <= 0) return null;
+    const fare = Math.max(LAST_MILE_UBER_FARE.minimumAud, LAST_MILE_UBER_FARE.baseAud + distanceKm * LAST_MILE_UBER_FARE.roadFactor * LAST_MILE_UBER_FARE.perKmAud);
+    const low = Math.max(LAST_MILE_UBER_FARE.minimumAud, Math.floor(fare * .85)), high = Math.ceil(fare * 1.4);
+    const url = new URL('https://m.uber.com/ul/'); url.searchParams.set('action', 'setPickup');
+    for (const [key, p, fallback] of [['pickup', walk.from, 'Alighting stop'], ['dropoff', walk.to, 'Journey destination']]) {
+      url.searchParams.set(`${key}[latitude]`, String(Number(p.lat)));
+      url.searchParams.set(`${key}[longitude]`, String(Number(p.lon)));
+      url.searchParams.set(`${key}[nickname]`, String(p.name || fallback).slice(0, 160));
+    }
+    return { href: url.href, low, high, walkingMinutes: Math.ceil(seconds / 60), from: walk.from.name || 'Alighting stop', to: walk.to.name || 'Your destination' };
+  }
+
+  function renderLastMileUber() {
+    const card = $('last-mile-uber'); if (!card) return;
+    const offer = lastMileUberOffer(); card.hidden = !offer;
+    if (!offer) { card.replaceChildren(); card.dataset.offer = ''; return; }
+    const signature = JSON.stringify(offer); if (card.dataset.offer === signature) return;
+    card.dataset.offer = signature;
+    const price = make('strong', 'last-mile-price', `Approx. A$${offer.low}–${offer.high}`);
+    const link = make('a', 'last-mile-link', 'Open in Uber');
+    link.href = offer.href; link.target = '_blank'; link.rel = 'noopener noreferrer';
+    link.setAttribute('aria-label', 'Open in Uber for the final walking leg');
+    card.replaceChildren(make('strong', 'last-mile-title', 'Uber for the final leg'), price,
+      make('span', 'last-mile-saving', `Saves ${offer.walkingMinutes} min walking`),
+      make('span', 'last-mile-endpoints', `${offer.from} → ${offer.to}`), link,
+      make('small', 'last-mile-note', 'Rough fare estimate. Confirm pickup and fare in Uber.'));
   }
 
   function updateNextService() {
@@ -2328,6 +2375,8 @@
     cancelPendingPlan();
     if (state.guidance) exitStationGuidance(false);
     state.selected = null;
+    state.journeyMode = null;
+    renderLastMileUber();
     state.firstWalkFocus = false;
     document.body.classList.remove('walk-to-stop-active');
     if (state.firstWalkLayers) state.firstWalkLayers.clearLayers();
@@ -2741,6 +2790,7 @@
     setInterval(() => { updateClock(); updateNextService(); updateLauncher(); if (!document.hidden) { fetchVehicles(); fetchApproach(); fetchNearbyBus(); } }, 15000);
     setInterval(() => {
       updateLeaveWidget(); updateBoardingCountdown(); updateNearbyBusCountdown(); renderMapOnlyServices();
+      if ($('last-mile-uber') && !$('last-mile-uber').hidden && timeValue(state.selected?.arrival) <= Date.now()) renderLastMileUber();
       updateGuidanceTarget();
       if (!document.hidden) maybeAutoGuidance();
       if (state.approachData) {
@@ -2778,6 +2828,7 @@
       cancelPendingPlan(); state.origin = { ...from }; state.destination = { ...to }; state.originUserChosen = true;
       $('origin-input').value = from.name; $('destination-input').value = to.name;
       updatePlaceMarker('origin'); updatePlaceMarker('destination'); state.journeys = [journey]; renderJourneyOptions();
+      state.journeyMode = journey.mode === 'demo' ? 'demo' : journey.mode === 'timetable' || journey.walkRouting === 'street' ? 'timetable' : null;
       $('journey-results').hidden = false; $('journey-panel').classList.add('has-journey'); selectJourney(journey); setPanel(false);
     }
   };

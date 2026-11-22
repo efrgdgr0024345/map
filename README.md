@@ -6,6 +6,8 @@ A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and 
 
 ## What works
 
+- Optional **Open in Uber** card for the actively followed real journey when its final walk exceeds three minutes. Shows a rough AUD range and walking minutes avoided; the official Uber app/mobile website confirms pickup, fare and booking. See [last-mile settings](docs/last-mile-uber.md).
+
 - **Map only** hides the panels, branding and controls while keeping pins, routes, GPS and scheduled vehicle updates running. **Controls** or Escape restores the previous interface, including open dialogs and unsaved form values. The toggle is also available inside the day planner and timetable. In map-only mode, up to four compact cards at the top prioritise minutes to stop, route colours and destinations; the boarding pins stay on the map.
 
 - Map-first nearby learning: a light 500 m search circle, stop-anchored destination/minute labels and compact optional details. Confirm **I'm on this service** to explore from the next alighting stop, with a 300 m search area and verified alight → walk → board/place connections. See [docs/nearby.md](docs/nearby.md) for controls, estimates and human testing.

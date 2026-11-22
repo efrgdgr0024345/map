@@ -18,7 +18,7 @@ try{
    const url=new URL(route.request().url()),action=url.searchParams.get('action');requests.push({action,params:Object.fromEntries(url.searchParams)});let data;
    if(action==='status')data={mode:'timetable',message:'Fixture timetable',routeRevision:'planner-fixture'};
    else if(action==='routes')data={revision:'planner-fixture',lines:[]};
-   else if(action==='vehicles')data={vehicles:[{id:'fixture-network',tripId:'fixture-network',mode:'bus',routeName:'915',headsign:'Fixture',lat:home.lat,lon:home.lon,bearing:90}],stops:[],lines:[],generatedAt:new Date().toISOString()};
+   else if(action==='vehicles')data={vehicles:url.searchParams.get('rail')==='only'?[]:[{id:'fixture-network',tripId:'fixture-network',mode:'bus',routeName:'915',headsign:'Fixture',lat:home.lat,lon:home.lon,bearing:90}],stops:[],lines:[],generatedAt:new Date().toISOString()};
    else if(action==='geocode')data={results:[{...gym,name:'Gym entrance, Perth'}]};
    else if(action==='plan'){
     const [a,b]=['from','to'].map(k=>{const [lat,lon]=url.searchParams.get(k).split(',').map(Number);return{lat,lon,name:k==='from'?'Start':'Destination'}});
@@ -41,7 +41,7 @@ try{
   ok(await page.evaluate(()=>__plannerMap.getZoom()===16),`${width}px starts at the requested street zoom`);
   ok(await page.locator('.brand-cat').evaluate(e=>e.getBoundingClientRect().width>=(innerWidth<760?48:56)),`${width}px brand cat is larger`);
   await page.evaluate(()=>__plannerMap.setZoom(15,{animate:false}));await page.waitForTimeout(700);const count=requests.filter(r=>r.action==='vehicles').length;
-  await page.waitForTimeout(700);ok(requests.filter(r=>r.action==='vehicles').length===count&&await page.locator('.vehicle-marker').count()===0,`${width}px zooming out hides the fleet and stops fleet requests`);
+  await page.waitForTimeout(700);ok(requests.filter(r=>r.action==='vehicles').at(-1).params.rail==='only'&&await page.locator('.vehicle-marker').count()===0,`${width}px overview requests only rail/ferries and keeps buses hidden`);
   await page.evaluate(()=>__plannerMap.setZoom(16,{animate:false}));await page.waitForTimeout(700);ok(requests.filter(r=>r.action==='vehicles').length>count,`${width}px street zoom resumes network requests`);
   await page.locator('#open-day-planner').click();await page.locator('#day-planner').waitFor({state:'visible'});
   ok(await page.locator('#planner-departure-mode').inputValue()==='now'&&await page.locator('#planner-start-field').isHidden(),`${width}px Leave now is explicit and does not require a departure clock`);

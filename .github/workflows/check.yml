@@ -52,6 +52,7 @@ jobs:
       - run: PHP_BINARY=php python3 tests/loader_progress_http.py
       - run: PHP_BINARY=php python3 tests/calendar_http.py
       - run: PHP_BINARY=php python3 tests/poi_http.py
+      - run: node --check tests/browser-last-mile-uber.mjs
       - run: node --check tests/browser-map-only.mjs
       - run: node --check tests/browser-nearby-bus.mjs
       - run: node --check tests/browser-nearby-onboard.mjs
@@ -66,3 +67,37 @@ jobs:
       - run: node --check tests/browser-station-browse.mjs
       - run: node --check tests/browser-incoming-walk.mjs
       - run: php loader.php --check
+
+  browser-checks:
+    runs-on: ubuntu-latest
+    env:
+      NODE_PATH: ${{ runner.temp }}/nextstop-ui/node_modules
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_sqlite, sqlite3, curl, zip
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --prefix "$RUNNER_TEMP/nextstop-ui" --no-save --no-package-lock playwright@1.62.1
+      - run: node "$RUNNER_TEMP/nextstop-ui/node_modules/playwright/cli.js" install --with-deps chromium
+      - name: Start the fixture test host
+        run: |
+          php -S 127.0.0.1:8080 dev-router.php > "$RUNNER_TEMP/nextstop-php.log" 2>&1 &
+          python3 - <<'PY'
+          import time, urllib.request, urllib.error
+          for attempt in range(40):
+              try:
+                  urllib.request.urlopen('http://127.0.0.1:8080/', timeout=1).close()
+                  break
+              except urllib.error.URLError:
+                  time.sleep(.1)
+          else:
+              raise SystemExit('The local test host failed to start.')
+          PY
+      - run: node tests/browser-map-only.mjs
+      - run: node tests/browser-nearby-onboard.mjs
+      - run: node tests/browser-last-mile-uber.mjs
