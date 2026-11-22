@@ -104,3 +104,10 @@ button.leave-widget:focus-visible{outline:4px solid #c2f65b;outline-offset:3px}
 @media(max-width:370px){.topbar-right .clock{display:block}}
 .nearby-boarding-label{width:max-content;max-width:min(220px,60vw)}
 @media(max-width:760px){.panel-open .nearby-bus,.map-pick-active .nearby-bus{display:none}}
+
+/* Map-only viewing preserves all map data and update timers; only UI chrome is hidden. */
+.map-view-toggle{position:fixed;z-index:1000;right:25px;bottom:max(24px,calc(env(safe-area-inset-bottom) + 18px));min-width:90px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px;border:1px solid #c9d6c0;border-radius:12px;background:#fffffff5;color:#14201d;box-shadow:0 3px 15px #14201d25;font-size:11px;font-weight:650;touch-action:manipulation}.map-view-toggle[aria-pressed=true]{background:#14201d;color:#fff;border-color:#fff}.dialog-map-only{position:fixed;right:18px;bottom:max(34px,calc(env(safe-area-inset-bottom) + 25px));min-height:44px;padding:10px 12px;border:1px solid #b9cba9;border-radius:10px;background:#eff6e7;color:#14201d;box-shadow:0 3px 15px #14201d25;font-size:11px;font-weight:650;z-index:2}.map-only > :not(#map):not(#map-view-toggle){display:none!important}.map-only .leaflet-popup-pane{display:none!important}body.map-only .nearby-label-marker{display:block!important}body.map-only #map{cursor:grab}body.map-only.map-pick-active .leaflet-marker-pane .leaflet-interactive{pointer-events:auto!important}
+@media(max-width:760px){.panel-launcher{right:80px}.map-view-toggle{right:17px;bottom:max(32px,calc(env(safe-area-inset-bottom) + 21px));min-width:52px;min-height:58px;padding:7px 4px;flex-direction:column;gap:4px;font-size:9px}.map-only .map-view-toggle{min-width:80px;min-height:44px;flex-direction:row;padding:9px;font-size:11px}.station-guidance-active .map-view-toggle{right:auto;left:18px}}
+body.map-only.map-pick-active #map:after{display:none}
+
+body.map-only .leaflet-bottom.leaflet-right{bottom:0!important;max-width:100%}body.map-only .map-view-toggle{bottom:max(32px,calc(env(safe-area-inset-bottom) + 21px))}

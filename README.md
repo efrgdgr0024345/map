@@ -4,6 +4,8 @@ A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and 
 
 ## What works
 
+- **Map only** hides the panels, branding and controls while keeping pins, routes, GPS and scheduled vehicle updates running. **Controls** or Escape restores the previous interface, including open dialogs and unsaved form values. The toggle is also available inside the day planner and timetable.
+
 - Map-first nearby learning: a light 500 m search circle, stop-anchored destination/minute labels and compact optional details. Confirm **I'm on this service** to explore from the next alighting stop, with a 300 m search area and verified alight → walk → board/place connections. See [docs/nearby.md](docs/nearby.md) for controls, estimates and human testing.
 
 - Phone GPS with permission, searchable start/destination addresses with suggestions, or map clicks and draggable pins. Selecting a location field opens a clear map picker; confirming a point returns to the form. With both locations selected, the ride search starts automatically. GPS keeps watching for better high-accuracy fixes before a journey is selected; stale cached fixes do not freeze the location. The compact accuracy indicator/circle reflects the device's reported uncertainty.
@@ -162,6 +164,8 @@ The current suite is `node tests/browser-mobile-v5.mjs`. It covers the peeking m
 `node tests/browser-station-v6.mjs` checks the circular leave clock and detailed station rendering. Its controlled UI fixtures and browser clock are explicitly separated from real station-map/transfer API checks. Rebuilding the bundled station catalog is a development task using `scripts/build-station-maps.py`, a trusted local Geofabrik PBF, the GTFS ZIP and pyosmium; none of those development tools are required on cPanel.
 
 `node tests/browser-incoming-walk.mjs` checks incoming markers with empty/failed fleet responses, deduplication, first-stop trains, stale estimate removal, and the leave-clock walking view on phone and desktop. Its API/GPS/clock fixtures are explicit; it does not verify basemap imagery or a physical journey. The approach PHP tests separately check motion, repeated-stop visits and service-day identity.
+
+`node tests/browser-map-only.mjs` checks map-only viewing at 320, 390, 430 and 1366 px, ongoing vehicle refreshes, map interaction, restored drafts and nested dialogs, timetable history, pending map choices, walking guidance and rotation. API, GPS and neutral map tiles are disclosed fixtures; it does not verify a physical ride or basemap imagery.
 
 ## Sources and network access
 

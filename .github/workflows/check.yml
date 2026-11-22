@@ -49,6 +49,7 @@ jobs:
       - run: PHP_BINARY=php python3 tests/loader_progress_http.py
       - run: PHP_BINARY=php python3 tests/calendar_http.py
       - run: PHP_BINARY=php python3 tests/poi_http.py
+      - run: node --check tests/browser-map-only.mjs
       - run: node --check tests/browser-nearby-bus.mjs
       - run: node --check tests/browser-nearby-onboard.mjs
       - run: node --check assets/app.js

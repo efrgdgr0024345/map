@@ -28,6 +28,7 @@
     return svg;
   };
   const state = {
+    mapOnly: false, mapOnlyDialogs: [], mapOnlyClosedDialogs: new WeakMap(), mapOnlyFocus: null,
     origin: { lat: -31.9505, lon: 115.8586, name: 'Perth Busport' },
     destination: null, field: 'destination', pickField: null,
     journeys: [], selected: null, wholeNetwork: false, status: null,
@@ -145,7 +146,7 @@
   function setPanel(open, focus = false) {
     state.panelOpen = Boolean(open);
     document.body.classList.toggle('panel-open', state.panelOpen);
-    const hidden = Boolean(state.pickField || state.guidance || state.firstWalkFocus) || (isMobile() && !state.panelOpen);
+    const hidden = state.mapOnly || Boolean(state.pickField || state.guidance || state.firstWalkFocus) || (isMobile() && !state.panelOpen);
     $('journey-panel').inert = hidden;
     $('journey-panel').setAttribute('aria-hidden', String(hidden));
     $('open-panel').setAttribute('aria-expanded', String(!hidden));
@@ -153,6 +154,73 @@
     if (focus && !hidden) $('journey-panel').focus({ preventScroll: true });
     if (hidden && $('journey-panel').contains(document.activeElement)) document.activeElement.blur();
     if (map && state.selected && isMobile() && state.followJourney && !state.pickField && !state.guidance) requestAnimationFrame(() => fitJourneyBounds(state.selected));
+  }
+
+  function suspendMapDialog(dialog) {
+    if (!dialog.open) return;
+    if (!state.mapOnlyDialogs.some(item => item.dialog === dialog)) {
+      state.mapOnlyDialogs.push({ dialog, modal: dialog.matches(':modal'), returnValue: dialog.returnValue,
+        scrollTop: dialog.scrollTop, scrollLeft: dialog.scrollLeft });
+    }
+    state.mapOnlyClosedDialogs.set(dialog, (state.mapOnlyClosedDialogs.get(dialog) || 0) + 1);
+    dialog.close();
+  }
+
+  function setMapOnly(enabled, source = $('map-view-toggle')) {
+    if (state.mapOnly === Boolean(enabled)) return;
+    state.mapOnly = Boolean(enabled);
+    const button = $('map-view-toggle');
+    const label = state.mapOnly ? 'Show controls' : 'Map only — hide controls';
+    button.setAttribute('aria-label', label); button.title = label;
+    button.setAttribute('aria-pressed', String(state.mapOnly));
+    button.querySelector('span').textContent = state.mapOnly ? 'Controls' : 'Map only';
+    if (state.mapOnly) {
+      state.mapOnlyFocus = source;
+      const dialogs = [...document.querySelectorAll('dialog[open]')];
+      const active = source.closest('dialog');
+      dialogs.sort((a, b) => Number(a === active) - Number(b === active));
+      dialogs.slice().reverse().forEach(suspendMapDialog);
+      // Restore nested dialogs in their original order, with the current one on top.
+      state.mapOnlyDialogs.reverse();
+      button.focus({ preventScroll: true });
+    }
+    document.body.classList.toggle('map-only', state.mapOnly);
+    // Only update accessibility here: setPanel also reframes a following journey.
+    const panelHidden = state.mapOnly || Boolean(state.pickField || state.guidance || state.firstWalkFocus) || (isMobile() && !state.panelOpen);
+    $('journey-panel').inert = panelHidden;
+    $('journey-panel').setAttribute('aria-hidden', String(panelHidden));
+    $('open-panel').setAttribute('aria-expanded', String(!panelHidden));
+    if (!state.mapOnly) {
+      const dialogs = state.mapOnlyDialogs; state.mapOnlyDialogs = [];
+      dialogs.forEach(({ dialog, modal, returnValue, scrollTop, scrollLeft }) => {
+        if (!dialog.isConnected || dialog.open) return;
+        dialog.returnValue = returnValue;
+        if (modal) dialog.showModal(); else dialog.show();
+        dialog.scrollTop = scrollTop; dialog.scrollLeft = scrollLeft;
+      });
+      const focus = state.mapOnlyFocus; state.mapOnlyFocus = null;
+      if (focus?.isConnected) focus.focus({ preventScroll: true });
+    }
+    drawNearbyLabels();
+  }
+
+  function bindMapOnlyControls() {
+    $('map-view-toggle').addEventListener('click', event => setMapOnly(!state.mapOnly, event.currentTarget));
+    document.querySelectorAll('dialog').forEach(dialog => {
+      const control = nearbyButton('Map only', () => setMapOnly(true, control), 'dialog-map-only');
+      control.setAttribute('aria-label', 'Map only — hide controls');
+      (dialog.querySelector('header, .timetable-header') || dialog.querySelector('form') || dialog).append(control);
+    });
+    // An async result can open a dialog while controls are hidden; keep it for restoration.
+    new MutationObserver(records => {
+      if (!state.mapOnly) return;
+      records.forEach(({ target }) => { if (target.tagName === 'DIALOG') suspendMapDialog(target); });
+    }).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['open'] });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && state.mapOnly) {
+        event.preventDefault(); event.stopImmediatePropagation(); setMapOnly(false);
+      }
+    }, true);
   }
 
   function timetableButton(label, query, className = '') {
@@ -622,8 +690,8 @@
     if (!points.length) return;
     state.nearbyCamera = full ? 'full' : 'local'; state.programmaticView = true;
     const height = $('nearby-bus').getBoundingClientRect().height;
-    map.fitBounds(L.latLngBounds(points), { paddingTopLeft: [isMobile() ? 35 : (state.panelOpen ? 425 : 40), 95],
-      paddingBottomRight: [75, Math.min(map.getSize().y * .42, height + (isMobile() ? 115 : 55))], maxZoom: full ? 16 : 17,
+    map.fitBounds(L.latLngBounds(points), { paddingTopLeft: state.mapOnly ? [30, 35] : [isMobile() ? 35 : (state.panelOpen ? 425 : 40), 95],
+      paddingBottomRight: state.mapOnly ? [35, 80] : [75, Math.min(map.getSize().y * .42, height + (isMobile() ? 115 : 55))], maxZoom: full ? 16 : 17,
       animate: !reducedMotion, duration: .5 });
     clearTimeout(state.nearbyCameraTimer);
     state.nearbyCameraTimer = setTimeout(() => { state.programmaticView = false; }, 600);
@@ -632,9 +700,9 @@
   function drawNearbyLabels() {
     if (!state.nearbyLabelLayers) state.nearbyLabelLayers = L.layerGroup().addTo(map);
     state.nearbyLabelLayers.clearLayers(); state.nearbyCountdownNodes = [];
-    const data = state.nearbyBusData; if (!data || !nearbyBusEnabled() || state.pickField) return;
+    const data = state.nearbyBusData; if (!data || !nearbyBusEnabled() || (state.pickField && !state.mapOnly)) return;
     const services = [...(data.services || [])].sort((a, b) => Number(b.key === data.departure?.key) - Number(a.key === data.departure?.key));
-    const occupied = [], size = map.getSize(), bottom = size.y - (isMobile() ? 215 : 150);
+    const occupied = [], size = map.getSize(), bottom = size.y - (state.mapOnly ? 80 : isMobile() ? 215 : 150);
     for (const service of services) {
       if (occupied.length >= 6) break;
       if (!service.stop) continue;
@@ -644,7 +712,7 @@
       let offset = null;
       for (const dy of [-54, 0, 54, -108, 108]) {
         const rect = { x, y: p.y - 22 + dy, w: 194, h: 50 };
-        if (rect.x < 8 || rect.x + rect.w > size.x - 58 || rect.y < 85 || rect.y + rect.h > bottom) continue;
+        if (rect.x < 8 || rect.x + rect.w > size.x - 58 || rect.y < (state.mapOnly ? 15 : 85) || rect.y + rect.h > bottom) continue;
         if (occupied.some(r => rect.x < r.x + r.w + 4 && rect.x + rect.w + 4 > r.x && rect.y < r.y + r.h + 4 && rect.y + rect.h + 4 > r.y)) continue;
         offset = dy; occupied.push(rect); break;
       }
@@ -1431,7 +1499,7 @@
     state.programmaticView = true;
     clearTimeout(state.viewTimer);
     const card = $('station-guidance').getBoundingClientRect();
-    map.fitBounds(bounds.pad(.12), { paddingTopLeft: isMobile() ? [35, card.bottom + 25] : [card.right + 25, 105], paddingBottomRight: isMobile() ? [65, 80] : [80, 110], maxZoom: 19, animate: false });
+    map.fitBounds(bounds.pad(.12), { paddingTopLeft: state.mapOnly ? [35, 35] : isMobile() ? [35, card.bottom + 25] : [card.right + 25, 105], paddingBottomRight: state.mapOnly ? [35, 80] : isMobile() ? [65, 80] : [80, 110], maxZoom: 19, animate: false });
     if (state.guidanceTargetMarker && state.guidanceTargetMarker.getElement()) state.guidanceTargetMarker.getElement().classList.toggle('label-left', map.latLngToContainerPoint(state.guidanceTargetMarker.getLatLng()).x > map.getSize().x / 2);
     state.viewTimer = setTimeout(() => { state.programmaticView = false; }, 500);
   }
@@ -2028,8 +2096,8 @@
     const mobile = isMobile(), size = map.getSize();
     const labelPadding = mobile ? Math.min(100, Math.max(60, (size.x - 160) / 2)) : 135;
     const launcher = $('open-panel').getBoundingClientRect();
-    map.fitBounds(bounds, { maxZoom: 18, paddingTopLeft: [labelPadding + 5, 165],
-      paddingBottomRight: [labelPadding + 15, mobile ? Math.max(120, size.y - launcher.top + 20) : 100], animate: !force && !reducedMotion });
+    map.fitBounds(bounds, { maxZoom: 18, paddingTopLeft: state.mapOnly ? [35, 35] : [labelPadding + 5, 165],
+      paddingBottomRight: state.mapOnly ? [35, 80] : [labelPadding + 15, mobile ? Math.max(120, size.y - launcher.top + 20) : 100], animate: !force && !reducedMotion });
     state.viewTimer = setTimeout(() => { state.programmaticView = false; }, 850);
   }
 
@@ -2050,7 +2118,7 @@
     if (!force && previous && previous.leg === key && now - previous.at < 8000) return;
     const mobile = isMobile(), size = map.getSize(), panel = $('journey-panel').getBoundingClientRect();
     const left = !mobile && getComputedStyle($('journey-panel')).display !== 'none' ? panel.right + 20 : 25;
-    const top = mobile ? 155 : 110, bottom = mobile ? 200 : 100;
+    const top = state.mapOnly ? 35 : mobile ? 155 : 110, bottom = state.mapOnly ? 80 : mobile ? 200 : 100;
     const zoom = leg.mode === 'walk' ? 17 : STREET_ZOOM;
     const center = map.unproject(map.project([point.lat, point.lon], zoom).add(L.point((size.x - left - 70) / 2 + left - size.x / 2, (size.y - top - bottom) / 2 + top - size.y / 2).multiplyBy(-1)), zoom);
     state.lastFollowFit = { center, at: now, leg: key, zoom };
@@ -2087,8 +2155,8 @@
       const activity = document.querySelector('.network-card').getBoundingClientRect();
       const leave = $('leave-widget').getBoundingClientRect();
       const size = map.getSize();
-      const topLeft = L.point(mobile ? 35 : panel.right + 24, mobile ? state.panelOpen ? 150 : Math.max(150, leave.bottom + 70) : 105);
-      const bottomRight = L.point(mobile ? 70 : 95, mobile ? state.panelOpen ? size.y - panel.top + 16 : size.y - Math.min(launcher.top, activity.top || launcher.top) + 20 : 145);
+      const topLeft = state.mapOnly ? L.point(35, 35) : L.point(mobile ? 35 : panel.right + 24, mobile ? state.panelOpen ? 150 : Math.max(150, leave.bottom + 70) : 105);
+      const bottomRight = state.mapOnly ? L.point(35, 80) : L.point(mobile ? 70 : 95, mobile ? state.panelOpen ? size.y - panel.top + 16 : size.y - Math.min(launcher.top, activity.top || launcher.top) + 20 : 145);
       if (size.x - topLeft.x - bottomRight.x < 50 || size.y - topLeft.y - bottomRight.y < 35) return;
       const desiredZoom = Math.max(map.getMinZoom(), Math.min(16, map.getBoundsZoom(bounds, false, topLeft.add(bottomRight))));
       const previous = state.lastFollowFit;
@@ -2428,6 +2496,7 @@
     map.getPane('stationLabelPane').style.pointerEvents = 'none';
     updatePlaceMarker('origin');
     map.on('click', event => {
+      if (state.mapOnly) return;
       if (state.pickField) { finishMapPick(event.latlng); return; }
       if (state.guidance || state.firstWalkFocus) return;
       if (isMobile() && !state.pickField) { setPanel(false); return; }
@@ -2463,6 +2532,7 @@
     map.getContainer().addEventListener('wheel', pauseMapFollowing, { passive: true });
     map.getContainer().addEventListener('touchstart', event => { if (event.touches.length > 1) pauseMapFollowing(); }, { passive: true });
     map.getContainer().addEventListener('keydown', event => {
+      if (state.mapOnly && event.key === 'Enter') return;
       if (state.pickField && event.key === 'Enter') { event.preventDefault(); finishMapPick(map.getCenter()); }
       else if (state.pickField && event.key === 'Escape') { event.preventDefault(); cancelMapPick(); }
       else if (['+', '-', '='].includes(event.key)) pauseMapFollowing();
@@ -2506,6 +2576,8 @@
       openTimetable(state.timetableHistory[state.timetableHistory.length - 1], false);
     });
     $('timetable-dialog').addEventListener('close', () => {
+      const suspended = state.mapOnlyClosedDialogs.get($('timetable-dialog')) || 0;
+      if (suspended) { state.mapOnlyClosedDialogs.set($('timetable-dialog'), suspended - 1); return; }
       if (state.timetableController) state.timetableController.abort();
       state.timetableNumber++;
       state.timetableHistory = [];
@@ -2582,6 +2654,7 @@
         state.markers.forEach(marker => { if (marker.nextstopAnimation) cancelAnimationFrame(marker.nextstopAnimation); });
       }
     });
+    bindMapOnlyControls();
     updateClock();
     setPanel(false);
     loadStatus();

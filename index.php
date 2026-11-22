@@ -28,6 +28,7 @@ function assetUrl(string $path): string
 </head>
 <body class="mascot-visible">
   <div id="map" aria-label="Interactive Perth public transport map"></div>
+  <button type="button" id="map-view-toggle" class="map-view-toggle" aria-label="Map only — hide controls" aria-pressed="false" title="Map only — hide controls"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5"/></svg><span>Map only</span></button>
 
   <header class="topbar">
     <a class="brand" href="./" aria-label="Nextstop home"><img class="brand-cat" src="<?= assetUrl(is_file(__DIR__ . '/assets/mascot-head.webp') ? 'assets/mascot-head.webp' : 'assets/black-cat.svg') ?>" alt="" width="46" height="46"><span>nextstop<span class="brand-dot">.</span></span></a>
