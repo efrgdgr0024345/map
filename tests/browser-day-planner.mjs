@@ -22,7 +22,7 @@ try{
    else if(action==='geocode')data={results:[{...gym,name:'Gym entrance, Perth'}]};
    else if(action==='plan'){
     const [a,b]=['from','to'].map(k=>{const [lat,lon]=url.searchParams.get(k).split(',').map(Number);return{lat,lon,name:k==='from'?'Start':'Destination'}});
-    const start=url.searchParams.has('arriveBy')?Date.parse(url.searchParams.get('arriveBy'))-30*60000:Date.parse(url.searchParams.get('at'));
+    const start=url.searchParams.has('arriveBy')?Date.parse(url.searchParams.get('arriveBy'))-30*60000:url.searchParams.has('at')?Date.parse(url.searchParams.get('at')):Date.now();
     const iso=n=>new Date(start+n*60000).toISOString();const walk={mode:'walk',routing:'street',duration:120,distance:150,from:a,to:{...a,id:'A'},departure:iso(0),arrival:iso(2),geometry:[[a.lat,a.lon],[a.lat+.0001,a.lon],[a.lat+.0001,a.lon+.0001]]};
     const ride={mode:'bus',tripId:'trip-'+start,routeId:'R',routeName:'915',serviceDate:'20261027',headsign:'Destination',from:{...a,id:'A'},to:{...b,id:'B'},departure:iso(5),arrival:iso(15),geometry:[[a.lat,a.lon],[b.lat,b.lon]]};
     data={mode:'timetable',journeys:[{id:'journey-'+start,walkRouting:'street',leaveAt:iso(1),boardingAt:iso(5),walkToBoardSeconds:120,boardingBufferSeconds:120,departure:iso(0),arrival:iso(15),duration:900,legs:[walk,ride]}]};
