@@ -67,7 +67,27 @@
    plans=built;blocks=plans.map(p=>travelBlock(p.journey,p.from,p.to));renderPlans();message('Your day is ready. Review each departure and return service.');
   }finally{if(current===version){controller=null;$('planner-build').disabled=false;$('planner-build').textContent='Plan my day'}}
  }
- function renderPlans(){const results=$('planner-results');results.replaceChildren();plans.forEach(p=>{const card=make('article','planner-trip-card'),times=make('div','planner-trip-times');card.append(make('h4','',`${p.isReturn?'Homeward · ':''}${p.from.name} → ${p.to.name}`));times.append(make('span','',`Leave ${fmt(p.journey.leaveAt||p.journey.departure)}`),make('span','',`Arrive ${fmt(p.journey.arrival)}`));card.append(times,make('p','',(p.journey.legs||[]).filter(l=>l.mode!=='walk').map(l=>`${l.routeName} at ${fmt(l.departure)}`).join(' → ')||'Walking journey'));if(p.minutes)card.append(make('p','',`Stay ${p.minutes} min${p.title?` · ${p.title}`:''}`));card.append(button('Show this journey on map',()=>{window.Nextstop.showJourney(p.journey,p.from,p.to);dialog.close()}));results.append(card)});results.hidden=false;$('planner-reminder-actions').hidden=plans.length===0}
+ function renderPlans(){
+  const results=$('planner-results');results.replaceChildren();
+  plans.forEach(p=>{
+   const card=make('article','planner-trip-card'),times=make('div','planner-trip-times');
+   card.append(make('h4','',`${p.isReturn?'Homeward · ':''}${p.from.name} → ${p.to.name}`));
+   times.append(make('span','',`Leave ${fmt(p.journey.leaveAt||p.journey.departure)}`),make('span','',`Arrive ${fmt(p.journey.arrival)}`));
+   card.append(times);
+   const rides=(p.journey.legs||[]).filter(l=>l.mode!=='walk');
+   if(rides.length){
+    const routes=make('div','planner-route-list');
+    for(const leg of rides){
+     const chip=window.Nextstop.styleRoute(make('span','route-chip',`${leg.routeName} · ${fmt(leg.departure)}`),leg);
+     chip.title=`${leg.mode} · ${leg.headsign||leg.lineName||leg.routeName}`;routes.append(chip);
+    }
+    card.append(routes);
+   }else card.append(make('p','','Walking journey'));
+   if(p.minutes)card.append(make('p','',`Stay ${p.minutes} min${p.title?` · ${p.title}`:''}`));
+   card.append(button('Show this journey on map',()=>{window.Nextstop.showJourney(p.journey,p.from,p.to);dialog.close()}));results.append(card);
+  });
+  results.hidden=false;$('planner-reminder-actions').hidden=plans.length===0;
+ }
  async function loadCalendar(){calendarStatus=await calendar('status');$('calendar-connect').hidden=!!calendarStatus.connected;$('calendar-connect').disabled=!calendarStatus.configured;$('calendar-disconnect').hidden=!calendarStatus.connected;$('calendar-browser').hidden=!calendarStatus.connected;$('calendar-state').textContent=calendarStatus.connected?'Google Calendar connected.':calendarStatus.configured?'Connect to choose events from your primary calendar.':'Google Calendar is not available here yet. Saved places and downloaded reminders still work.';if(calendarStatus.notice)message(calendarStatus.notice)}
  async function loadEvents(){const result=await calendar('events',null,{date:$('calendar-date').value});const list=$('calendar-events');list.replaceChildren();result.events.forEach(event=>{const b=button('',()=>selectEvent(event));b.className='calendar-event-card';b.append(make('strong','',event.title),make('small','',event.allDay?'All-day event · choose a timed event to plan arrival':`${fmt(event.start)} – ${fmt(event.end)} · ${event.location||'Choose an entrance'}`));b.disabled=event.allDay||Date.parse(event.start)<=Date.now();list.append(b)});if(!result.events.length)list.append(make('p','planner-help','No events on this day.'));if(result.moreAvailable)list.append(make('p','planner-help','Showing the first 100 events on this day.'))}
  function selectEvent(event){eventChoice=event;eventPoint=null;$('calendar-event-choice').hidden=false;$('calendar-event-title').textContent=event.title;$('calendar-event-time').textContent=`Arrive by ${fmt(event.start)} · stay until ${fmt(event.end)}`;$('calendar-event-address').value=event.location||'';$('calendar-event-place').textContent='Choose the entrance you need below.';$('calendar-event-results').replaceChildren();places.forEach(p=>$('calendar-event-results').append(button(p.name,()=>chooseEventPoint(p,p.address||p.name))));$('calendar-event-consent').checked=false;$('calendar-event-add').disabled=true}

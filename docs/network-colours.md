@@ -6,10 +6,10 @@ specifically `routes.txt` fields `route_color` and `route_text_color`. These are
 published data values, not colours sampled from a screenshot or guessed from a
 line name. A current valid feed colour takes priority over every fallback.
 
-The snapshot inspected on 24 October 2026 covers 20 October 2026 through
-18 January 2027. All 423 routes contain a route colour: 409 bus routes, 13 rail
+The official snapshot checked on 23 November 2026 covers 17 November 2026 through
+15 February 2027. All 421 routes contain a route colour: 408 bus routes, 12 rail
 routes, and one ferry route. ZIP SHA-256:
-`77720aec64ea75d61012c89cfb0355b9013f3e83a3fac92fee2692e024150e9d`.
+`bddcdae8995be2db45c69b8b00a4910941c4b43d8bac11d221d4954b0e4d5436`.
 This is provenance for the inspected snapshot, not a permanent download checksum;
 the official feed changes as timetables are updated.
 
@@ -23,13 +23,16 @@ the official feed changes as timetables are updated.
 | Midland | `#910048` |
 | Mandurah | `#CB6015` |
 | Yanchep | `#949300` |
-| Stadium Special | `#009645` |
 
 Joondalup is not a separately named current rail route in this feed. The helper
 accepts the legacy name as an alias for **Yanchep Line** and uses the current
 Yanchep colour. This does not establish a historical official Joondalup hex value.
 The feed also includes Australind, Prospector, MerredinLink, and AvonLink, each
 with `#CF4520`.
+
+The named palette is unchanged from the previous October verification. Stadium
+Special is absent from the November feed; its `#009645` named fallback remains
+for older imported timetables, without implying a currently scheduled service.
 
 | Bus/ferry service | Published route colour |
 | --- | --- |
@@ -69,6 +72,20 @@ the Airport train colour. Known CAT colour names are matched only for bus modes.
 Unknown buses and ferries fall back to the published common `#009645`. Unknown
 rail services fall back to application colour `#007EA8`; that generic fallback is
 not claimed to be an official Perth line colour.
+
+The browser's mode fallbacks now match those server defaults. The same
+`Nextstop.styleRoute` renderer supplies route and readable text colours to map
+vehicles, nearby directions, map-only cards, popups, itineraries, timetables and
+saved day-plan cards. Selected vehicles retain their route colour; a separate
+halo and label identify the selected ride. Browser label contrast uses the same
+4.5:1 black/white rule as the PHP helper. In particular, the feed currently gives
+the ferry `#009645`, so it does not receive a generic blue simply for being a boat.
+
+`tests/browser-arrival-colours.mjs` checks marker and timetable colours, the
+selected bus and the shared day-plan renderer. Backend feed/style propagation
+and legacy databases remain covered by the transit, timetable and route-cache
+suites. The browser suite uses disclosed API fixtures; the snapshot above is a
+separate real download from Transperth, not a mocked palette.
 
 Rail mode handling follows the application's existing GTFS mapping: types 0, 1,
 2 and extended types 100–199. Ferry is type 4 or extended types 1000–1099.

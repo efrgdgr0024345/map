@@ -73,12 +73,32 @@ function assetUrl(string $path): string
         <button type="button" id="use-location" class="text-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20 4-6.1 16-3.5-6.4L4 10.1 20 4Z"/></svg>Use my location</button>
         <button type="button" id="choose-on-map" class="text-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 10c0 5-7 10-7 10S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2"/></svg>Choose on map</button>
       </div>
+      <fieldset class="journey-timing">
+        <legend class="sr-only">When do you want to travel?</legend>
+        <div class="journey-time-options" role="group" aria-label="Travel time">
+          <button type="button" data-journey-time="now" aria-pressed="true">Leave now</button>
+          <button type="button" data-journey-time="arrive" aria-pressed="false">Arrive by</button>
+        </div>
+        <div id="arrival-fields" hidden>
+          <div class="arrival-inputs">
+            <label for="arrival-date">Date<input id="arrival-date" type="date" required disabled aria-describedby="arrival-help"></label>
+            <label for="arrival-time">Arrive by<input id="arrival-time" type="time" required disabled aria-describedby="arrival-help"></label>
+          </div>
+          <div class="arrival-shortcuts" role="group" aria-label="Choose an arrival time from now">
+            <button type="button" data-arrival-minutes="30">In 30 min</button>
+            <button type="button" data-arrival-minutes="60">In 1 hr</button>
+            <button type="button" data-arrival-minutes="120">In 2 hr</button>
+          </div>
+          <p id="arrival-help">Perth time · includes walking and transfers</p>
+        </div>
+      </fieldset>
       <button type="submit" class="primary-button" id="plan-button"><span>Find my next ride</span><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></svg></span></button>
     </form>
 
     <div class="message" id="message" role="status" aria-live="polite" hidden></div>
     <div id="journey-results" hidden>
       <div class="results-heading"><h2>Your journey</h2><button type="button" id="overview-journey" class="text-button">Overview</button><button type="button" id="clear-journey" class="text-button">Clear <span aria-hidden="true">×</span></button></div>
+      <div id="journey-arrival-summary" class="journey-arrival-summary" role="status" hidden></div>
       <div id="journey-options" class="journey-options"></div>
       <div id="next-service" class="next-service" hidden></div>
       <div id="itinerary" class="itinerary"></div>

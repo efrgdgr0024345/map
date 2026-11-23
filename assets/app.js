@@ -34,7 +34,7 @@
     mapOnly: false, mapOnlyDialogs: [], mapOnlyClosedDialogs: new WeakMap(), mapOnlyFocus: null,
     origin: { lat: -31.9505, lon: 115.8586, name: 'Perth Busport' },
     destination: null, field: 'destination', pickField: null,
-    journeys: [], selected: null, journeyMode: null, wholeNetwork: false, status: null,
+    journeys: [], selected: null, journeyMode: null, timeMode: 'now', wholeNetwork: false, status: null,
     vehicles: [], markers: new Map(), placeMarkers: {},
     requestNumber: 0, searchNumber: 0, vehicleController: null,
     nextTrip: null, planNumber: 0, searchTimer: null, searchController: null, needsJourneyFit: false,
@@ -117,15 +117,21 @@
 
   function routeColor(service) {
     const value = String(service.routeColor || '').replace(/^#/, '');
-    return /^[0-9a-f]{6}$/i.test(value) ? `#${value}` : service.mode === 'train' ? '#1675d1' : service.mode === 'ferry' ? '#009db9' : '#159558';
+    return /^[0-9a-f]{6}$/i.test(value) ? `#${value.toUpperCase()}` : service.mode === 'train' ? '#007EA8' : '#009645';
   }
 
   function routeTextColor(service) {
     const value = String(service.routeTextColor || '').replace(/^#/, '');
-    if (/^[0-9a-f]{6}$/i.test(value)) return `#${value}`;
     const color = routeColor(service).slice(1);
-    const brightness = parseInt(color.slice(0, 2), 16) * .299 + parseInt(color.slice(2, 4), 16) * .587 + parseInt(color.slice(4, 6), 16) * .114;
-    return brightness > 160 ? '#14201d' : '#ffffff';
+    const channels = [0, 2, 4].map(offset => {
+      const n = parseInt(color.slice(offset, offset + 2), 16) / 255;
+      return n <= .04045 ? n / 12.92 : ((n + .055) / 1.055) ** 2.4;
+    });
+    const light = channels[0] * .2126 + channels[1] * .7152 + channels[2] * .0722;
+    const black = (light + .05) / .05, white = 1.05 / (light + .05);
+    if (value.toUpperCase() === '000000' && black >= 4.5) return '#000000';
+    if (value.toUpperCase() === 'FFFFFF' && white >= 4.5) return '#FFFFFF';
+    return black >= white ? '#000000' : '#FFFFFF';
   }
 
   function styleRoute(element, service) {
@@ -243,7 +249,7 @@
       }
     }
     strip.hidden = !entries.length;
-    const signature = JSON.stringify(entries.map(e => [e.key, e.service.routeName, e.service.headsign, e.service.routeColor,
+    const signature = JSON.stringify(entries.map(e => [e.key, e.service.routeName, e.service.headsign, e.service.routeColor, e.service.routeTextColor,
       e.stop?.id, e.stop?.name, e.arrival, e.departure, e.label]));
     if (signature !== state.mapOnlyStripKey) {
       state.mapOnlyStripKey = signature; state.mapOnlyStripCounters = [];
@@ -1990,8 +1996,76 @@
     }
   }
 
+  const perthInputClock = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Australia/Perth', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  });
+
+  function arrivalInputParts(value) {
+    const p = Object.fromEntries(perthInputClock.formatToParts(new Date(value)).map(part => [part.type, part.value]));
+    return { date: `${p.year}-${p.month}-${p.day}`, time: `${p.hour}:${p.minute}` };
+  }
+
+  function setArrivalInputs(value) {
+    const p = arrivalInputParts(value);
+    $('arrival-date').value = p.date;
+    $('arrival-time').value = p.time;
+  }
+
+  function refreshArrivalLimits() {
+    $('arrival-date').min = arrivalInputParts(Date.now()).date;
+    $('arrival-date').max = arrivalInputParts(Date.now() + 14 * 86400000).date;
+  }
+
+  function arrivalTiming() {
+    if (state.timeMode !== 'arrive') return { deadline: null };
+    const date = $('arrival-date').value, time = $('arrival-time').value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !/^\d{2}:\d{2}$/.test(time)) return { error: 'Choose your arrival date and time.' };
+    // Native date/time inputs are Perth wall time, regardless of the phone's timezone.
+    const at = Date.parse(`${date}T${time}:00+08:00`);
+    if (!Number.isFinite(at)) return { error: 'Choose a valid arrival date and time.' };
+    const normalized = arrivalInputParts(at);
+    if (normalized.date !== date || normalized.time !== time) return { error: 'Choose a valid arrival date and time.' };
+    if (at <= Date.now()) return { error: 'Choose an arrival time in the future (Perth time).' };
+    if (at > Date.now() + 14 * 86400000) return { error: 'Choose an arrival within the next fourteen days.' };
+    return { deadline: new Date(at).toISOString().replace(/\.\d{3}Z$/, 'Z') };
+  }
+
+  function syncJourneyTiming() {
+    const arrive = state.timeMode === 'arrive';
+    document.querySelectorAll('[data-journey-time]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.journeyTime === state.timeMode)));
+    $('arrival-fields').hidden = !arrive;
+    ['arrival-date', 'arrival-time'].forEach(id => { $(id).disabled = !arrive; });
+    refreshArrivalLimits();
+  }
+
+  function changeJourneyTiming() {
+    clearJourney(false);
+    const timing = arrivalTiming();
+    if (timing.error) { message(timing.error, true); return; }
+    message(state.timeMode === 'arrive' ? 'Choose your destination. We’ll work back from your arrival time.' : 'Choose your destination to find the next departure.');
+    maybeAutoPlan();
+  }
+
+  function journeyClock(value) {
+    if (arrivalInputParts(value).date === arrivalInputParts(Date.now()).date) return clock(value);
+    return new Intl.DateTimeFormat('en-AU', { timeZone: 'Australia/Perth', weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(value));
+  }
+
+  function renderArrivalSummary() {
+    const card = $('journey-arrival-summary'), journey = state.selected;
+    card.replaceChildren(); card.hidden = !journey?.arriveBy;
+    if (card.hidden) return;
+    card.append(make('strong', '', `Leave by ${journeyClock(journey.leaveAt || journey.departure)}`),
+      make('span', '', `Arrive ${journeyClock(journey.arrival)} · by ${journeyClock(journey.arriveBy)}`),
+      make('small', '', 'Perth time · walking and transfers included · timetable estimates'));
+  }
+
   async function plan(automatic = false) {
     clearTimeout(state.autoPlanTimer);
+    const timing = arrivalTiming();
+    if (timing.error) { cancelPendingPlan(); message(timing.error, true); return; }
+    const { deadline } = timing;
     if (state.origin && state.origin.name === 'Your location' && state.userLocation) {
       state.origin = { ...state.origin, lat: state.userLocation.lat, lon: state.userLocation.lon };
       if (state.placeMarkers.origin) state.placeMarkers.origin.setLatLng([state.origin.lat, state.origin.lon]);
@@ -2002,7 +2076,7 @@
       else beginMapPick('destination');
       return;
     }
-    const signature = `${state.origin.lat.toFixed(6)},${state.origin.lon.toFixed(6)}:${state.destination.lat.toFixed(6)},${state.destination.lon.toFixed(6)}`;
+    const signature = `${state.origin.lat.toFixed(6)},${state.origin.lon.toFixed(6)}:${state.destination.lat.toFixed(6)},${state.destination.lon.toFixed(6)}:${deadline || 'now'}`;
     if (signature === state.planSignature && (state.planController || (automatic && state.selected))) return;
     if (state.planController) state.planController.abort();
     const controller = new AbortController();
@@ -2011,14 +2085,18 @@
     const request = ++state.planNumber;
     $('plan-button').disabled = true;
     $('plan-button').firstElementChild.textContent = 'Finding your route…';
-    message('Comparing departures, walking time, and connections…');
+    message(deadline ? 'Working back from your arrival time, including walking and transfers…' : 'Comparing departures, walking time, and connections…');
     $('search-results').hidden = true;
     try {
-      const data = await api('plan', { from: `${state.origin.lat},${state.origin.lon}`, to: `${state.destination.lat},${state.destination.lon}` }, controller.signal);
+      const data = await api('plan', { from: `${state.origin.lat},${state.origin.lon}`, to: `${state.destination.lat},${state.destination.lon}`, ...(deadline ? { arriveBy: deadline } : {}) }, controller.signal);
       if (request !== state.planNumber) return;
+      if (deadline) {
+        data.journeys = data.mode === 'timetable' ? (data.journeys || []).filter(journey => Number.isFinite(Date.parse(journey.arrival)) && timeValue(journey.arrival) <= timeValue(deadline))
+          .map(journey => ({ ...journey, arriveBy: deadline })) : [];
+      }
       if (!data.journeys || data.journeys.length === 0) {
         clearJourney(false);
-        message(data.message || 'No upcoming journey was found. Try a closer stop or another destination.', true);
+        message(deadline ? (data.mode === 'demo' ? 'Arrival planning needs the real timetable. Please try again when timetable data is available.' : 'No journey can reach your destination by that time. Choose a later arrival or another destination.') : (data.message || 'No upcoming journey was found. Try a closer stop or another destination.'), true);
         return;
       }
       state.journeys = data.journeys;
@@ -2052,7 +2130,7 @@
       const time = make('span', 'option-time', String(minutes(duration)));
       time.append(make('small', '', 'min'));
       const legs = transitLegs(journey);
-      const label = index === 0 ? 'Quickest arrival' : `${Number(journey.transfers) || 0} ${Number(journey.transfers) === 1 ? 'transfer' : 'transfers'}`;
+      const label = index === 0 ? (journey.arriveBy ? 'Latest departure' : 'Quickest arrival') : `${Number(journey.transfers) || 0} ${Number(journey.transfers) === 1 ? 'transfer' : 'transfers'}`;
       button.append(time, make('span', 'option-label', label));
       button.title = `${clock(journey.arrival)} arrival · ${legs.map(leg => leg.routeName).join(' → ') || 'Walking'}`;
       button.addEventListener('click', () => selectJourney(journey));
@@ -2252,6 +2330,7 @@
   }
 
   function renderItinerary() {
+    renderArrivalSummary();
     const container = $('itinerary');
     container.replaceChildren();
     const stationLabel = (stop, transfer) => {
@@ -2375,6 +2454,7 @@
     cancelPendingPlan();
     if (state.guidance) exitStationGuidance(false);
     state.selected = null;
+    renderArrivalSummary();
     state.journeyMode = null;
     renderLastMileUber();
     state.firstWalkFocus = false;
@@ -2427,6 +2507,7 @@
 
   function servicePopup(vehicle, highlighted) {
     const content = make('div', 'service-popup');
+    content.append(styleRoute(make('b', 'route-chip', vehicle.routeName || 'Service'), vehicle));
     const mode = vehicle.mode === 'train' ? 'Train' : vehicle.mode === 'ferry' ? 'Ferry' : 'Bus';
     content.append(make('strong', '', `${highlighted ? 'Your next ' : ''}${mode.toLowerCase()} ${vehicle.routeName || ''}`), make('span', '', vehicle.headsign || 'Scheduled service'));
     if (vehicle.nextStop) content.append(make('span', '', `Next: ${typeof vehicle.nextStop === 'object' ? vehicle.nextStop.name : vehicle.nextStop}`));
@@ -2702,6 +2783,23 @@
     });
 
     $('journey-form').addEventListener('submit', event => { event.preventDefault(); plan(); });
+    document.querySelectorAll('[data-journey-time]').forEach(button => button.addEventListener('click', () => {
+      if (state.timeMode === button.dataset.journeyTime) return;
+      state.timeMode = button.dataset.journeyTime;
+      if (state.timeMode === 'arrive' && (!$('arrival-date').value || arrivalTiming().error)) {
+        setArrivalInputs(Math.ceil((Date.now() + 3600000) / 300000) * 300000);
+      }
+      syncJourneyTiming(); changeJourneyTiming();
+    }));
+    ['arrival-date', 'arrival-time'].forEach(id => {
+      $(id).addEventListener('focus', refreshArrivalLimits);
+      $(id).addEventListener('change', changeJourneyTiming);
+    });
+    document.querySelectorAll('[data-arrival-minutes]').forEach(button => button.addEventListener('click', () => {
+      setArrivalInputs(Math.ceil((Date.now() + Number(button.dataset.arrivalMinutes) * 60000) / 60000) * 60000);
+      changeJourneyTiming();
+    }));
+    syncJourneyTiming();
     ['origin', 'destination'].forEach(field => {
       const input = $(`${field}-input`);
       input.addEventListener('focus', () => { state.field = field; });
@@ -2807,6 +2905,7 @@
 
   window.Nextstop = {
     getMap: () => map,
+    styleRoute,
     choosePlace: place => {
       if (state.onboard) {
         const explore = point => {
@@ -2826,6 +2925,9 @@
     getMapCenter: () => { const point = map.getCenter(); return { lat: point.lat, lon: point.lng }; },
     showJourney: (journey, from, to) => {
       cancelPendingPlan(); state.origin = { ...from }; state.destination = { ...to }; state.originUserChosen = true;
+      state.timeMode = journey.arriveBy ? 'arrive' : 'now';
+      if (journey.arriveBy) setArrivalInputs(journey.arriveBy);
+      syncJourneyTiming();
       $('origin-input').value = from.name; $('destination-input').value = to.name;
       updatePlaceMarker('origin'); updatePlaceMarker('destination'); state.journeys = [journey]; renderJourneyOptions();
       state.journeyMode = journey.mode === 'demo' ? 'demo' : journey.mode === 'timetable' || journey.walkRouting === 'street' ? 'timetable' : null;
