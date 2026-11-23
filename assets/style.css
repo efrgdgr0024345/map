@@ -137,3 +137,7 @@ body.map-only .leaflet-bottom.leaflet-right{bottom:0!important;max-width:100%}bo
 .vehicle-code{background:transparent;color:inherit}
 .planner-route-list{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.planner-route-list .route-chip{max-width:100%;min-width:0;font-size:11px;overflow-wrap:anywhere}
 .service-popup>.route-chip{margin-bottom:7px;font-size:12px;min-width:40px;max-width:100%}
+
+/* Every nearby direction remains available without covering the whole map. */
+.map-only-services{grid-template-columns:repeat(4,minmax(0,1fr));max-height:min(180px,25dvh);overflow-y:auto;overscroll-behavior:contain;pointer-events:auto;scrollbar-width:thin}
+@media(max-width:760px){.map-only-services{grid-template-columns:repeat(2,minmax(0,1fr))}}

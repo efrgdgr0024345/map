@@ -296,7 +296,7 @@ final class Transit
         }
         foreach ($groups as $key=>$trip) {
             $terminal=$this->stop($trip['terminal_id']);
-            $result['services'][]=array_merge(['key'=>$key,'tripId'=>$trip['trip_id'],'routeId'=>$trip['route_id'],'routeName'=>$trip['route_name'],
+            $result['services'][]=array_merge(['key'=>$key,'tripId'=>$trip['trip_id'],'routeId'=>$trip['route_id'],'routeName'=>$trip['route_name'],'shapeId'=>(string)$trip['shape_id'],
                 'headsign'=>$trip['headsign'] ?: $terminal['name'],'destination'=>$terminal['name'],'mode'=>$trip['mode'],
                 'serviceDate'=>$trip['date'],'stopId'=>$trip['stop_id'],'stopName'=>$trip['stop']['name'],'stop'=>$trip['stop'],
                 'sequence'=>(int)$trip['seq'],'directionId'=>$trip['direction_id'],

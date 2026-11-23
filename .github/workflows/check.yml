@@ -54,6 +54,7 @@ jobs:
       - run: PHP_BINARY=php python3 tests/poi_http.py
       - run: node --check tests/browser-last-mile-uber.mjs
       - run: node --check tests/browser-arrival-colours.mjs
+      - run: node --check tests/browser-trip-restore.mjs
       - run: node --check tests/browser-map-only.mjs
       - run: node --check tests/browser-nearby-bus.mjs
       - run: node --check tests/browser-nearby-onboard.mjs
@@ -103,4 +104,5 @@ jobs:
       - run: node tests/browser-nearby-onboard.mjs
       - run: node tests/browser-last-mile-uber.mjs
       - run: node tests/browser-arrival-colours.mjs
+      - run: node tests/browser-trip-restore.mjs
       - run: node tests/browser-day-planner.mjs

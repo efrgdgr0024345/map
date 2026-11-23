@@ -93,6 +93,7 @@ function assetUrl(string $path): string
         </div>
       </fieldset>
       <button type="submit" class="primary-button" id="plan-button"><span>Find my next ride</span><span aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 19 19 5M6 5h13v13"/></svg></span></button>
+      <button type="button" id="forget-saved-trip" class="text-button" hidden>Clear saved trip</button>
     </form>
 
     <div class="message" id="message" role="status" aria-live="polite" hidden></div>

@@ -6,11 +6,13 @@ A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and 
 
 ## What works
 
+- The latest trip search resumes on this device after closing the page, with the same places and map view and freshly checked departures. Clear cancels it. Map-only mode lists every found nearby direction and draws their matching route shapes for the 500 m GPS search. See [saved trips](docs/saved-trips.md).
+
 - **Arrive by** in the main phone trip form plans backwards from when you need to be at the destination. Native Perth date/time pickers and quick arrival shortcuts lead to a clear **Leave by** result, including checked walking and transfers. Impossible or past arrival deadlines are explained. See [arrival planning](docs/arrival-planning.md).
 
 - Optional **Open in Uber** card for the actively followed real journey when its final walk exceeds three minutes. Shows a rough AUD range and walking minutes avoided; the official Uber app/mobile website confirms pickup, fare and booking. See [last-mile settings](docs/last-mile-uber.md).
 
-- **Map only** hides the panels, branding and controls while keeping pins, routes, GPS and scheduled vehicle updates running. **Controls** or Escape restores the previous interface, including open dialogs and unsaved form values. The toggle is also available inside the day planner and timetable. In map-only mode, up to four compact cards at the top prioritise minutes to stop, route colours and destinations; the boarding pins stay on the map.
+- **Map only** hides the panels, branding and controls while keeping pins, routes, GPS and scheduled vehicle updates running. **Controls** or Escape restores the previous interface, including open dialogs and unsaved form values. The toggle is also available inside the day planner and timetable. In map-only mode, compact scrolling cards at the top prioritise minutes to stop, route colours and destinations; the boarding pins stay on the map.
 
 - Map-first nearby learning: a light 500 m search circle, stop-anchored destination/minute labels and compact optional details. Confirm **I'm on this service** to explore from the next alighting stop, with a 300 m search area and verified alight → walk → board/place connections. See [docs/nearby.md](docs/nearby.md) for controls, estimates and human testing.
 

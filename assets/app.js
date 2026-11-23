@@ -162,7 +162,9 @@
     updateLauncher();
     if (focus && !hidden) $('journey-panel').focus({ preventScroll: true });
     if (hidden && $('journey-panel').contains(document.activeElement)) document.activeElement.blur();
-    if (map && state.selected && isMobile() && state.followJourney && !state.pickField && !state.guidance) requestAnimationFrame(() => fitJourneyBounds(state.selected));
+    if (map && state.selected && isMobile() && state.followJourney && !state.pickField && !state.guidance) requestAnimationFrame(() => {
+      if (state.selected && state.followJourney && !state.pickField && !state.guidance) fitJourneyBounds(state.selected);
+    });
   }
 
   function suspendMapDialog(dialog) {
@@ -212,6 +214,7 @@
     }
     drawNearbyLabels();
     renderMapOnlyServices();
+    saveTripView();
   }
 
   function mapOnlyTop() {
@@ -222,7 +225,7 @@
   function renderMapOnlyServices() {
     const strip = $('map-only-services');
     if (!strip) return;
-    if (!state.mapOnly) { strip.hidden = true; state.mapOnlyStripKey = ''; return; }
+    if (!state.mapOnly) { strip.hidden = true; state.mapOnlyStripKey = ''; renderNearbyOverview(); return; }
     const entries = [], now = Date.now(), context = state.nearbyBusData?.onboard;
     const add = (key, service, stop, arrival, departure, label, run) => entries.push({ key, service, stop, arrival, departure, label, run });
     const leg = state.guidance?.transfer?.next || nextLeg();
@@ -242,7 +245,6 @@
       const data = state.nearbyBusData;
       const services = [...(data?.services || [])].sort((a, b) => Number(b.key === data?.departure?.key) - Number(a.key === data?.departure?.key));
       for (const service of services) {
-        if (entries.length >= 4) break;
         if (timeValue(service.departure) < now) continue;
         add(`nearby:${service.key}`, service, service.stop, service.arrival, service.departure,
           state.onboard ? 'After alighting' : 'Board', () => selectNearbyService(service));
@@ -254,6 +256,7 @@
     if (signature !== state.mapOnlyStripKey) {
       state.mapOnlyStripKey = signature; state.mapOnlyStripCounters = [];
       strip.replaceChildren(); strip.dataset.count = String(entries.length);
+      strip.setAttribute('aria-label', `All ${entries.length} found service directions. Scroll for more routes.`);
       strip.style.setProperty('--service-count', String(entries.length || 1));
       for (const entry of entries) {
         const { service, stop } = entry;
@@ -274,6 +277,22 @@
         count.textContent = text;
         button.setAttribute('aria-label', `${entry.service.routeName} to ${destination}, ${text}. ${place}. Scheduled estimate.`);
       }
+    }
+    renderNearbyOverview();
+  }
+
+  function renderNearbyOverview() {
+    if (!map) return;
+    if (!state.nearbyOverviewLayers) state.nearbyOverviewLayers = L.layerGroup().addTo(map);
+    const data = state.nearbyBusData;
+    const services = state.mapOnly && !state.selected && !state.onboard && data?.radius === 500 ? data.services || [] : [];
+    const keys = new Set(services.filter(s => timeValue(s.departure) >= Date.now()).map(s => `${s.routeId}/${s.shapeId}`));
+    const signature = JSON.stringify([state.mapOnly, state.routeRevision, [...keys]]);
+    if (signature === state.nearbyOverviewKey) return;
+    state.nearbyOverviewKey = signature; state.nearbyOverviewLayers.clearLayers();
+    for (const line of state.routeCatalog || []) {
+      if (!keys.has(`${line.routeId}/${line.shapeId}`) || !line.geometry?.length) continue;
+      L.polyline(line.geometry, { color: routeColor(line), weight: 4, opacity: .85, interactive: false, className: 'nearby-overview-route' }).addTo(state.nearbyOverviewLayers);
     }
   }
 
@@ -360,6 +379,7 @@
     $('route-cache-status').textContent = cached ? 'Saved network routes · checking for updates' : 'Network routes ready · kept in memory';
     $('route-cache-status').title = 'Public route geometry only. Vehicle positions, journeys, and map tiles are not stored in this cache.';
     drawNetworkLines();
+    renderNearbyOverview();
     return true;
   }
 
@@ -578,6 +598,7 @@
   }
 
   function setPlace(field, place, pan = false) {
+    state.restoredTripView = null; state.restoredTripId = null;
     clearTimeout(state.searchTimer);
     state.searchNumber++;
     if (state.searchController) state.searchController.abort();
@@ -593,6 +614,7 @@
     if (pan) map.panTo([place.lat, place.lon]);
     if (state.origin && state.destination) message('Ready when you are. Find a route to see your next ride.');
     updateLauncher();
+    saveTripSearch();
     maybeAutoPlan();
   }
 
@@ -1996,6 +2018,54 @@
     }
   }
 
+  const savedTripKey = 'nextstop-active-trip-v1';
+  function saveTripSearch() {
+    try {
+      if (!state.origin || !state.destination) { localStorage.removeItem(savedTripKey); $('forget-saved-trip').hidden = true; return; }
+      localStorage.setItem(savedTripKey, JSON.stringify({ version: 1, origin: state.origin, destination: state.destination,
+        timeMode: state.timeMode, date: $('arrival-date').value, time: $('arrival-time').value,
+        selectedId: state.selected?.id,
+        view: { center: [map.getCenter().lat, map.getCenter().lng], zoom: map.getZoom() }, mapOnly: state.mapOnly }));
+      $('forget-saved-trip').hidden = false;
+    } catch { /* Private browsing/storage limits must not block planning. */ }
+  }
+
+  function saveTripView() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(savedTripKey) || 'null');
+      if (!saved || saved.version !== 1) return;
+      saved.view = { center: [map.getCenter().lat, map.getCenter().lng], zoom: map.getZoom() }; saved.mapOnly = state.mapOnly;
+      localStorage.setItem(savedTripKey, JSON.stringify(saved));
+    } catch {}
+  }
+
+  function restoreTripSearch() {
+    try {
+      const raw = localStorage.getItem(savedTripKey); if (!raw || raw.length > 10000) return;
+      const saved = JSON.parse(raw);
+      const valid = p => p && typeof p.lat === 'number' && typeof p.lon === 'number' && Number.isFinite(p.lat) && Number.isFinite(p.lon)
+        && p.lat >= -33.5 && p.lat <= -30.5 && p.lon >= 114.5 && p.lon <= 117.5 && typeof p.name === 'string' && p.name.length <= 160;
+      if (saved.version !== 1 || !valid(saved.origin) || !valid(saved.destination)) { localStorage.removeItem(savedTripKey); return; }
+      state.origin = { ...saved.origin, name: saved.origin.name === 'Your location' ? 'Saved starting point' : saved.origin.name };
+      state.destination = saved.destination; state.originUserChosen = true; state.awaitingGpsOrigin = false;
+      $('forget-saved-trip').hidden = false;
+      state.restoredTripId = typeof saved.selectedId === 'string' ? saved.selectedId : null;
+      $('origin-input').value = state.origin.name; $('destination-input').value = state.destination.name;
+      updatePlaceMarker('origin'); updatePlaceMarker('destination');
+      state.timeMode = saved.timeMode === 'arrive' ? 'arrive' : 'now';
+      $('arrival-date').value = typeof saved.date === 'string' ? saved.date : '';
+      $('arrival-time').value = typeof saved.time === 'string' ? saved.time : '';
+      syncJourneyTiming();
+      const v = saved.view;
+      if (v && Array.isArray(v.center) && v.center.length === 2 && v.center.every(Number.isFinite)
+        && Math.abs(v.center[0]) <= 85 && Math.abs(v.center[1]) <= 180 && Number.isFinite(v.zoom) && v.zoom >= 3 && v.zoom <= 20) {
+        state.restoredTripView = v; map.setView(v.center, v.zoom, { animate: false });
+      }
+      if (saved.mapOnly === true) setMapOnly(true);
+      updateLauncher(); message('Restored your saved trip. Checking current departures…'); maybeAutoPlan();
+    } catch { try { localStorage.removeItem(savedTripKey); } catch {} }
+  }
+
   const perthInputClock = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Australia/Perth', year: 'numeric', month: '2-digit', day: '2-digit',
     hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
@@ -2040,7 +2110,9 @@
   }
 
   function changeJourneyTiming() {
+    state.restoredTripView = null; state.restoredTripId = null;
     clearJourney(false);
+    saveTripSearch();
     const timing = arrivalTiming();
     if (timing.error) { message(timing.error, true); return; }
     message(state.timeMode === 'arrive' ? 'Choose your destination. We’ll work back from your arrival time.' : 'Choose your destination to find the next departure.');
@@ -2066,6 +2138,7 @@
     const timing = arrivalTiming();
     if (timing.error) { cancelPendingPlan(); message(timing.error, true); return; }
     const { deadline } = timing;
+    saveTripSearch();
     if (state.origin && state.origin.name === 'Your location' && state.userLocation) {
       state.origin = { ...state.origin, lat: state.userLocation.lat, lon: state.userLocation.lon };
       if (state.placeMarkers.origin) state.placeMarkers.origin.setLatLng([state.origin.lat, state.origin.lon]);
@@ -2104,7 +2177,12 @@
       renderJourneyOptions();
       $('journey-results').hidden = false;
       document.querySelector('.journey-panel').classList.add('has-journey');
-      selectJourney(data.journeys[0]);
+      selectJourney(data.journeys.find(j => j.id === state.restoredTripId) || data.journeys[0]);
+      state.restoredTripId = null;
+      if (state.restoredTripView) {
+        const view = state.restoredTripView; state.restoredTripView = null;
+        setFollow(false); map.setView(view.center, view.zoom, { animate: false });
+      }
       message(data.mode === 'demo' ? 'Illustrative demo route. Import Perth timetables before using this for travel.' : (data.message || 'Your route is ready. All times and positions are timetable estimates.'));
       if (isMobile()) { document.querySelector('.journey-panel').scrollTop = 0; setPanel(false); }
     } catch (error) {
@@ -2145,6 +2223,7 @@
     clearApproach();
     clearNearbyBus();
     state.selected = journey;
+    saveTripSearch();
     state.fullJourneyOverview = false;
     state.firstWalkFocus = false;
     document.body.classList.remove('walk-to-stop-active');
@@ -2451,6 +2530,7 @@
   }
 
   function clearJourney(showMessage = true) {
+    if (showMessage) { try { localStorage.removeItem('nextstop-active-trip-v1'); } catch {} state.restoredTripView = null; $('forget-saved-trip').hidden = true; }
     cancelPendingPlan();
     if (state.guidance) exitStationGuidance(false);
     state.selected = null;
@@ -2783,6 +2863,10 @@
     });
 
     $('journey-form').addEventListener('submit', event => { event.preventDefault(); plan(); });
+    $('forget-saved-trip').addEventListener('click', () => {
+      clearJourney(); state.destination = null; $('destination-input').value = '';
+      updatePlaceMarker('destination'); updateLauncher();
+    });
     document.querySelectorAll('[data-journey-time]').forEach(button => button.addEventListener('click', () => {
       if (state.timeMode === button.dataset.journeyTime) return;
       state.timeMode = button.dataset.journeyTime;
@@ -2807,6 +2891,8 @@
       input.addEventListener('input', () => {
         cancelPendingPlan();
         state[field] = null;
+        state.restoredTripView = null; state.restoredTripId = null;
+        saveTripSearch();
         if (field === 'origin') { state.originUserChosen = true; state.awaitingGpsOrigin = false; }
         clearTimeout(state.searchTimer);
         if (state.searchController) state.searchController.abort();
@@ -2935,4 +3021,7 @@
     }
   };
   init();
+  restoreTripSearch();
+  map.on('moveend', saveTripView);
+  window.addEventListener('pagehide', saveTripView);
 })();
