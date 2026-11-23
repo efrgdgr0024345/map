@@ -46,7 +46,7 @@ try{for(const width of [320,390,1366]){
  check(await page.evaluate(()=>__restoreTest.state.destination.name)==='Saved destination',`${width}px reopening restores the destination`);
  await page.waitForFunction(()=>!__restoreTest.state.restoredTripView);
  check(await page.evaluate(()=>Math.abs(Nextstop.getMapCenter().lat+31.955)<.0001&&Nextstop.getMap().getZoom()===15&&__restoreTest.state.mapOnly),`${width}px reopening restores the same map position and hidden-controls mode`);
- await page.evaluate(()=>__restoreTest.clearJourney());await page.reload();await page.waitForFunction(()=>window.__restoreTest);
+ await page.evaluate(()=>{__restoreTest.setMapOnly(false);document.getElementById('forget-saved-trip').click()});await page.reload();await page.waitForFunction(()=>window.__restoreTest);
  check(await page.evaluate(()=>!__restoreTest.state.destination&&!localStorage.getItem('nextstop-active-trip-v1')),`${width}px cancelling prevents restoration on the next visit`);
  await page.evaluate(()=>localStorage.setItem('nextstop-active-trip-v1','{"version":1,"origin":{"lat":999},"destination":{}}'));await page.reload();await page.waitForFunction(()=>window.__restoreTest);
  check(await page.evaluate(()=>!localStorage.getItem('nextstop-active-trip-v1')),`${width}px malformed saved coordinates are discarded safely`);
