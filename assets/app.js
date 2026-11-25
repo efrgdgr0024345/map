@@ -886,7 +886,7 @@
     const centre = data.centre || state.userLocation, radius = data.radius || 500;
     if (!state.onboard && map.distance([centre.lat, centre.lon], [state.userLocation.lat, state.userLocation.lon]) > 25) return;
     state.nearbyBusData = data;
-    const renderKey=JSON.stringify([data.services,data.stop,data.departure,data.geometry,data.walk,data.onboard,data.place,data.radius,state.nearbyFocused]);
+    const renderKey=JSON.stringify([data.services,data.stop,data.departure,data.geometry,data.walk,data.onboard,data.place,data.centre,data.radius,state.nearbyFocused]);
     if(renderKey===state.nearbyRenderKey){
       updateNearbyVehicle(data);updateNearbyBusCountdown();renderMapOnlyServices();
       if(state.nearbyFitPending){state.nearbyFitPending=false;fitNearbyView(false);}return;
