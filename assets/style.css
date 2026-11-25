@@ -143,3 +143,5 @@ body.map-only .leaflet-bottom.leaflet-right{bottom:0!important;max-width:100%}bo
 @media(max-width:760px){.map-only-services{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 #forget-saved-trip{min-height:44px;margin-top:4px}
+
+.nearby-map-option{height:62px;min-height:62px;overflow:hidden}.nearby-map-option>small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;white-space:normal;line-height:15px}

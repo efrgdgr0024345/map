@@ -13,12 +13,13 @@ for(const width of [320,390,430,1366]) {
  const ctx=await browser.newContext({viewport:{width,height:900},isMobile:width<760,hasTouch:width<760});
  const page=await ctx.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.addInitScript(()=>{navigator.geolocation.watchPosition=()=>1;navigator.geolocation.clearWatch=()=>{};});
- let mode='normal',requests=0;
+ let mode='normal',requests=0,fixedNow=null,rolled=false,releaseRoll=null;
  const a={id:'A',name:'Fixture eastbound stop',lat:-31.95,lon:115.85,distance:0},b={id:'B',name:'Fixture westbound stop',lat:-31.9504,lon:115.85,distance:44};
  const geometry=[[-31.952,115.848],[-31.951,115.848],[-31.95,115.85],[-31.949,115.853]];
- const iso=seconds=>new Date(Date.now()+seconds*1000).toISOString();
+ const iso=seconds=>new Date((fixedNow??Date.now())+seconds*1000).toISOString();
  function payload(stop=a, selectedKey='') {
   let bus={key:'bus',tripId:stop.id==='A'?'trip-east':'trip-west',routeId:'R',routeName:'915',headsign:stop.id==='A'?'Fixture east':'Fixture west',mode:'bus',serviceDate:'20261112',departure:iso(300),arrival:iso(280),stopId:stop.id,routeColor:'#009645'};
+  if(rolled)bus={...bus,tripId:'replacement-trip',headsign:'Automatic replacement'};
   const directions=[{...bus,key:'bus',stop},{...bus,key:'train-return',tripId:'train-return',mode:'train',routeName:'Rail',headsign:'Opposite direction',stop:b,stopName:b.name}];
   if(selectedKey==='train-return'){bus=directions[1];stop=b;}
   return {centre:{lat:-31.95,lon:115.85},radius:500,services:mode==='empty'?[]:directions,stop,nearbyStops:[a,b],departure:mode==='empty'?null:bus,geometry:mode==='empty'?[]:geometry,estimated:true,generatedAt:iso(0),message:'No scheduled buses in the next six hours.',vehicle:mode==='empty'?null:{...bus,id:'fixture-'+bus.tripId,position:{lat:-31.951,lon:115.848,bearing:0},phase:'approaching',generatedAt:iso(0),estimated:true}};
@@ -30,6 +31,7 @@ for(const width of [320,390,430,1366]) {
    requests++;
    if(mode==='fail'){await route.fulfill({status:503,json:{error:'Fixture failure'}});return;}
    data=payload(url.searchParams.get('stop')==='B'?b:a,url.searchParams.get('service'));
+   if(mode==='rollover')await new Promise(resolve=>releaseRoll=resolve);
    if(mode==='slow')await new Promise(resolve=>setTimeout(resolve,350));
   } else if(action==='status')data={mode:'timetable',routeRevision:'nearby-fixture'};
   else if(action==='vehicles')data={vehicles:[],stops:[],lines:[],generatedAt:iso(0)};
@@ -66,6 +68,23 @@ for(const width of [320,390,430,1366]) {
  check(await page.evaluate(()=>__nearbyTest.state.nearbyBusData.stop.id==='B'),`${width}px nearby-stop switch selects the other road side`);
  await page.evaluate(()=>{const t=__nearbyTest,d=t.state.nearbyBusData,v=d.vehicle;t.renderVehicles({vehicles:[{...v,...v.position}],stops:[],lines:[]});});
  check(await page.evaluate(()=>__nearbyTest.state.markers.size===0&&Boolean(__nearbyTest.state.nearbyBusMarker)),`${width}px fleet response cannot duplicate the highlighted incoming bus`);
+ fixedNow=Date.now();await page.evaluate(()=>__nearbyTest.fetchNearbyBus(true));
+ await page.evaluate(()=>{window.__stableNearby={marker:__nearbyTest.state.nearbyBusMarker,button:document.querySelector('#nearby-bus .nearby-controls button'),center:Nextstop.getMap().getCenter()}});
+ await page.evaluate(()=>__nearbyTest.fetchNearbyBus(true));
+ check(await page.evaluate(()=>__stableNearby.marker===__nearbyTest.state.nearbyBusMarker&&__stableNearby.button===document.querySelector('#nearby-bus .nearby-controls button')),`${width}px unchanged refresh preserves the animated marker and controls`);
+ const labels=await page.locator('.nearby-map-option').evaluateAll(nodes=>nodes.filter(n=>n.getBoundingClientRect().width).map(n=>{const r=n.getBoundingClientRect();return{x:r.x,y:r.y,w:r.width,h:r.height}}));
+ check(labels.length>0&&labels.every((a,i)=>labels.every((b,j)=>i===j||a.x+a.w<=b.x||b.x+b.w<=a.x||a.y+a.h<=b.y||b.y+b.h<=a.y)),`${width}px actual destination boxes do not overlap`);
+ check(await page.locator('.nearby-boarding-label').count()===0,`${width}px duplicate permanent boarding tooltip cannot cover destination boxes`);
+ mode='rollover';rolled=true;
+ await page.evaluate(()=>{const t=__nearbyTest;t.state.nearbyBusData.departure.departure=new Date(Date.now()-1000).toISOString();t.state.nearbyBusFetched=Date.now()-5000;t.updateNearbyBusCountdown()});
+ await page.waitForFunction(()=>Boolean(__nearbyTest.state.nearbyBusController));
+ const pendingRequests=requests;await page.evaluate(()=>{for(let i=0;i<5;i++)__nearbyTest.updateNearbyBusCountdown()});
+ check(requests===pendingRequests&&await page.locator('#nearby-bus').isVisible(),`${width}px departure rollover keeps one replacement request and retains the map while loading`);
+ await page.waitForFunction(()=>document.querySelector('#nearby-bus')&&!document.querySelector('#nearby-bus').hidden);
+ while(!releaseRoll)await new Promise(resolve=>setTimeout(resolve,10));releaseRoll();mode='normal';
+ await page.waitForFunction(()=>__nearbyTest.state.nearbyBusData?.departure?.tripId==='replacement-trip');
+ check((await page.locator('#nearby-bus').innerText()).includes('Automatic replacement'),`${width}px next departure and route load automatically without a click`);
+ rolled=false;fixedNow=null;
  const from=a,to={lat:-31.949,lon:115.853,name:'Fixture destination'};
  await page.evaluate(({from,to})=>{const now=Date.now(),departure=new Date(now).toISOString(),arrival=new Date(now+600000).toISOString();Nextstop.showJourney({id:'walk-fixture',duration:600,departure,arrival,legs:[{mode:'walk',from,to,departure,arrival,geometry:[[from.lat,from.lon],[to.lat,to.lon]]}]},from,to);},{from,to});
  check(await page.locator('#nearby-bus').isHidden()&&await page.evaluate(()=>!__nearbyTest.state.nearbyBusMarker),`${width}px selected journey removes the automatic preview and marker`);

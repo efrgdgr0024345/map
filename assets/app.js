@@ -729,9 +729,13 @@
     state.nearbyCamera = 'local'; state.nearbyFitPending = true; clearNearbyBus(); fetchNearbyBus(true);
   }
 
-  function clearNearbyBus() {
-    if (state.nearbyBusController) state.nearbyBusController.abort();
-    state.nearbyBusController = null; state.nearbyBusRequest++; state.nearbyBusData = null; state.nearbyPendingCamera = null;
+  function clearNearbyBus(cancelRequest = true) {
+    if (cancelRequest) {
+      if (state.nearbyBusController) state.nearbyBusController.abort();
+      state.nearbyBusController = null; state.nearbyBusRequest++;
+    }
+    state.nearbyRenderKey = ''; stopNearbyTransition();
+    state.nearbyBusData = null; state.nearbyPendingCamera = null;
     if (state.nearbyBusLayers) state.nearbyBusLayers.clearLayers();
     if (state.nearbyLabelLayers) state.nearbyLabelLayers.clearLayers();
     if (state.nearbyAreaLayers) state.nearbyAreaLayers.clearLayers();
@@ -800,18 +804,24 @@
     const data = state.nearbyBusData; if (!data || !nearbyBusEnabled() || (state.pickField && !state.mapOnly)) return;
     const services = [...(data.services || [])].sort((a, b) => Number(b.key === data.departure?.key) - Number(a.key === data.departure?.key));
     const occupied = [], size = map.getSize(), bottom = size.y - (state.mapOnly ? 80 : isMobile() ? 215 : 150);
+    const origin = $('map').getBoundingClientRect();
+    for (const el of document.querySelectorAll('#nearby-bus,.map-controls,#journey-panel,#leave-widget,#station-guidance,.nearby-boarding-label,.gps-marker,.gps-status,#map-warning,#map-hint,#map-toast,.topbar,.panel-launcher,.follow-control')) {
+      const r = el.getBoundingClientRect();
+      if (r.width && r.height) occupied.push({x:r.left-origin.left-6,y:r.top-origin.top-6,w:r.width+12,h:r.height+12});
+    }
+    let placed = 0;
     for (const service of services) {
-      if (occupied.length >= 6) break;
+      if (placed >= 6) break;
       if (!service.stop) continue;
       const p = map.latLngToContainerPoint([service.stop.lat, service.stop.lon]);
       if (p.x < 0 || p.x > size.x || p.y < 60 || p.y > bottom + 60) continue;
       const left = p.x + 218 > size.x - 65, x = Math.max(8, Math.min(p.x + 17, size.x - 62 - 194));
       let offset = null;
-      for (const dy of [-54, 0, 54, -108, 108]) {
-        const rect = { x, y: p.y - 22 + dy, w: 194, h: 50 };
+      for (const dy of [-76, 0, 76, -152, 152, -228, 228]) {
+        const rect = { x, y: p.y - 22 + dy, w: 194, h: 62 };
         if (rect.x < 8 || rect.x + rect.w > size.x - 58 || rect.y < (state.mapOnly ? 15 : 85) || rect.y + rect.h > bottom) continue;
         if (occupied.some(r => rect.x < r.x + r.w + 4 && rect.x + rect.w + 4 > r.x && rect.y < r.y + r.h + 4 && rect.y + rect.h + 4 > r.y)) continue;
-        offset = dy; occupied.push(rect); break;
+        offset = dy; occupied.push(rect); placed++; break;
       }
       if (offset === null) continue;
       const body = styleRoute(make('div', `nearby-map-anchor${left ? ' is-left' : ''}`), service);
@@ -831,16 +841,63 @@
     updateNearbyBusCountdown();
   }
 
+  function stopNearbyTransition() {
+    if (state.nearbyTransition) cancelAnimationFrame(state.nearbyTransition);
+    state.nearbyTransition = null;
+    if (state.nearbyRetiringLayers) map.removeLayer(state.nearbyRetiringLayers);
+    state.nearbyRetiringLayers = null;
+  }
+
+  function transitionNearbyRoutes(previous) {
+    if (!previous || reducedMotion) { if (previous) map.removeLayer(previous); return; }
+    state.nearbyRetiringLayers = previous;
+    const paths = (group, incoming) => group.getLayers().filter(l => l.setStyle).map(layer => ({layer,incoming,opacity:layer.options.opacity ?? 1,fillOpacity:layer.options.fillOpacity ?? .2}));
+    const items = [...paths(previous,false),...paths(state.nearbyBusLayers,true)];
+    const start = performance.now();
+    const tick = now => {
+      const t = Math.min(1,(now-start)/220);
+      for (const p of items) { const f=p.incoming?t:1-t;p.layer.setStyle({opacity:p.opacity*f,fillOpacity:p.fillOpacity*f}); }
+      if(t<1) state.nearbyTransition=requestAnimationFrame(tick);
+      else { map.removeLayer(previous);state.nearbyRetiringLayers=null;state.nearbyTransition=null; }
+    };
+    tick(start);
+  }
+
+  function updateNearbyVehicle(data) {
+    const vehicle=data.vehicle;
+    const id=vehicle?.id || vehicle?.tripId;
+    if(!vehicle?.position || !Number.isFinite(vehicle.position.lat) || !Number.isFinite(vehicle.position.lon)) {
+      if(state.nearbyBusMarker){if(state.nearbyBusMarker.nextstopAnimation)cancelAnimationFrame(state.nearbyBusMarker.nextstopAnimation);map.removeLayer(state.nearbyBusMarker);state.nearbyBusMarker=null;}return;
+    }
+    if(!state.nearbyBusMarker || state.nearbyBusMarker.nextstopNearbyId!==id){
+      if(state.nearbyBusMarker){if(state.nearbyBusMarker.nextstopAnimation)cancelAnimationFrame(state.nearbyBusMarker.nextstopAnimation);map.removeLayer(state.nearbyBusMarker);}
+      state.nearbyBusMarker=L.marker([vehicle.position.lat,vehicle.position.lon],{icon:vehicleIcon(vehicle,state.nearbyFocused),zIndexOffset:3500,bubblingMouseEvents:false}).addTo(map).bindPopup(servicePopup(vehicle,true));
+      state.nearbyBusMarker.nextstopNearbyId=id;
+    }
+    const iconKey=JSON.stringify([vehicle.routeName,vehicle.mode,vehicle.routeColor,vehicle.routeTextColor,state.nearbyFocused]);
+    if(state.nearbyBusMarker.nextstopNearbyIcon!==iconKey){state.nearbyBusMarker.setIcon(vehicleIcon(vehicle,state.nearbyFocused));state.nearbyBusMarker.nextstopNearbyIcon=iconKey;}
+    moveMarker(state.nearbyBusMarker,{...vehicle,...vehicle.position},vehicle.generatedAt);
+    const duplicate=state.markers.get(String(id));
+    if(duplicate){if(duplicate.nextstopAnimation)cancelAnimationFrame(duplicate.nextstopAnimation);map.removeLayer(duplicate);state.markers.delete(String(id));}
+  }
+
   function renderNearbyBus(data) {
     if (!nearbyBusEnabled()) { clearNearbyBus(); return; }
     const centre = data.centre || state.userLocation, radius = data.radius || 500;
     if (!state.onboard && map.distance([centre.lat, centre.lon], [state.userLocation.lat, state.userLocation.lon]) > 25) return;
     state.nearbyBusData = data;
+    const renderKey=JSON.stringify([data.services,data.stop,data.departure,data.geometry,data.walk,data.onboard,data.place,data.radius,state.nearbyFocused]);
+    if(renderKey===state.nearbyRenderKey){
+      updateNearbyVehicle(data);updateNearbyBusCountdown();renderMapOnlyServices();
+      if(state.nearbyFitPending){state.nearbyFitPending=false;fitNearbyView(false);}return;
+    }
+    state.nearbyRenderKey=renderKey;
     if (!map.getPane('nearbyBusRoutes')) { map.createPane('nearbyBusRoutes'); map.getPane('nearbyBusRoutes').style.zIndex = '450'; map.getPane('nearbyBusRoutes').style.pointerEvents = 'none'; }
-    if (!state.nearbyBusLayers) state.nearbyBusLayers = L.layerGroup().addTo(map);
+    stopNearbyTransition();
+    const previousLayers=state.nearbyBusLayers;
+    state.nearbyBusLayers = L.layerGroup().addTo(map);
     if (!state.nearbyAreaLayers) state.nearbyAreaLayers = L.layerGroup().addTo(map);
-    state.nearbyBusLayers.clearLayers(); state.nearbyAreaLayers.clearLayers();
-    if (state.nearbyBusMarker) { if (state.nearbyBusMarker.nextstopAnimation) cancelAnimationFrame(state.nearbyBusMarker.nextstopAnimation); map.removeLayer(state.nearbyBusMarker); state.nearbyBusMarker = null; }
+    state.nearbyAreaLayers.clearLayers();
     const context = data.onboard, bus = data.departure, card = $('nearby-bus'); card.replaceChildren(); card.hidden = false;
     document.body.classList.add('has-nearby-bus');
     document.body.classList.toggle('nearby-focused', Boolean(state.nearbyFocused || state.onboard));
@@ -873,15 +930,8 @@
         L.polyline(data.geometry, { pane: 'nearbyBusRoutes', color: routeColor(bus), weight: 4, opacity: state.nearbyFocused ? 1 : .65, interactive: false }).addTo(state.nearbyBusLayers);
         controls.append(nearbyButton('Show full route', () => fitNearbyView(true)), nearbyButton('Back to stop', () => fitNearbyView(false)));
       }
-      const vehicle = data.vehicle;
-      if (vehicle?.position && Number.isFinite(vehicle.position.lat) && Number.isFinite(vehicle.position.lon)) {
-        state.nearbyBusMarker = L.marker([vehicle.position.lat, vehicle.position.lon], { icon: vehicleIcon(vehicle, state.nearbyFocused), zIndexOffset: 3500, bubblingMouseEvents: false }).addTo(map).bindPopup(servicePopup(vehicle, true));
-        moveMarker(state.nearbyBusMarker, { ...vehicle, ...vehicle.position }, vehicle.generatedAt);
-        const duplicate = state.markers.get(String(vehicle.id));
-        if (duplicate) { if (duplicate.nextstopAnimation) cancelAnimationFrame(duplicate.nextstopAnimation); map.removeLayer(duplicate); state.markers.delete(String(vehicle.id)); }
-      }
       L.circleMarker([data.stop.lat, data.stop.lon], { radius: 8, color: '#14201d', weight: 2, fillColor: '#c2f65b', fillOpacity: 1, className: 'nearby-boarding-dot', interactive: false })
-        .bindTooltip(`Board here · ${data.stop.name}`, { permanent: state.nearbyFocused, direction: 'bottom', className: 'nearby-boarding-label' }).addTo(state.nearbyBusLayers);
+        .bindTooltip(`Board here · ${data.stop.name}`, { permanent: false, direction: 'bottom', className: 'nearby-boarding-label' }).addTo(state.nearbyBusLayers);
       if (!state.onboard) controls.append(nearbyButton("I'm on this service", () => {
         state.onboard = { trip: bus.tripId, date: bus.serviceDate, routeName: bus.routeName, after: 0, alight: 0 };
         state.nearbyServiceKey = ''; state.nearbyBusStop = ''; state.nearbyVerifyWalk = false; state.nearbyFitPending = true; state.nearbyCamera = 'local'; fetchNearbyBus(true);
@@ -901,6 +951,8 @@
       L.marker([data.place.lat, data.place.lon], { title: data.place.name }).bindTooltip(data.place.name, { permanent: true }).addTo(state.nearbyBusLayers);
       controls.append(nearbyButton('Nearby services', () => { state.onboard.place = null; fetchNearbyBus(true); }));
     }
+    updateNearbyVehicle(data);
+    transitionNearbyRoutes(previousLayers);
     card.append(controls);
     const details = make('details', 'nearby-more'); details.open = state.nearbyDetailsOpen || false;
     details.addEventListener('toggle', () => { state.nearbyDetailsOpen = details.open; });
@@ -934,12 +986,13 @@
 
   function updateNearbyBusCountdown() {
     const data = state.nearbyBusData; if (!data) return;
-    if (!nearbyBusEnabled() || Date.now() - timeValue(data.generatedAt) > 45000) { clearNearbyBus(); return; }
+    if (!nearbyBusEnabled()) { clearNearbyBus(); return; }
+    if (Date.now() - timeValue(data.generatedAt) > 45000) { clearNearbyBus(false); if(!state.nearbyBusController&&!document.hidden)fetchNearbyBus(true);return; }
     const text = service => timeValue(service.departure) < Date.now() ? 'Left' : timeValue(service.arrival) <= Date.now() ? 'Due' : `${Math.ceil((timeValue(service.arrival) - Date.now()) / 60000)} min`;
     for (const { node, service } of state.nearbyCountdownNodes || []) node.textContent = text(service);
     const bus = data.departure, node = $('nearby-bus').querySelector('.nearby-countdown');
     if (bus && node) node.textContent = `${text(bus)} · scheduled ${clock(bus.arrival)}${bus.accessVerified ? ' · walk checked' : ''}`;
-    if (bus && timeValue(bus.departure) < Date.now()) { clearNearbyBus(); if (!document.hidden) fetchNearbyBus(true); }
+    if (bus && timeValue(bus.departure) < Date.now() && !state.nearbyBusController && Date.now()-state.nearbyBusFetched>3000 && !document.hidden) fetchNearbyBus(true);
   }
 
   async function fetchNearbyBus(force = false) {
@@ -951,6 +1004,7 @@
     if (!nearbyBusEnabled()) { clearNearbyBus(); return; }
     const p = state.userLocation;
     const moved = !state.nearbyBusPoint || map.distance([p.lat, p.lon], [state.nearbyBusPoint.lat, state.nearbyBusPoint.lon]) > 25;
+    if(!force && !moved && state.nearbyBusController)return;
     if (!state.onboard && state.nearbyBusData?.centre && map.distance([p.lat, p.lon], [state.nearbyBusData.centre.lat, state.nearbyBusData.centre.lon]) > 25) clearNearbyBus();
     if (!force && Date.now() - state.nearbyBusFetched < (moved ? 2000 : 14000)) return;
     if (state.nearbyBusController) state.nearbyBusController.abort();
@@ -2746,8 +2800,8 @@
     }
     const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors' }).addTo(map);
     let tilesLoaded = 0;
-    tiles.on('tileload', () => { tilesLoaded++; $('map-warning').hidden = true; });
-    tiles.on('tileerror', () => { if (!tilesLoaded) $('map-warning').hidden = false; });
+    tiles.on('tileload', () => { tilesLoaded++; if (!$('map-warning').hidden) { $('map-warning').hidden = true; drawNearbyLabels(); } });
+    tiles.on('tileerror', () => { if (!tilesLoaded && $('map-warning').hidden) { $('map-warning').hidden = false; drawNearbyLabels(); } });
     networkLayers = L.layerGroup().addTo(map);
     journeyLayers = L.layerGroup().addTo(map);
     stopLayers = L.layerGroup().addTo(map);

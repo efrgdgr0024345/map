@@ -102,6 +102,7 @@ jobs:
           PY
       - run: node tests/browser-map-only.mjs
       - run: node tests/browser-nearby-onboard.mjs
+      - run: node tests/browser-nearby-bus.mjs
       - run: node tests/browser-last-mile-uber.mjs
       - run: node tests/browser-arrival-colours.mjs
       - run: node tests/browser-trip-restore.mjs

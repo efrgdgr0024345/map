@@ -92,3 +92,30 @@ The loader downloads changed application files with backups and preserves the
 installed timetable and maintenance credentials. A GitHub push alone does not
 authenticate to cPanel or deploy the public PHP installation. After updating,
 reload the public site and verify the 500 m circle and map labels with GPS.
+
+## Automatic departure handoff and smooth updates
+
+When the displayed departure leaves, the countdown requests its replacement
+without clearing the route first. Only one handoff request runs at a time; normal
+polling does not abort a pending request at the same GPS point. The response
+selects the next available scheduled trip and updates its route, stop, ETA and
+vehicle together. Expired data is hidden after 45 seconds, while an already-running
+replacement request is allowed to complete. Leaving the area, losing accurate
+GPS or choosing a journey still clears the preview immediately.
+
+Unchanged service responses preserve the existing controls, route layers and
+vehicle marker. Updated positions use the existing bounded vehicle animation;
+changed route geometry fades over 220 milliseconds. Reduced-motion preferences
+replace the geometry immediately. These are timetable estimates, not live vehicle
+GPS or known delay/cancellation updates.
+
+Stop destination labels now reserve their actual 62-pixel height and avoid GPS
+markers, controls, panels and map warnings. A redundant permanent boarding tooltip
+has been removed: the selected destination label/card retains the stop identity,
+and the boarding dot still offers its tooltip on interaction. Where there is not
+enough room, additional directions remain in the nearby options list.
+
+The nearby browser suite checks marker/control reuse, actual label bounds, and
+an expired departure with a deliberately held response. Repeated countdown ticks
+must leave that one request intact, then load its replacement automatically.
+API/GPS responses and map imagery in these tests are explicitly disclosed fixtures.
