@@ -34,7 +34,7 @@
     mapOnly: false, mapOnlyDialogs: [], mapOnlyClosedDialogs: new WeakMap(), mapOnlyFocus: null,
     origin: { lat: -31.9505, lon: 115.8586, name: 'Perth Busport' },
     destination: null, field: 'destination', pickField: null,
-    journeys: [], selected: null, journeyMode: null, timeMode: 'now', wholeNetwork: false, status: null,
+    journeys: [], selected: null, journeyMode: null, timeMode: 'now', searchModes: {bus:true,train:true,ferry:true,uber:true,walk:true}, wholeNetwork: false, status: null,
     vehicles: [], markers: new Map(), placeMarkers: {},
     requestNumber: 0, searchNumber: 0, vehicleController: null,
     nextTrip: null, planNumber: 0, searchTimer: null, searchController: null, needsJourneyFit: false,
@@ -598,6 +598,7 @@
   }
 
   function setPlace(field, place, pan = false) {
+    clearWalkingAccess();
     state.restoredTripView = null; state.restoredTripId = null;
     clearTimeout(state.searchTimer);
     state.searchNumber++;
@@ -2073,6 +2074,36 @@
   }
 
   const savedTripKey = 'nextstop-active-trip-v1';
+  function searchPreferences() {
+    return { modes: ['bus','train','ferry'].filter(mode=>state.searchModes[mode]).join(','), longWalks: state.searchModes.walk ? '1' : '0' };
+  }
+
+  function clearWalkingAccess() {
+    if(state.accessLookupController)state.accessLookupController.abort();state.accessLookupController=null;
+    if(state.accessSuggestionLayers)state.accessSuggestionLayers.clearLayers();
+    document.querySelectorAll('.access-suggestion-note,.access-suggestion-button,.access-suggestion-source').forEach(el=>el.remove());
+  }
+
+  function showWalkingAccess(access,field,point) {
+    if(!state.accessSuggestionLayers)state.accessSuggestionLayers=L.layerGroup().addTo(map);
+    state.accessSuggestionLayers.clearLayers();
+    if(access.polygon){L.geoJSON(access.polygon,{style:{color:'#6b4c9a',weight:2,fillOpacity:.12}}).bindTooltip(`${access.polygon.name||'Mapped boundary'} · OpenStreetMap`).addTo(state.accessSuggestionLayers);}
+    const gps=access.nearestWalkingPoint;
+    message(access.message||'No mapped access point was found. Choose an entrance on the map.',true);
+    if(!access.available||!gps)return;
+    L.marker([gps.lat,gps.lon],{title:'Suggested walking point'}).bindTooltip('Suggested walking point',{permanent:true,direction:'top'}).addTo(state.accessSuggestionLayers);
+    const note=make('span','access-suggestion-note',`${Math.round(gps.distanceFromSelection)} m from your selection · ${gps.name}. GPS: ${Number(gps.lat).toFixed(6)}, ${Number(gps.lon).toFixed(6)}. Approximate access; not a verified entrance. ${field==='origin'?'Allow extra time to reach this point; the trip starts here.':'The arrival time is for this walking point, not inside the site.'}`);
+    const use=make('button','access-suggestion-button','Use this walking point');use.type='button';
+    use.addEventListener('click',()=>setPlace(field,{lat:gps.lat,lon:gps.lon,name:`${String(point.name).slice(0,140)} · walking access`},true));
+    const choose=make('button','access-suggestion-button','Choose an entrance on the map');choose.type='button';choose.addEventListener('click',()=>{clearWalkingAccess();beginMapPick(field)});
+    $('message').append(note,use,choose,make('small','access-suggestion-source',access.attribution||'© OpenStreetMap contributors'));
+    const bounds=L.geoJSON(access.polygon).getBounds();bounds.extend([gps.lat,gps.lon]);
+    map.fitBounds(bounds,{maxZoom:17,animate:!reducedMotion,paddingTopLeft:[30,90],paddingBottomRight:[60,isMobile()?Math.round(map.getSize().y*.65):80]});
+  }
+
+  function syncSearchModes() {
+    document.querySelectorAll('[data-search-mode]').forEach(b=>b.setAttribute('aria-pressed',String(state.searchModes[b.dataset.searchMode])));
+  }
   function saveTripSearch() {
     try {
       if (!state.origin || !state.destination) { localStorage.removeItem(savedTripKey); $('forget-saved-trip').hidden = true; return; }
@@ -2188,6 +2219,7 @@
   }
 
   async function plan(automatic = false) {
+    clearWalkingAccess();
     clearTimeout(state.autoPlanTimer);
     const timing = arrivalTiming();
     if (timing.error) { cancelPendingPlan(); message(timing.error, true); return; }
@@ -2203,7 +2235,7 @@
       else beginMapPick('destination');
       return;
     }
-    const signature = `${state.origin.lat.toFixed(6)},${state.origin.lon.toFixed(6)}:${state.destination.lat.toFixed(6)},${state.destination.lon.toFixed(6)}:${deadline || 'now'}`;
+    const signature = `${state.origin.lat.toFixed(6)},${state.origin.lon.toFixed(6)}:${state.destination.lat.toFixed(6)},${state.destination.lon.toFixed(6)}:${deadline || 'now'}:${JSON.stringify(searchPreferences())}`;
     if (signature === state.planSignature && (state.planController || (automatic && state.selected))) return;
     if (state.planController) state.planController.abort();
     const controller = new AbortController();
@@ -2215,7 +2247,7 @@
     message(deadline ? 'Working back from your arrival time, including walking and transfers…' : 'Comparing departures, walking time, and connections…');
     $('search-results').hidden = true;
     try {
-      const data = await api('plan', { from: `${state.origin.lat},${state.origin.lon}`, to: `${state.destination.lat},${state.destination.lon}`, ...(deadline ? { arriveBy: deadline } : {}) }, controller.signal);
+      const data = await api('plan', { from: `${state.origin.lat},${state.origin.lon}`, to: `${state.destination.lat},${state.destination.lon}`, ...searchPreferences(), ...(deadline ? { arriveBy: deadline } : {}) }, controller.signal);
       if (request !== state.planNumber) return;
       if (deadline) {
         data.journeys = data.mode === 'timetable' ? (data.journeys || []).filter(journey => Number.isFinite(Date.parse(journey.arrival)) && timeValue(journey.arrival) <= timeValue(deadline))
@@ -2224,6 +2256,17 @@
       if (!data.journeys || data.journeys.length === 0) {
         clearJourney(false);
         message(deadline ? (data.mode === 'demo' ? 'Arrival planning needs the real timetable. Please try again when timetable data is available.' : 'No journey can reach your destination by that time. Choose a later arrival or another destination.') : (data.message || 'No upcoming journey was found. Try a closer stop or another destination.'), true);
+        if (data.walkingIssue && ['no_segment','no_route'].includes(data.walkingIssue.reason) && ['origin','destination'].includes(data.walkingIssue.endpoint)) {
+          const field=data.walkingIssue.endpoint==='origin'?'origin':'destination';
+          const point={...state[field]};
+          const accessController=new AbortController();state.accessLookupController=accessController;const accessNumber=state.planNumber;
+          message((data.message || 'Walking access unavailable.')+' Looking for a mapped boundary and walking point…',true);
+          try {
+            const access=await api('walking-access',{at:`${point.lat},${point.lon}`},accessController.signal);
+            if (accessNumber!==state.planNumber) return;
+            showWalkingAccess(access,field,point);
+          } catch(error) { if(error.name!=='AbortError'&&accessNumber===state.planNumber)message((data.message||'Walking access unavailable.')+' Nearby access lookup is unavailable; choose an entrance on the map.',true); }
+        }
         return;
       }
       state.journeys = data.journeys;
@@ -2492,7 +2535,7 @@
       const duration = (timeValue(leg.arrival) - timeValue(leg.departure)) / 1000;
       const unavailable = walk && state.selected.walkRouting === 'unavailable';
       info.append(make('strong', '', unavailable ? 'Walking route unavailable' : walk ? `Walk to ${leg.to ? leg.to.name : 'your stop'}` : `${leg.mode === 'train' ? 'Train' : leg.mode === 'ferry' ? 'Ferry' : 'Bus'} ${leg.routeName || ''} · ${leg.headsign || (leg.to ? leg.to.name : '')}`));
-      if (walk) info.append(make('span', '', unavailable ? 'Choose another starting point' : `${minutes(duration)} min walk${state.selected.walkRouting === 'street' ? '' : ' · approximate'}`));
+      if (walk) info.append(make('span', '', unavailable ? 'Choose another starting point' : `${minutes(duration)} min ${leg.accessOnly ? 'approximate access to mapped path' : 'walk'}${state.selected.walkRouting === 'street' ? '' : ' · approximate'}`));
       else {
         const stops = make('span', 'leg-stops');
         stops.append(stationLabel(leg.from, state.transfers.find(item => item.nextIndex === index)), document.createTextNode(' → '), stationLabel(leg.to, state.transfers.find(item => item.previousIndex === index)));
@@ -2515,6 +2558,7 @@
   }
 
   function lastMileUberOffer() {
+    if (!state.searchModes.uber) return null;
     const journey = state.selected, legs = journey?.legs || [];
     if (!journey || !state.followJourney || state.journeyMode !== 'timetable' || state.status?.mode !== 'timetable'
       || state.status.expired || journey.mode === 'demo' || journey.walkRouting === 'unavailable' || legs.length < 2) return null;
@@ -2584,6 +2628,7 @@
   }
 
   function clearJourney(showMessage = true) {
+    clearWalkingAccess();
     if (showMessage) { try { localStorage.removeItem('nextstop-active-trip-v1'); } catch {} state.restoredTripView = null; $('forget-saved-trip').hidden = true; }
     cancelPendingPlan();
     if (state.guidance) exitStationGuidance(false);
@@ -2917,6 +2962,14 @@
     });
 
     $('journey-form').addEventListener('submit', event => { event.preventDefault(); plan(); });
+    try { const saved=JSON.parse(localStorage.getItem('nextstop-search-modes-v1')||'null');if(saved)for(const mode of Object.keys(state.searchModes))if(typeof saved[mode]==='boolean')state.searchModes[mode]=saved[mode]; } catch {}
+    syncSearchModes();
+    document.querySelectorAll('[data-search-mode]').forEach(b=>b.addEventListener('click',()=>{
+      const mode=b.dataset.searchMode;state.searchModes[mode]=!state.searchModes[mode];syncSearchModes();
+      try{localStorage.setItem('nextstop-search-modes-v1',JSON.stringify(state.searchModes));}catch{}
+      if(mode==='uber'){renderLastMileUber();return;}
+      clearJourney(false);saveTripSearch();message('Updating routes for your travel options…');maybeAutoPlan();
+    }));
     $('forget-saved-trip').addEventListener('click', () => {
       clearJourney(); state.destination = null; $('destination-input').value = '';
       updatePlaceMarker('destination'); updateLauncher();
@@ -2943,6 +2996,7 @@
       input.addEventListener('focus', () => { state.field = field; });
       input.addEventListener('click', () => { if (input.readOnly) beginMapPick(field); });
       input.addEventListener('input', () => {
+        clearWalkingAccess();
         cancelPendingPlan();
         state[field] = null;
         state.restoredTripView = null; state.restoredTripId = null;
@@ -3046,6 +3100,7 @@
   window.Nextstop = {
     getMap: () => map,
     styleRoute,
+    searchPreferences,
     choosePlace: place => {
       if (state.onboard) {
         const explore = point => {

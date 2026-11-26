@@ -220,6 +220,13 @@ try {
     StreetJourneys::plan($changing,$home,$goal,$now,static fn($from,$to)=>sjProvider($from,$to,90));
     sjCheck($changing->calls===3,'planning rounds are bounded even when new candidate walks keep appearing');
 
+    $accessFrom=['lat'=>-31.9523,'lon'=>115.8613];$accessTo=['lat'=>-31.952331,'lon'=>115.861282];
+    $accessService=sjService(static fn($from,$to,$at)=>sjResponse([sjJourney([Demo::walk($from,$to,$at,$at+4)])]));
+    $accessPath=['routing'=>'street','accessOnly'=>true,'approximate'=>true,'duration'=>4,'distance'=>3.8,
+        'geometry'=>[[$accessTo['lat'],$accessTo['lon']],[$accessTo['lat'],$accessTo['lon']]],'accessConnectors'=>[['routing'=>'unrouted_access','approximate'=>true]]];
+    $accessTrip=StreetJourneys::plan($accessService,$accessFrom,$accessTo,$now,static fn()=>$accessPath);
+    sjCheck(count($accessTrip['journeys'])===1&&$accessTrip['journeys'][0]['duration']===4,'an access-only walk remains a usable journey with real positive time');
+    sjCheck($accessTrip['journeys'][0]['legs'][0]['accessOnly']&&$accessTrip['journeys'][0]['legs'][0]['approximate'],'access-only uncertainty survives itinerary refinement');
     $demoCalls=0;
     $demo=StreetJourneys::plan(new Demo(),$home,$goal,$now,static function() use (&$demoCalls): array { $demoCalls++; return []; });
     sjCheck($demoCalls===0 && $demo['walkRouting']==='demo' && $demo['journeys'][0]['leaveAt']===null,'demo journeys stay illustrative and never claim verified street routing or a real leave time');

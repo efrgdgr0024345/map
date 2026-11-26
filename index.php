@@ -73,6 +73,13 @@ function assetUrl(string $path): string
         <button type="button" id="use-location" class="text-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m20 4-6.1 16-3.5-6.4L4 10.1 20 4Z"/></svg>Use my location</button>
         <button type="button" id="choose-on-map" class="text-button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 10c0 5-7 10-7 10S5 15 5 10a7 7 0 1 1 14 0Z"/><circle cx="12" cy="10" r="2"/></svg>Choose on map</button>
       </div>
+      <fieldset class="search-modes"><legend>Travel options</legend><div role="group" aria-label="Allowed travel options">
+        <button type="button" data-search-mode="bus" aria-pressed="true">Bus</button>
+        <button type="button" data-search-mode="train" aria-pressed="true">Train</button>
+        <button type="button" data-search-mode="ferry" aria-pressed="true">Ferry</button>
+        <button type="button" data-search-mode="uber" aria-pressed="true">Uber</button>
+        <button type="button" data-search-mode="walk" aria-pressed="true">Walk</button>
+      </div><p>Walk off hides walking-only trips over 10 min. Walks to stops and transfers remain. Uber is an optional app link.</p></fieldset>
       <fieldset class="journey-timing">
         <legend class="sr-only">When do you want to travel?</legend>
         <div class="journey-time-options" role="group" aria-label="Travel time">

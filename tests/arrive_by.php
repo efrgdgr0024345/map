@@ -50,5 +50,26 @@ try{
  abCheck($empty['journeys']===[],'no departure is invented when the earliest start is after the deadline');
  abCheck(App\GoogleCalendar::dateTime('2026-10-27T12:00:00+08:00')===App\GoogleCalendar::dateTime('2026-10-27T04:00:00Z'),'planning clocks accept equivalent explicit timezones');
  $bad=false;try{App\GoogleCalendar::dateTime('2026-02-30T12:00:00+08:00');}catch(InvalidArgumentException){$bad=true;}abCheck($bad,'normalised invalid dates are rejected');
- echo $checks.' arrival-by checks passed. Synthetic timetable and walking fixtures.'.PHP_EOL;
+ $db->exec("INSERT INTO routes VALUES ('FERRY','Ferry',4);INSERT INTO trips VALUES ('direct-rail','TRAIN','D','Rail destination','',0,100000),('direct-ferry','FERRY','D','Ferry destination','',0,100000)");
+ foreach(['direct-rail','direct-ferry'] as $id){$dep=$now-$base+1200;$arr=$now-$base+3000;$db->prepare('INSERT INTO stop_times VALUES (?,\'A\',10,?,?,0,0)')->execute([$id,$dep,$dep]);$db->prepare('INSERT INTO stop_times VALUES (?,\'C\',20,?,?,0,0)')->execute([$id,$arr,$arr]);$db->prepare('INSERT INTO connections VALUES (?,10,\'A\',\'C\',?,?,0,0)')->execute([$id,$dep,$arr]);}
+ foreach(['bus','train','ferry'] as $mode){
+  $filtered=new Transit($path);$filtered->setSearchModes([$mode],false);
+  foreach([false,true] as $reverse){
+   $p=StreetJourneys::plan($filtered,$home,$goal,$now,$router,null,$reverse?$deadline:null);
+   $modes=array_values(array_unique(array_column(array_filter($p['journeys'][0]['legs']??[],fn($l)=>$l['mode']!=='walk'),'mode')));
+   abCheck($modes===[$mode],$mode.' toggle constrains '.($reverse?'arrival-by':'leave-now').' search before ranking');
+   abCheck(count(array_filter($p['journeys'][0]['legs']??[],fn($l)=>$l['mode']==='walk'))>0,'walk-off retains access walking for '.$mode);
+  }
+  (new ReflectionProperty(Transit::class,'materializedTrips'))->setValue($filtered,false);
+  $p=StreetJourneys::plan($filtered,$home,$goal,$now,$router);
+  abCheck(array_values(array_unique(array_column(array_filter($p['journeys'][0]['legs']??[],fn($l)=>$l['mode']!=='walk'),'mode')))===[$mode],$mode.' filtering also works on older SQLite');
+ }
+ $walks=new Transit($path);$walks->setSearchModes([],true);$near=['lat'=>$home['lat'],'lon'=>$home['lon']+.01];
+ abCheck(count($walks->plan($home,$near,$now)['journeys'])>0,'walk-only option works with all transit modes off');
+ $walks->setSearchModes([],false);
+ abCheck($walks->plan($home,$near,$now)['journeys']===[],'walk-off suppresses long walking-only shortcuts');
+ abCheck(count($walks->plan($home,['lat'=>$home['lat'],'lon'=>$home['lon']+.001],$now)['journeys'])>0,'walk-off still permits a short local walk');
+ $longActual=StreetJourneys::plan($walks,$home,['lat'=>$home['lat'],'lon'=>$home['lon']+.001],$now,static function($a,$b){return ['routing'=>'street','duration'=>900,'distance'=>1125,'geometry'=>[[$a['lat'],$a['lon']],[$b['lat'],$b['lon']]]];});
+ abCheck($longActual['journeys']===[]&&str_contains($longActual['message'],'travel options'),'actual refined walking duration also respects walk-off and gives a preference message');
+ echo $checks.' arrival-by/mode checks passed. Synthetic timetable and walking fixtures.'.PHP_EOL;
 }finally{$db=null;@unlink($path);}

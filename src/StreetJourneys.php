@@ -98,10 +98,11 @@ final class StreetJourneys
                 }
             }
         }
-        $verified=[];
+        $verified=[];$preferenceRejected=false;
         $readyNow=$now+max(0,(int)floor((float)$clock()-$started)-max(0,$startDelaySeconds));
         foreach ($pool as $journey) {
             $ready=self::finish($journey,$paths,$arriveBy===null ? $readyNow : max($readyNow,strtotime($journey['departure'])),$service);
+            if($ready!==null && $service instanceof Transit && !$service->permitsJourney($ready)){$preferenceRejected=true;continue;}
             if ($ready!==null && ($arriveBy===null || strtotime($ready['arrival'])<=$arriveBy)) { $verified[self::candidateKey($ready)]=$ready; }
         }
         $verified=array_values($verified);
@@ -122,7 +123,9 @@ final class StreetJourneys
                 }
                 if (!$blocked) { $allAccessBlocked=false; break; }
             }
-            if ($allAccessBlocked) {
+            if ($preferenceRejected) {
+                $response['message']='No journey matches the selected travel options. Try another mode or destination.';
+            } elseif ($allAccessBlocked) {
                 $ordered=array_values($issues);
                 $priority=['destination'=>0,'origin'=>1,'connection'=>2];
                 usort($ordered,static fn($a,$b)=>$priority[$a['endpoint']]<=>$priority[$b['endpoint']]);
@@ -178,10 +181,10 @@ final class StreetJourneys
                 $path=$paths[$key]; $duration=(int)$path['duration'];
                 $leg['departure']=date(DATE_ATOM,$cursor); $cursor+=$duration;
                 $leg['arrival']=date(DATE_ATOM,$cursor);
-                foreach (['geometry','duration','distance','routingSource','accessConnectors','snappedFrom','snappedTo'] as $field) {
+                foreach (['geometry','duration','distance','routingSource','accessConnectors','snappedFrom','snappedTo','accessOnly'] as $field) {
                     if (array_key_exists($field,$path)) { $leg[$field]=$path[$field]; }
                 }
-                $leg['routing']='street'; $leg['approximate']=false; $leg['estimated']=true;
+                $leg['routing']='street'; $leg['approximate']=!empty($path['accessOnly']); $leg['estimated']=true;
                 $walkSeconds+=$duration;
                 if ($boardings===0) { $initialWalk+=$duration; }
                 $legs[]=$leg;

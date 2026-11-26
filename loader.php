@@ -511,7 +511,7 @@ function pm_application_manifest(): array
 {
     return ['loader.php', 'index.php', 'bootstrap.php', 'api.php', 'calendar.php', 'alerts-sw.js', '.htaccess',
         'src/.htaccess', 'scripts/.htaccess',
-        'src/GtfsImporter.php', 'src/Transit.php', 'src/TransferRules.php', 'src/StationMap.php', 'src/Demo.php', 'src/Geo.php', 'src/Geocoder.php', 'src/PlaceAccess.php', 'src/NetworkStyle.php', 'src/RouteCache.php', 'src/VehicleMotion.php', 'src/WalkingRouter.php', 'src/WalkingRouteException.php', 'src/StreetJourneys.php', 'src/Payphones.php', 'src/TransferGuide.php', 'scripts/import-gtfs.php', 'scripts/build-route-cache.php',
+        'src/GtfsImporter.php', 'src/Transit.php', 'src/TransferRules.php', 'src/StationMap.php', 'src/Demo.php', 'src/Geo.php', 'src/Geocoder.php', 'src/PlaceAccess.php', 'src/NetworkStyle.php', 'src/RouteCache.php', 'src/VehicleMotion.php', 'src/WalkingRouter.php', 'src/WalkingAccess.php', 'src/WalkingRouteException.php', 'src/StreetJourneys.php', 'src/Payphones.php', 'src/TransferGuide.php', 'scripts/import-gtfs.php', 'scripts/build-route-cache.php',
         'src/Toilets.php', 'src/NearbyExplorer.php', 'src/GoogleCalendar.php', 'src/PoiCatalog.php', 'assets/perth-pois.json', 'assets/pois.js', 'assets/pois.css', 'assets/planner.js', 'assets/planner.css',
         'assets/app.js', 'assets/style.css', 'assets/black-cat.svg', 'assets/mascot-head.webp', 'assets/mascot-paws.webp',
         'assets/place-access.json', 'assets/station-maps/manifest.json', 'assets/vendor/leaflet/leaflet.js', 'assets/vendor/leaflet/leaflet.css', 'assets/vendor/leaflet/LICENSE'];

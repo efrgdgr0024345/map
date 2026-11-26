@@ -87,6 +87,18 @@ namespace {
         $access=WalkingRouter::parseResponse($encode($snap),$door,$b);
         walkingCheck(count($access['accessConnectors'])===1 && $access['accessConnectors'][0]['approximate']===true && $access['accessConnectors'][0]['routing']==='unrouted_access','a short door-to-network connection is explicitly marked unverified access');
         walkingCheck($access['geometry'][0]===[$a['lat'],$a['lon']] && $access['duration']>$route['duration'] && $access['distance']>$route['distance'],'access connectors do not masquerade as mapped footpaths and their time is included');
+        $zero=$response;$zero['routes'][0]=['distance'=>0,'duration'=>0,'geometry'=>['type'=>'LineString','coordinates'=>[[$a['lon'],$a['lat']],[$a['lon'],$a['lat']]]]];
+        $zero['waypoints']=[['location'=>[$a['lon'],$a['lat']],'distance'=>10],['location'=>[$a['lon'],$a['lat']],'distance'=>0]];
+        $only=WalkingRouter::parseResponse($encode($zero),$door,$a);
+        walkingCheck($only['accessOnly']===true && $only['approximate']===true && $only['duration']>=10 && $only['distance']>=9,'zero mapped-path distance accepts a short access-only connection with positive walking time');
+        walkingCheck(count($only['accessConnectors'])===1 && $only['geometry'][0]===$only['geometry'][1],'access-only walking preserves the provider geometry and separately labels the uncertain connector');
+        $tiny=$zero;$tiny['waypoints'][0]['distance']=.45;$tiny['waypoints'][1]['distance']=.45;
+        $tinyRoute=WalkingRouter::parseResponse($encode($tiny),['lat'=>$a['lat']-.000004,'lon'=>$a['lon']],['lat'=>$a['lat']+.000004,'lon'=>$a['lon']]);
+        walkingCheck($tinyRoute['accessOnly']&&$tinyRoute['duration']>0,'sub-metre access also avoids a false zero-distance outage');
+        $invalidZero=$zero;$invalidZero['routes'][0]['geometry']['coordinates']=[[$a['lon']+.00002,$a['lat']],[$a['lon']+.00002,$a['lat']]];
+        walkingRejected(static fn()=>WalkingRouter::parseResponse($encode($invalidZero),$door,$a),'zero-distance geometry must match its shared access point, not an unrelated point nearby');
+        $invalidZero=$zero;$invalidZero['waypoints'][0]['distance']=80;
+        walkingRejected(static fn()=>WalkingRouter::parseResponse($encode($invalidZero),$door,$a),'access-only routes cannot bypass the normal endpoint gap bound');
         $far=['lat'=>$a['lat']-60/111000,'lon'=>$a['lon']];
         walkingRejected(static fn()=>WalkingRouter::parseResponse($encode($response),$far,$b),'endpoint snapping beyond fifty metres is rejected even if the server understates its snap distance');
         $bad=$response;$bad['waypoints'][0]['distance']=80;

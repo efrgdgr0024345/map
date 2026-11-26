@@ -110,19 +110,24 @@ final class WalkingRouter
                 $connectors[] = ['geometry'=>$connector, 'distance'=>round($gap,1),
                     'duration'=>(int)ceil($gap), 'routing'=>'unrouted_access', 'approximate'=>true,
                     'message'=>'Short access connection to the mapped path; access through private land or barriers is not verified.'];
-                $accessDistance += $gap;
             }
+            $accessDistance += $gap;
         }
         $length = 0.0;
         for ($i=1; $i<count($geometry); $i++) {
             $length += Geo::distance(['lat'=>$geometry[$i-1][0],'lon'=>$geometry[$i-1][1]], ['lat'=>$geometry[$i][0],'lon'=>$geometry[$i][1]]);
         }
-        if ($length < 0.1 || $distance < 0.1 || $duration <= 0 || $distance < $length * 0.5 || $distance > $length * 3 + 100) {
+        $accessOnly=$length<0.1 && $distance===0.0 && $duration===0.0 && $accessDistance>0 && Geo::distance($a,$b)>=0.1
+            && Geo::distance($snaps[0],$snaps[1])<0.1;
+        if ($accessOnly) {
+            foreach ($geometry as $p) { if (Geo::distance($snaps[0],['lat'=>$p[0],'lon'=>$p[1]])>0.1) { $accessOnly=false; break; } }
+        }
+        if (!$accessOnly && ($length < 0.1 || $distance < 0.1 || $duration <= 0 || $distance < $length * 0.5 || $distance > $length * 3 + 100)) {
             throw new RuntimeException('The walking service returned invalid route distance or timing.');
         }
         return ['geometry'=>$geometry, 'duration'=>(int)ceil(max($duration,$distance/1.25)+$accessDistance),
             'distance'=>round($distance+$accessDistance,1), 'routingSource'=>self::SOURCE,
-            'routing'=>'street', 'approximate'=>false, 'snappedFrom'=>$snaps[0], 'snappedTo'=>$snaps[1],
+            'routing'=>'street', 'approximate'=>$accessOnly, 'accessOnly'=>$accessOnly, 'snappedFrom'=>$snaps[0], 'snappedTo'=>$snaps[1],
             'accessConnectors'=>$connectors, 'accessDistance'=>round($accessDistance,1),
             'attribution'=>'Walking paths: OpenStreetMap contributors. Routing: FOSSGIS OSRM foot.'];
     }

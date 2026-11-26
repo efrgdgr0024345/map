@@ -1,0 +1,31 @@
+<?php
+declare(strict_types=1);
+require dirname(__DIR__).'/bootstrap.php';
+use App\WalkingAccess;
+$n=0;function waCheck(bool $ok,string $label):void{global $n;if(!$ok)throw new RuntimeException('FAIL: '.$label);$n++;echo 'PASS: '.$label.PHP_EOL;}
+$point=['lat'=>-31.949,'lon'=>115.851];
+$coords=[[115.85,-31.95],[115.852,-31.95],[115.852,-31.948],[115.85,-31.948],[115.85,-31.95]];
+$nodes=[];foreach(array_slice($coords,0,-1) as $i=>$p)$nodes[]=['type'=>'node','id'=>$i+1,'lon'=>$p[0],'lat'=>$p[1]];
+$way=['type'=>'way','id'=>99,'tags'=>['building'=>'yes','name'=>'Fixture building'],'nodes'=>[1,2,3,4,1]];
+$map=['elements'=>[...$nodes,$way]];
+$nearest=['code'=>'Ok','waypoints'=>[['location'=>[115.851,-31.949],'name'=>'Inside building'],['location'=>[115.8499,-31.949],'name'=>'Outside footway']]];
+$calls=[];$reader=static function($url,$timeout)use(&$calls,$map,$nearest){$calls[]=[$url,$timeout];return str_contains($url,'map.json')?$map:$nearest;};
+$r=WalkingAccess::resolve($point,$reader);
+waCheck($r['available']&&$r['nearestWalkingPoint']['name']==='Outside footway','suggestion rejects the closer inside-building network point');
+waCheck($r['polygon']['coordinates'][0]===$coords&&$r['polygon']['osmId']==='99','returned GeoJSON is the actual containing OSM polygon');
+waCheck($r['approximate']===true&&str_contains($r['message'],'not verified'),'walking point is explicitly approximate rather than a verified entrance');
+waCheck(count($calls)===2&&str_starts_with($calls[0][0],'https://api.openstreetmap.org/')&&str_contains($calls[1][0],'/routed-foot/nearest/'),'one bounded OSM map query and a pedestrian nearest query are used');
+waCheck(WalkingAccess::polygon($map,['lat'=>-31.96,'lon'=>115.86])===null,'a nearby polygon that does not contain the selected point is not used');
+$open=$map;$open['elements'][4]['nodes']=[1,2,3,4];waCheck(WalkingAccess::polygon($open,$point)===null,'open or incomplete boundaries are ignored');
+$road=$map;$road['elements'][4]['tags']=['highway'=>'residential'];waCheck(WalkingAccess::polygon($road,$point)===null,'closed roads are not treated as building boundaries');
+$holeNodes=[];foreach([[115.8505,-31.9495],[115.8515,-31.9495],[115.8515,-31.9485],[115.8505,-31.9485]] as $i=>$p)$holeNodes[]=['type'=>'node','id'=>$i+10,'lon'=>$p[0],'lat'=>$p[1]];
+$withHole=['elements'=>[...$map['elements'],...$holeNodes,['type'=>'way','id'=>100,'nodes'=>[10,11,12,13,10]],['type'=>'relation','id'=>101,'tags'=>['building'=>'yes','type'=>'multipolygon'],'members'=>[['type'=>'way','ref'=>99,'role'=>'outer'],['type'=>'way','ref'=>100,'role'=>'inner']]]]];
+waCheck(WalkingAccess::polygon($withHole,$point)===null,'courtyards are excluded even when the relation outer way also has building tags');
+waCheck(count(WalkingAccess::polygon($withHole,['lat'=>-31.9498,'lon'=>115.8502])['coordinates'])===2,'complete multipolygon geometry retains its hole');
+$c=0;$none=WalkingAccess::resolve($point,static function()use(&$c){$c++;return ['elements'=>[]];});
+waCheck(!$none['available']&&$c===1,'missing OSM polygons do not trigger an arbitrary nearest-road guess');
+$far=WalkingAccess::resolve($point,static fn($url)=>str_contains($url,'map.json')?$map:['code'=>'Ok','waypoints'=>[['location'=>[115.87,-31.94]]]]);
+waCheck(!$far['available'],'distant walking points outside the search limit are rejected');
+$failed=false;try{WalkingAccess::resolve(['lat'=>0,'lon'=>0],$reader);}catch(InvalidArgumentException){$failed=true;}waCheck($failed,'out-of-region input is rejected before an external request');
+$failed=false;try{WalkingAccess::resolve($point,static fn($url)=>str_contains($url,'map.json')?$map:['code'=>'NoRoute']);}catch(RuntimeException){$failed=true;}waCheck($failed,'provider failures remain distinct from a successful access suggestion');
+echo $n.' walking-access checks passed. OSM/provider fixtures only.'.PHP_EOL;

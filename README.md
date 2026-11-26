@@ -6,6 +6,9 @@ A clean, mobile-friendly Perth public transport map built with PHP, Leaflet and 
 
 ## What works
 
+- Phone search toggles for Bus, Train, Ferry, Uber and Walk. Transport choices constrain the actual route search; Walk off removes walking-only suggestions over ten minutes while retaining access and transfer walks. [Search options](docs/search-options.md).
+- Failed endpoint searches can show an OpenStreetMap polygon and suggested walking GPS point, with a button to re-search there. Short access-only walks no longer produce a false walking-service outage. [Walking access](docs/walking-access.md).
+
 - The latest trip search resumes on this device after closing the page, with the same places and map view and freshly checked departures. Clear cancels it. Map-only mode lists every found nearby direction and draws their matching route shapes for the 500 m GPS search. See [saved trips](docs/saved-trips.md).
 
 - **Arrive by** in the main phone trip form plans backwards from when you need to be at the destination. Native Perth date/time pickers and quick arrival shortcuts lead to a clear **Leave by** result, including checked walking and transfers. Impossible or past arrival deadlines are explained. See [arrival planning](docs/arrival-planning.md).
@@ -187,7 +190,7 @@ The current suite is `node tests/browser-mobile-v5.mjs`. It covers the peeking m
 - Payphones: <https://www.telstra.com.au/content/dam/tcom/personal/consumer-advice/payphones/payphone_register.xlsx>, explicitly linked from Telstra's public payphone advice page. The inspected workbook is dated 11 October 2026. Fetches are bounded, cached for seven days and use no API key or additional PHP XML extension.
 - Updates: <https://codeload.github.com/efrgdgr0024345/map/zip/refs/heads/main>.
 
-Backend outbound HTTPS requires `www.transperth.wa.gov.au`, `photon.komoot.io`, `routing.openstreetmap.de`, `www.telstra.com.au` and `codeload.github.com`. Browsers need `tile.openstreetmap.org`. No Transperth account, ticket purchasing, user accounts, location history or actual realtime feed is implemented. Historical Overpass experiments are not the production phone-data source.
+Backend outbound HTTPS requires `api.openstreetmap.org`, `www.transperth.wa.gov.au`, `photon.komoot.io`, `routing.openstreetmap.de`, `www.telstra.com.au` and `codeload.github.com`. Browsers need `tile.openstreetmap.org`. No Transperth account, ticket purchasing, user accounts, location history or actual realtime feed is implemented. Historical Overpass experiments are not the production phone-data source.
 
 ## First-version boundaries
 

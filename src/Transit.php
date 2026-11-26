@@ -17,6 +17,33 @@ final class Transit
     private bool $materializedTrips;
     private TransferRules $transferRules;
     private array $metadataTables=[];
+    private array $searchModes=['bus','train','ferry'];
+    private int $directWalkLimit=2400;
+
+    public function setSearchModes(array $modes, bool $longWalks=true): void
+    {
+        if (array_diff($modes,['bus','train','ferry'])) { throw new \InvalidArgumentException('Unknown transport mode.'); }
+        $this->searchModes=array_values(array_unique($modes));
+        $this->directWalkLimit=$longWalks ? 2400 : 600;
+    }
+
+    private function searchModeSql(): string
+    {
+        if (count($this->searchModes)===3) { return ''; }
+        $train='(r.type IN (0,1,2) OR r.type BETWEEN 100 AND 199)';
+        $ferry='(r.type=4 OR r.type BETWEEN 1000 AND 1099)';
+        $conditions=[];
+        foreach ($this->searchModes as $mode) { $conditions[]=match($mode) {'train'=>$train,'ferry'=>$ferry,default=>'(NOT '.$train.' AND NOT '.$ferry.')'}; }
+        return ' AND ('.($conditions ? implode(' OR ',$conditions) : '0').')';
+    }
+
+    public function permitsJourney(array $journey): bool
+    {
+        $rides=array_filter($journey['legs'] ?? [],static fn($l)=>($l['mode'] ?? '')!=='walk');
+        if (!$rides) { return (int)($journey['duration'] ?? PHP_INT_MAX)<=$this->directWalkLimit; }
+        foreach($rides as $leg){if(!in_array($leg['mode'] ?? '',$this->searchModes,true))return false;}
+        return true;
+    }
 
     public function __construct(?string $path = null)
     {
@@ -560,7 +587,7 @@ final class Transit
             $marks=implode(',',array_fill(0,count($day['ids']),'?'));
             $queries[]="SELECT c.*,c.departure+? dep,c.arrival+? arr,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type,? || '-' || t.id AS service_key
                 FROM connections c JOIN trips t ON t.id=c.trip_id JOIN routes r ON r.id=t.route_id
-                WHERE t.service_id IN ($marks) AND c.departure>=? AND c.arrival<=? AND t.id<>?";
+                WHERE t.service_id IN ($marks) AND c.departure>=? AND c.arrival<=? AND t.id<>?".$this->searchModeSql();
             $args=array_merge($args,[$day['base'],$day['base'],$day['date']],$day['ids'],[$earliest-$day['base'],$deadline-$day['base'],$skipTrip]);
         }
         if (!$queries) { return null; }
@@ -568,7 +595,7 @@ final class Transit
         $nodes=[]; $labels=[]; $onboard=[]; $near=[]; $directDepartures=[];
         $origins=[];
         foreach ($this->nearby($from) as $stop) { $origins[$stop['id']]=$stop; }
-        $direct=$this->walkingSeconds($from,$to); $best=$direct<=2400 ? $deadline-$direct : PHP_INT_MIN;
+        $direct=$this->walkingSeconds($from,$to); $best=$direct<=$this->directWalkLimit ? $deadline-$direct : PHP_INT_MIN;
         $chosen=null; $access=null;
         $qualified=$this->transferRules->hasQualifiedRules();
         $label=static function(string $id,array $node,?int $index=null) use (&$nodes,&$labels,$qualified): void {
@@ -674,13 +701,13 @@ final class Transit
                 // Join connections to one small active-trip table instead of repeatedly
                 // reading trip and route metadata from disk for every connection.
                 $name='active_trips_'.count($queries);
-                $tripQueries[]="$name AS MATERIALIZED (SELECT t.id,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type FROM trips t JOIN routes r ON r.id=t.route_id WHERE t.service_id IN ($marks) AND t.start<=? AND t.end>=?)";
+                $tripQueries[]="$name AS MATERIALIZED (SELECT t.id,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type FROM trips t JOIN routes r ON r.id=t.route_id WHERE t.service_id IN ($marks) AND t.start<=? AND t.end>=?".$this->searchModeSql().')';
                 $tripArgs=array_merge($tripArgs,$day['ids'],[$end-$day['base'],$now-$day['base']]);
                 $queries[]="SELECT c.trip_id,c.seq,c.from_id,c.to_id,c.departure+? departure,c.arrival+? arrival,c.pickup,c.dropoff,t.route_id,t.headsign,t.shape_id,t.route_name,t.type,? || '-' || c.trip_id AS key FROM connections c JOIN $name t ON t.id=c.trip_id WHERE c.departure>=? AND c.departure<=? AND c.trip_id<>?";
                 $args=array_merge($args,[$day['base'],$day['base'],$day['date'],$now-$day['base'],$end-$day['base'],$skipTrip]);
             } else {
                 // Older cPanel SQLite builds keep the established compatible query.
-                $queries[]="SELECT c.trip_id,c.seq,c.from_id,c.to_id,c.departure+? departure,c.arrival+? arrival,c.pickup,c.dropoff,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type,? || '-' || c.trip_id AS key FROM connections c JOIN trips t ON t.id=c.trip_id JOIN routes r ON r.id=t.route_id WHERE t.service_id IN ($marks) AND c.departure>=? AND c.departure<=? AND c.trip_id<>?";
+                $queries[]="SELECT c.trip_id,c.seq,c.from_id,c.to_id,c.departure+? departure,c.arrival+? arrival,c.pickup,c.dropoff,t.route_id,t.headsign,t.shape_id,r.name route_name,r.type,? || '-' || c.trip_id AS key FROM connections c JOIN trips t ON t.id=c.trip_id JOIN routes r ON r.id=t.route_id WHERE t.service_id IN ($marks) AND c.departure>=? AND c.departure<=? AND c.trip_id<>?".$this->searchModeSql();
                 $args=array_merge($args,[$day['base'],$day['base'],$day['date']],$day['ids'],[$now-$day['base'],$end-$day['base'],$skipTrip]);
             }
         }
@@ -717,7 +744,7 @@ final class Transit
         $bestArrival=PHP_INT_MAX; $bestIdx=null; $bestStop=null;
         // Walking-only is allowed locally, never fabricated as a bus journey.
         $direct=$this->walkingSeconds($from,$to);
-        if ($direct<=2400) { $bestArrival=$now+$direct; }
+        if ($direct<=$this->directWalkLimit) { $bestArrival=$now+$direct; }
         foreach ($connections as $c) {
             if ($c['departure']>$bestArrival) { break; }
             $prev=$onboard[$c['key']] ?? null;
@@ -767,7 +794,7 @@ final class Transit
             }
         }
         if ($bestIdx===null) {
-            if ($direct>2400) { return null; }
+            if ($direct>$this->directWalkLimit) { return null; }
             $legs=[Demo::walk($from,$to,$now,$now+$direct)];
         } else {
             $legs=[]; $cursor=$bestIdx;

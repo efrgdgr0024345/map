@@ -88,6 +88,11 @@ try {
             $result=$service->vehicles($bbox,$routes,substr((string)($_GET['journey'] ?? ''),0,200),($_GET['lines'] ?? '')!=='0',in_array($_GET['rail'] ?? '', ['only','always'],true) ? $_GET['rail'] : '');
             break;
         case 'plan':
+            $modes=isset($_GET['modes']) ? (($_GET['modes']==='') ? [] : explode(',',$_GET['modes'])) : ['bus','train','ferry'];
+            if (count($modes)>3 || array_diff($modes,['bus','train','ferry'])) { throw new InvalidArgumentException('Choose bus, train or ferry modes.'); }
+            $longWalks=($_GET['longWalks'] ?? '1');
+            if (!in_array($longWalks,['0','1'],true)) { throw new InvalidArgumentException('Choose a valid walking preference.'); }
+            if ($service instanceof App\Transit) { $service->setSearchModes($modes,$longWalks==='1'); }
             $from=point((string)($_GET['from'] ?? '')); $to=point((string)($_GET['to'] ?? ''));
             $from['name']='Your starting point'; $to['name']='Your destination';
             $now=time(); $at=$now; $deadline=null;
@@ -100,7 +105,13 @@ try {
                 if ($field==='at') { $at=max($now,$timestamp); } else { $deadline=$timestamp; }
             }
             if ($deadline!==null && $deadline<=$at) { throw new InvalidArgumentException('Arrival must be after departure.'); }
+            if (!($service instanceof App\Transit) && (count(array_unique($modes))!==3 || $longWalks==='0')) {
+                $result=['mode'=>'demo','journeys'=>[],'message'=>'Import the real timetable to search with transport preferences.']; break;
+            }
             $result=App\StreetJourneys::plan($service,$from,$to,$at,null,null,$deadline,max(0,$at-$now));
+            break;
+        case 'walking-access':
+            $result=App\WalkingAccess::resolve(point((string)($_GET['at'] ?? '')));
             break;
         case 'toilets':
             $bounds=explode(',',(string)($_GET['bbox'] ?? '115.65,-32.2,116.1,-31.7'));

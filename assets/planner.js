@@ -54,7 +54,7 @@
     const item=queue[i];if(Math.hypot(point.lat-item.place.lat,point.lon-item.place.lon)<1e-6){cursor=item.end?Math.max(cursor,Date.parse(item.end)):cursor+item.minutes*60000;continue;}
     if(item.deadline&&Date.parse(item.deadline)<=cursor)throw Error(`${item.title}: the previous visit ends too late for this appointment.`);
     message(`Planning ${i+1} of ${queue.length}: ${point.name} → ${item.place.name}…`);$('planner-build').textContent=`Planning trip ${i+1}…`;
-    const params={from:`${point.lat},${point.lon}`,to:`${item.place.lat},${item.place.lon}`,at:new Date(cursor).toISOString().replace('.000Z','Z')};
+    const params={from:`${point.lat},${point.lon}`,to:`${item.place.lat},${item.place.lon}`,...window.Nextstop.searchPreferences(),at:new Date(cursor).toISOString().replace('.000Z','Z')};
     if(item.deadline)params.arriveBy=new Date(item.deadline).toISOString().replace(/\.\d{3}Z$/,'Z');
     // Date.toISOString() has milliseconds; the API accepts second-resolution ISO times.
     params.at=params.at.replace(/\.\d{3}Z$/,'Z');

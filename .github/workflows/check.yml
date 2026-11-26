@@ -29,6 +29,7 @@ jobs:
       - run: php tests/motion.php
       - run: php tests/approach.php
       - run: php tests/walking.php
+      - run: php tests/walking_access.php
       - run: php tests/geocoder.php
       - run: php tests/poi_catalog.php
       - run: php tests/street_journeys.php
@@ -55,6 +56,7 @@ jobs:
       - run: node --check tests/browser-last-mile-uber.mjs
       - run: node --check tests/browser-arrival-colours.mjs
       - run: node --check tests/browser-trip-restore.mjs
+      - run: node --check tests/browser-search-modes.mjs
       - run: node --check tests/browser-map-only.mjs
       - run: node --check tests/browser-nearby-bus.mjs
       - run: node --check tests/browser-nearby-onboard.mjs
@@ -106,4 +108,5 @@ jobs:
       - run: node tests/browser-last-mile-uber.mjs
       - run: node tests/browser-arrival-colours.mjs
       - run: node tests/browser-trip-restore.mjs
+      - run: node tests/browser-search-modes.mjs
       - run: node tests/browser-day-planner.mjs
